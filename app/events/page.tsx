@@ -186,7 +186,7 @@ export default function EventsPage() {
               </div>
 
               
-               <Button href="/manage/events/create" >   Create Event </Button>
+               <Button href="/venues" > Available venue </Button>
             </div>
           </div>
         </div>

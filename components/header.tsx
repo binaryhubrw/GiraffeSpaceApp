@@ -159,12 +159,12 @@ export function Header({ activePage }: HeaderProps) {
                       </Link>
                     )}
                     <Link
-                      href="/manage/events"
+                      href="/user-dashboard"
                       className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => setIsManageMenuOpen(false)}
                     >
                       <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                      Manage Events
+                      Dashboard
                     </Link>
                     <Link
                       href="/manage/venues/dashboard"

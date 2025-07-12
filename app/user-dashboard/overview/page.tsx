@@ -1,25 +1,91 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { Organization } from "@/data/users"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
-interface OverviewSectionProps {
-  user: any;
-  userStats: any;
-  organizations: Organization[];
-  userEvents: any[];
-  overviewPage: number;
-  setOverviewPage: (page: number) => void;
-  getTotalPages: (length: number) => number;
-  getPaginatedData: (data: any[], page: number) => any[];
-  formatDate: (date: string) => string;
-}
+export default function OverviewSection() {
+  const { isLoggedIn, user } = useAuth()
+  const router = useRouter()
+  const [overviewPage, setOverviewPage] = useState(1)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const itemsPerPage = 5
 
-export default function OverviewSection({ user, userStats, organizations, userEvents, overviewPage, setOverviewPage, getTotalPages, getPaginatedData, formatDate }: OverviewSectionProps) {
+  // Mock data
+  const userStats = {
+    totalEventsAttended: 12,
+    upcomingEvents: 3,
+    totalTickets: 15,
+  }
+
+  const organizations = [
+    {
+      organizationId: "ORG-001",
+      organizationName: "Tech Association of Rwanda",
+      organizationType: "Professional Association"
+    },
+    {
+      organizationId: "ORG-002",
+      organizationName: "Corporate Events Rwanda",
+      organizationType: "Event Management"
+    }
+  ]
+
+  const userEvents = [
+    {
+      eventId: "EVT-001",
+      eventTitle: "Annual Conference",
+      eventType: "Conference",
+      eventDate: "2025-04-15",
+      venue: "Main Conference Hall",
+      attendanceStatus: "Attended"
+    },
+    {
+      eventId: "EVT-002",
+      eventTitle: "Product Launch",
+      eventType: "Product Launch",
+      eventDate: "2025-04-20",
+      venue: "Exhibition Center",
+      attendanceStatus: "Attended"
+    },
+    {
+      eventId: "EVT-003",
+      eventTitle: "Team Building Retreat",
+      eventType: "Corporate",
+      eventDate: "2025-04-25",
+      venue: "Mountain Resort",
+      attendanceStatus: "Attended"
+    }
+  ]
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoaded(true)
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push("/login")
+    }
+  }, [isLoggedIn, router])
+
+  if (!isLoggedIn || !user) {
+    return <div>Loading...</div>
+  }
+
+  const getTotalPages = (length: number) => Math.ceil(length / itemsPerPage)
+  const getPaginatedData = (data: any[], page: number) => data.slice((page - 1) * itemsPerPage, page * itemsPerPage)
+  const formatDate = (date: string) => new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
   return (
-    <div className="space-y-8">
+    <div className="">
+      <div className={`transform transition-all duration-1000 ease-out ${isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
+        <div className="space-y-8">
       {/* User Welcome Section */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
         <div className="flex items-center space-x-4 mb-6">
@@ -103,13 +169,15 @@ export default function OverviewSection({ user, userStats, organizations, userEv
             </table>
           </div>
           {/* Pagination */}
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-2 mt-4 p-4">
             <Button size="sm" variant="outline" disabled={overviewPage === 1} onClick={() => setOverviewPage(overviewPage - 1)}>Previous</Button>
             <span className="px-2 py-1 text-sm">Page {overviewPage} of {getTotalPages(userEvents.length)}</span>
             <Button size="sm" variant="outline" disabled={overviewPage === getTotalPages(userEvents.length)} onClick={() => setOverviewPage(overviewPage + 1)}>Next</Button>
           </div>
         </CardContent>
       </Card>
+      </div>
+    </div>
     </div>
   )
 } 

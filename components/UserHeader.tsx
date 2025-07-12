@@ -7,10 +7,10 @@ import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { Button } from "./button"
 
-export function UserHeader({user}: {user: any}) {
+export function UserHeader() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { isLoggedIn, logout } = useAuth()
+  const { isLoggedIn, user, logout } = useAuth()
   const router = useRouter()
 
   useEffect(() => {

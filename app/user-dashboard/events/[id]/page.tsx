@@ -3,8 +3,9 @@
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter, useParams } from "next/navigation"
 import { useEffect, useState } from "react"
-import { ArrowLeft, Calendar, MapPin, Users, Edit, Share2, Trash2, DollarSign, AlertCircle } from "lucide-react"
+import { ArrowLeft, Calendar, MapPin, Users, Edit, Share2, Trash2, DollarSign, AlertCircle, Home, Ticket, CheckCircle, Building2, Building2Icon } from "lucide-react"
 import Link from "next/link"
+
 
 // Sample event data - in a real app, this would come from an API or database
 const eventsData = [
@@ -83,13 +84,14 @@ const eventsData = [
 ]
 
 export default function EventDetails({ params }: { params: { id: string } }) {
-  const { isLoggedIn } = useAuth()
+  const { isLoggedIn, user } = useAuth()
   const router = useRouter()
   const { id } = useParams()
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [activeTab, setActiveTab] = useState("attendees")
+  const [isLoaded, setIsLoaded] = useState(false)
 
   // Redirect if not logged in
   useEffect(() => {
@@ -97,6 +99,13 @@ export default function EventDetails({ params }: { params: { id: string } }) {
       router.push("/login")
     }
   }, [isLoggedIn, router])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoaded(true)
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Fetch event data
   useEffect(() => {
@@ -120,43 +129,39 @@ export default function EventDetails({ params }: { params: { id: string } }) {
     // In a real app, this would be an API call to delete the event
     // For now, just simulate success and redirect
     setTimeout(() => {
-      router.push("/manage/events")
+      router.push("/user-dashboard/events")
     }, 1000)
+  }
+
+  if (!isLoggedIn || !user) {
+    return <div>Loading...</div>
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <main className="flex-1 bg-white">
-          <div className="container mx-auto px-4 md:px-16 max-w-7xl py-8">
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-          </div>
-        </main>
+      <div className="p-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
       </div>
     )
   }
 
   if (!event) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <main className="flex-1 bg-white">
-          <div className="container mx-auto px-4 md:px-16 max-w-7xl py-8">
-            <Link href="/manage/events" className="flex items-center text-gray-600 hover:text-gray-900 mb-6">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Events
-            </Link>
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold mb-2">Event Not Found</h1>
-              <p className="text-gray-600 mb-6">The event you're looking for doesn't exist or has been removed.</p>
-              <Link href="/manage/events" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                Return to Events
-              </Link>
-            </div>
-          </div>
-        </main>
+      <div className="p-8">
+        <Link href="/user-dashboard/events" className="flex items-center text-gray-600 hover:text-gray-900 mb-6">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Events
+        </Link>
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Event Not Found</h1>
+          <p className="text-gray-600 mb-6">The event you're looking for doesn't exist or has been removed.</p>
+          <Link href="/user-dashboard/events" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+            Return to Events
+          </Link>
+        </div>
       </div>
     )
   }
@@ -216,66 +221,46 @@ export default function EventDetails({ params }: { params: { id: string } }) {
   ]
 
   return (
-    <div className="container mx-auto py-10">
-      {/* Event Header */}
-      <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <button className="text-blue-600 hover:underline flex items-center">
-              <ArrowLeft className="mr-2 h-5 w-5" /> Back to Events
-            </button>
-            <h1 className="text-3xl font-bold text-gray-800">{event.name}</h1>
-          </div>
-          <div className="space-x-2">
-            <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center">
-              <Edit className="mr-2 h-5 w-5" /> Edit
-            </button>
-            <button className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center">
-              <Share2 className="mr-2 h-5 w-5" /> Share
-            </button>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center"
-            >
-              <Trash2 className="mr-2 h-5 w-5" /> Delete
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center text-gray-600">
-          <MapPin className="mr-2 h-5 w-5" />
-          <span>
-            {event.venue}, {event.address}
-          </span>
-          <span className="mx-3">|</span>
-          <Calendar className="mr-2 h-5 w-5" />
-          <span>
-            {event.date}, {event.time}
-          </span>
-        </div>
-      </div>
+    <div className="p-8">
+      <div className={`transform transition-all duration-1000 ease-out ${isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
+              {/* Event Header */}
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <Link href="/user-dashboard/events" className="text-blue-600 hover:underline flex items-center">
+                      <ArrowLeft className="mr-2 h-5 w-5" /> Back to Events
+                    </Link>
+                    <h1 className="text-3xl font-bold text-gray-800">{event.name}</h1>
+                  </div>
+                  <div className="space-x-2">
+                    <Link href={`/user-dashboard/events/${event.id}/edit`} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center">
+                      <Edit className="mr-2 h-5 w-5" /> Edit
+                    </Link>
+                    <button className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center">
+                      <Share2 className="mr-2 h-5 w-5" /> Share
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center"
+                    >
+                      <Trash2 className="mr-2 h-5 w-5" /> Delete
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center text-gray-600">
+                  <MapPin className="mr-2 h-5 w-5" />
+                  <span>
+                    {event.venue}, {event.address}
+                  </span>
+                  <span className="mx-3">|</span>
+                  <Calendar className="mr-2 h-5 w-5" />
+                  <span>
+                    {event.date}, {event.time}
+                  </span>
+                </div>
+              </div>
 
-      {/* Event Image */}
-      <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
-        <div className="h-64 md:h-80 bg-gray-200 relative">
-          <img
-            src={event.featuredImage || "/placeholder.svg?height=400&width=800"}
-            alt={event.name}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute top-4 right-4 flex gap-2">
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-medium ${
-                event.status === "published" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-              }`}
-            >
-              {event.status}
-            </span>
-          </div>
-          <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white px-3 py-2 rounded-md">
-            <p className="text-sm font-medium">{event.category}</p>
-          </div>
-        </div>
-      </div>
+     
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -315,16 +300,38 @@ export default function EventDetails({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      {/* Event Details */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-4">Event Description</h2>
-            <p className="text-gray-700 whitespace-pre-line">{event.description}</p>
+       {/* Event Image */}
+      <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
+        <div className="h-64 md:h-80 bg-gray-200 relative">
+          <img
+            src={event.featuredImage || "/placeholder.svg?height=400&width=800"}
+            alt={event.name}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute top-4 right-4 flex gap-2">
+            <span
+              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                event.status === "published" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+              }`}
+            >
+              {event.status}
+            </span>
+          </div>
+          <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white px-3 py-2 rounded-md">
+            <p className="text-sm font-medium">{event.category}</p>
           </div>
         </div>
-        <div>
-          <div className="bg-white rounded-lg shadow p-6">
+      </div>
+
+      {/* Event Details */}
+      <div className="w-full mb-8">
+   
+          <div className=" shadow p-6">
+            <h2 className="text-xl font-bold mb-4">Event Description</h2>
+            <p className="text-gray-700 whitespace-pre-line">{event.description}</p>
+         
+      
+          
             <h2 className="text-xl font-bold mb-4">Event Details</h2>
             <div className="space-y-4">
               <div>
@@ -345,7 +352,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               </div>
             </div>
           </div>
-        </div>
+       
       </div>
 
       {/* Tabs Section */}
@@ -518,6 +525,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

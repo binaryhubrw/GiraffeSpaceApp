@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { Calendar, Plus, Filter, ChevronDown, Users, MapPin, Clock } from "lucide-react"
 import Link from "next/link"
 
+
 // Sample event data with updated status values
 const sampleEvents = [
   {
@@ -47,11 +48,19 @@ const sampleEvents = [
 ]
 
 export default function EventSection() {
-  const { isLoggedIn } = useAuth()
+  const { isLoggedIn, user } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("my-events")
   const [statusFilter, setStatusFilter] = useState("all")
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoaded(true)
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Redirect if not logged in
   useEffect(() => {
@@ -59,6 +68,10 @@ export default function EventSection() {
       router.push("/login")
     }
   }, [isLoggedIn, router])
+
+  if (!isLoggedIn || !user) {
+    return <div>Loading...</div>
+  }
 
   // Filter events based on status
   const filteredEvents =
@@ -77,24 +90,25 @@ export default function EventSection() {
   }
 
   return (
-    <div className="w-full">
-      {/* Dashboard Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold mb-1">Organizer Dashboard</h1>
-          <p className="text-gray-600">Manage your events and track performance</p>
-        </div>
+    <div className="p-8">
+      <div className={`transform transition-all duration-1000 ease-out ${isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
+              {/* Dashboard Header */}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+                <div>
+                  <h1 className="text-3xl font-bold mb-1">Organizer Dashboard</h1>
+                  <p className="text-gray-600">Manage your events and track performance</p>
+                </div>
 
-        <div className="flex flex-col md:flex-row gap-4 mt-4 md:mt-0">
-          <button
-            className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-            onClick={() => router.push("/manage/events/create")}
-          >
-            <Plus className="h-4 w-4" />
-            Create Event
-          </button>
-        </div>
-      </div>
+                <div className="flex flex-col md:flex-row gap-4 mt-4 md:mt-0">
+                  <button
+                    className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                    onClick={() => router.push("/manage/events/create")}
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Event
+                  </button>
+                </div>
+              </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -317,13 +331,13 @@ export default function EventSection() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <Link
-                          href={`/manage/events/${event.id}/edit`}
+                          href={`/user-dashboard/events/${event.id}`}
                           className="text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md mr-2"
                         >
                           Edit
                         </Link>
                         <Link
-                          href={`/manage/events/${event.id}`}
+                          href={`/user-dashboard/events/${event.id}`}
                           className="text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md"
                         >
                           View
@@ -431,6 +445,7 @@ export default function EventSection() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }
