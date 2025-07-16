@@ -4,62 +4,17 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
 
-export default function OverviewSection() {
-  const { isLoggedIn, user } = useAuth()
-  const router = useRouter()
+interface OverviewSectionProps {
+  user: any
+  organizations: any[]
+  userEvents: any[]
+}
+
+export default function OverviewSection({ user, organizations, userEvents }: OverviewSectionProps) {
   const [overviewPage, setOverviewPage] = useState(1)
   const [isLoaded, setIsLoaded] = useState(false)
   const itemsPerPage = 5
-
-  // Mock data
-  const userStats = {
-    totalEventsAttended: 12,
-    upcomingEvents: 3,
-    totalTickets: 15,
-  }
-
-  const organizations = [
-    {
-      organizationId: "ORG-001",
-      organizationName: "Tech Association of Rwanda",
-      organizationType: "Professional Association"
-    },
-    {
-      organizationId: "ORG-002",
-      organizationName: "Corporate Events Rwanda",
-      organizationType: "Event Management"
-    }
-  ]
-
-  const userEvents = [
-    {
-      eventId: "EVT-001",
-      eventTitle: "Annual Conference",
-      eventType: "Conference",
-      eventDate: "2025-04-15",
-      venue: "Main Conference Hall",
-      attendanceStatus: "Attended"
-    },
-    {
-      eventId: "EVT-002",
-      eventTitle: "Product Launch",
-      eventType: "Product Launch",
-      eventDate: "2025-04-20",
-      venue: "Exhibition Center",
-      attendanceStatus: "Attended"
-    },
-    {
-      eventId: "EVT-003",
-      eventTitle: "Team Building Retreat",
-      eventType: "Corporate",
-      eventDate: "2025-04-25",
-      venue: "Mountain Resort",
-      attendanceStatus: "Attended"
-    }
-  ]
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -68,15 +23,15 @@ export default function OverviewSection() {
     return () => clearTimeout(timer)
   }, [])
 
-  // Redirect if not logged in
-  useEffect(() => {
-    if (!isLoggedIn) {
-      router.push("/login")
-    }
-  }, [isLoggedIn, router])
-
-  if (!isLoggedIn || !user) {
+  if (!user) {
     return <div>Loading...</div>
+  }
+
+  // You can calculate stats from userEvents/organizations if needed
+  const userStats = {
+    totalEventsAttended: userEvents.length,
+    upcomingEvents: 3, // Example static value
+    totalTickets: 15, // Example static value
   }
 
   const getTotalPages = (length: number) => Math.ceil(length / itemsPerPage)

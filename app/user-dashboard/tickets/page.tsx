@@ -4,12 +4,8 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Eye } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
 
 export default function TicketsSection() {
-  const { isLoggedIn, user } = useAuth()
-  const router = useRouter()
   const [ticketsPage, setTicketsPage] = useState(1)
   const [isLoaded, setIsLoaded] = useState(false)
   const itemsPerPage = 5
@@ -55,21 +51,10 @@ export default function TicketsSection() {
     return () => clearTimeout(timer)
   }, [])
 
-  // Redirect if not logged in
-  useEffect(() => {
-    if (!isLoggedIn) {
-      router.push("/login")
-    }
-  }, [isLoggedIn, router])
-
-  if (!isLoggedIn || !user) {
-    return <div>Loading...</div>
-  }
-
-  const getPaginatedData = (data, page) => data.slice((page - 1) * itemsPerPage, page * itemsPerPage)
-  const getTotalPages = (dataLength) => Math.ceil(dataLength / itemsPerPage)
-  const formatDate = (dateString) => new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-  const formatTime = (timeString) => new Date(`2000-01-01T${timeString}`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
+  const getPaginatedData = (data: any[], page: number) => data.slice((page - 1) * itemsPerPage, page * itemsPerPage)
+  const getTotalPages = (dataLength: number) => Math.ceil(dataLength / itemsPerPage)
+  const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  const formatTime = (timeString: string) => new Date(`2000-01-01T${timeString}`).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })
 
   return (
     <div className="p-8">

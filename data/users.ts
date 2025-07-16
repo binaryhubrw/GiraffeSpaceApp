@@ -16,6 +16,7 @@ export interface Organization {
 }
 
 export interface User {
+  events: never[];
   userId: string;
   username: string;
   email: string;
