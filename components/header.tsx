@@ -114,14 +114,14 @@ export function Header({ activePage }: HeaderProps) {
           >
             Organizers
           </Link>
-          <Link
+          {/* <Link
             href="/dashboard"
             className={`text-sm font-medium ${
               activePage === "dashboard" ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
             }`}
           >
             Statistics
-          </Link>
+          </Link> */}
         </nav>
 
         {/* Desktop auth buttons or user menu */}
@@ -309,7 +309,7 @@ export function Header({ activePage }: HeaderProps) {
                 >
                   Organizers
                 </Link>
-                <Link
+                {/* <Link
                   href="/dashboard"
                   className={`text-sm font-medium ${
                     activePage === "dashboard" ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
@@ -317,7 +317,7 @@ export function Header({ activePage }: HeaderProps) {
                   onClick={() => setIsMenuOpen(false)}
                 >
                   Dashboard
-                </Link>
+                </Link> */}
                 {mounted && showLoggedIn ? (
                   <>
                     {/* Mobile Manage section */}
@@ -335,15 +335,15 @@ export function Header({ activePage }: HeaderProps) {
                           </Link>
                         )}
                         <Link
-                          href="/manage/events"
+                          href="/user-dashboard"
                           className="flex items-center text-sm text-gray-600 hover:text-gray-900"
                           onClick={() => setIsMenuOpen(false)}
                         >
                           <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                          Manage Events
+                          User Dashboard
                         </Link>
                         <Link
-                          href="/manage/venues"
+                          href="/manage/venues/dashboard"
                           className="flex items-center text-sm text-gray-600 hover:text-gray-900"
                           onClick={() => setIsMenuOpen(false)}
                         >

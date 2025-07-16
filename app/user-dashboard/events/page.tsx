@@ -5,6 +5,35 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Calendar, Plus, Filter, ChevronDown, Users, MapPin, Clock } from "lucide-react"
 import Link from "next/link"
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+} from "@/components/ui/pagination"
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog"
+import { Pencil, Eye, Trash2, XCircle } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
 
 // Sample event data with updated status values
@@ -17,6 +46,7 @@ const sampleEvents = [
     registrations: 145,
     capacity: 300,
     status: "published", // approved by admin
+    ticketPrice: 0, // Free entrance
   },
   {
     id: "event-2",
@@ -26,6 +56,7 @@ const sampleEvents = [
     registrations: 78,
     capacity: 150,
     status: "pending", // pending admin approval
+    ticketPrice: 50, // Payable
   },
   {
     id: "event-3",
@@ -35,6 +66,7 @@ const sampleEvents = [
     registrations: 32,
     capacity: 50,
     status: "published", // approved by admin
+    ticketPrice: "Free", // Free entrance
   },
   {
     id: "event-4",
@@ -44,8 +76,28 @@ const sampleEvents = [
     registrations: 0,
     capacity: 100,
     status: "pending", // pending admin approval
+    ticketPrice: 20, // Payable
   },
 ]
+
+const EVENTS_PER_PAGE = 3
+
+// Helper to determine event pay type
+function getPayType(event: {
+    id: string; name: string; date: string; venue: string; registrations: number; capacity: number; status: string;
+    ticketPrice: number | string;
+  }) {
+  let price = event.ticketPrice !== undefined ? event.ticketPrice : "Free"
+  if (typeof price === "string") price = price.trim()
+  if (
+    price === 0 ||
+    price === "0" ||
+    (typeof price === "string" && (price.toLowerCase() === "free" || price.toLowerCase() === "by invitation"))
+  ) {
+    return "Free Entrance"
+  }
+  return "Payable"
+}
 
 export default function EventSection() {
   const { isLoggedIn, user } = useAuth()
@@ -54,6 +106,13 @@ export default function EventSection() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [showDeleteId, setShowDeleteId] = useState<string | null>(null)
+  const [showCancelId, setShowCancelId] = useState<string | null>(null)
+  const [events, setEvents] = useState(sampleEvents)
+  const [eventNameFilter, setEventNameFilter] = useState("")
+  const [payTypeFilter, setPayTypeFilter] = useState("all") // all, free, payable
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -73,13 +132,50 @@ export default function EventSection() {
     return <div>Loading...</div>
   }
 
-  // Filter events based on status
-  const filteredEvents =
-    statusFilter === "all" ? sampleEvents : sampleEvents.filter((event) => event.status === statusFilter.toLowerCase())
+  // Filter events based on status, name, and pay type
+  const filteredEvents = (statusFilter === "all" ? events : events.filter((event) => event.status === statusFilter.toLowerCase()))
+    .filter((event) =>
+      eventNameFilter.trim() === "" || event.name.toLowerCase().includes(eventNameFilter.trim().toLowerCase())
+    )
+    .filter((event) => {
+      if (payTypeFilter === "all") return true
+      // Find ticketPrice from event (mocked data may not have it, so fallback to free for demo)
+      let price = (event.ticketPrice !== undefined ? event.ticketPrice : "Free")
+      if (typeof price === "string") price = price.trim()
+      if (payTypeFilter === "free") {
+        return price === 0 || price === "0" || (typeof price === "string" && (price.toLowerCase() === "free" || price.toLowerCase() === "by invitation"))
+      } else if (payTypeFilter === "payable") {
+        return !(price === 0 || price === "0" || (typeof price === "string" && (price.toLowerCase() === "free" || price.toLowerCase() === "by invitation")))
+      }
+      return true
+    })
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredEvents.length / EVENTS_PER_PAGE)
+  const paginatedEvents = filteredEvents.slice(
+    (currentPage - 1) * EVENTS_PER_PAGE,
+    currentPage * EVENTS_PER_PAGE
+  )
+
+  // Action handlers
+  const handleDelete = (id: string) => {
+    setEvents((prev) => prev.filter((e) => e.id !== id))
+    setShowDeleteId(null)
+  }
+  const handleCancel = (id: string) => {
+    setEvents((prev) =>
+      prev.map((e) =>
+        e.id === id ? { ...e, status: "cancelled" } : e
+      )
+    )
+    setShowCancelId(null)
+  }
 
   // Stats for the dashboard
+  const totalPayable = events.filter(e => getPayType(e) === "Payable").length
+  const totalFree = events.filter(e => getPayType(e) === "Free Entrance").length
   const stats = {
-    totalEvents: 24,
+    totalEvents: events.length,
     totalEventsChange: "+12%",
     totalAttendees: 1892,
     totalAttendeesChange: "+5%",
@@ -87,6 +183,8 @@ export default function EventSection() {
     venuesUsedChange: "+2",
     upcomingEvents: 8,
     upcomingEventsPeriod: "Next 30 days",
+    totalPayable,
+    totalFree,
   }
 
   return (
@@ -111,7 +209,7 @@ export default function EventSection() {
               </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
         <div className="border rounded-lg p-6">
           <div className="flex justify-between items-start">
             <div>
@@ -122,7 +220,6 @@ export default function EventSection() {
             <Calendar className="h-5 w-5 text-gray-400" />
           </div>
         </div>
-
         <div className="border rounded-lg p-6">
           <div className="flex justify-between items-start">
             <div>
@@ -133,7 +230,6 @@ export default function EventSection() {
             <Users className="h-5 w-5 text-gray-400" />
           </div>
         </div>
-
         <div className="border rounded-lg p-6">
           <div className="flex justify-between items-start">
             <div>
@@ -144,7 +240,6 @@ export default function EventSection() {
             <MapPin className="h-5 w-5 text-gray-400" />
           </div>
         </div>
-
         <div className="border rounded-lg p-6">
           <div className="flex justify-between items-start">
             <div>
@@ -153,6 +248,24 @@ export default function EventSection() {
               <p className="text-gray-600 text-sm">{stats.upcomingEventsPeriod}</p>
             </div>
             <Clock className="h-5 w-5 text-gray-400" />
+          </div>
+        </div>
+        <div className="border rounded-lg p-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-600 text-sm mb-1">Payable Events</p>
+              <h2 className="text-3xl font-bold">{stats.totalPayable}</h2>
+            </div>
+            <span className="inline-block bg-red-100 text-red-600 rounded-full px-3 py-1 text-xs font-semibold">Payable</span>
+          </div>
+        </div>
+        <div className="border rounded-lg p-6">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-600 text-sm mb-1">Free Entrance Events</p>
+              <h2 className="text-3xl font-bold">{stats.totalFree}</h2>
+            </div>
+            <span className="inline-block bg-green-100 text-green-600 rounded-full px-3 py-1 text-xs font-semibold">Free</span>
           </div>
         </div>
       </div>
@@ -186,103 +299,84 @@ export default function EventSection() {
       {activeTab === "my-events" && (
         <>
           {/* Events Header */}
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
             <h2 className="text-xl font-bold">Your Events</h2>
-
-            {/* Filter */}
-            <div className="relative">
-              <button
-                className="flex items-center gap-2 border rounded-md px-4 py-2 text-gray-700 bg-white"
-                onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+            <div className="flex flex-col md:flex-row gap-2 md:gap-4 w-full md:w-auto">
+              {/* Search by event name */}
+              <Input
+                type="text"
+                placeholder="Search by event name..."
+                value={eventNameFilter}
+                onChange={(e) => {
+                  setEventNameFilter(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full md:w-56"
+              />
+              {/* Filter by pay type */}
+              <select
+                value={payTypeFilter}
+                onChange={(e) => {
+                  setPayTypeFilter(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="border rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <Filter className="h-4 w-4" />
-                <span>Status</span>
-                <ChevronDown className="h-4 w-4" />
-              </button>
-
-              {isStatusDropdownOpen && (
-                <div className="absolute right-0 mt-1 w-48 bg-white border rounded-md shadow-lg z-10">
-                  <ul className="py-1">
-                    <li
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                      onClick={() => {
-                        setStatusFilter("all")
-                        setIsStatusDropdownOpen(false)
-                      }}
-                    >
-                      All
-                    </li>
-                    <li
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                      onClick={() => {
-                        setStatusFilter("published")
-                        setIsStatusDropdownOpen(false)
-                      }}
-                    >
-                      Published
-                    </li>
-                    <li
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                      onClick={() => {
-                        setStatusFilter("pending")
-                        setIsStatusDropdownOpen(false)
-                      }}
-                    >
-                      Pending
-                    </li>
-                  </ul>
-                </div>
-              )}
+                <option value="all">All Types</option>
+                <option value="free">Free Entrance</option>
+                <option value="payable">Payable</option>
+              </select>
+              {/* Status filter dropdown (unchanged) */}
+              <div className="relative">
+                <button
+                  className="flex items-center gap-2 border rounded-md px-4 py-2 text-gray-700 bg-white"
+                  onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                  type="button"
+                >
+                  <Filter className="h-4 w-4" />
+                  <span>Status</span>
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+                {isStatusDropdownOpen && (
+                  <div className="absolute right-0 mt-1 w-48 bg-white border rounded-md shadow-lg z-10">
+                    <ul className="py-1">
+                      {["all", "published", "pending", "cancelled"].map((status) => (
+                        <li
+                          key={status}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm capitalize"
+                          onClick={() => {
+                            setStatusFilter(status)
+                            setIsStatusDropdownOpen(false)
+                            setCurrentPage(1)
+                          }}
+                        >
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-
-          {/* Events Table */}
-          <div className="border rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Event
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Date
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Venue
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Registrations
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredEvents.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
+          {/* Events Table (shadcn) */}
+          <div className="border rounded-lg overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Venue</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Registrations</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedEvents.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-12">
                       <div className="flex flex-col items-center">
                         <Calendar className="h-12 w-12 text-gray-300 mb-4" />
                         <h3 className="text-lg font-medium text-gray-900 mb-1">No events found</h3>
@@ -299,56 +393,137 @@ export default function EventSection() {
                           Create New Event
                         </button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ) : (
-                  filteredEvents.map((event) => (
-                    <tr key={event.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{event.name}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{event.date}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{event.venue}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {event.registrations} / {event.capacity}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                  paginatedEvents.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell>{event.name}</TableCell>
+                      <TableCell>{event.date}</TableCell>
+                      <TableCell>{event.venue}</TableCell>
+                      <TableCell>{getPayType(event)}</TableCell>
+                      <TableCell>
+                        {event.registrations} / {event.capacity}
+                      </TableCell>
+                      <TableCell>
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             event.status === "published"
                               ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
+                              : event.status === "pending"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {event.status === "published" ? "Published" : "Pending"}
+                          {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Link
-                          href={`/user-dashboard/events/${event.id}`}
-                          className="text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md mr-2"
-                        >
-                          Edit
+                      </TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Link href={`/user-dashboard/events/${event.id}`} className="inline-block text-blue-600 hover:text-blue-800">
+                          <Eye className="h-5 w-5" aria-label="View" />
                         </Link>
-                        <Link
-                          href={`/user-dashboard/events/${event.id}`}
-                          className="text-gray-600 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded-md"
-                        >
-                          View
+                        <Link href={`/user-dashboard/events/${event.id}/edit`} className="inline-block text-gray-600 hover:text-gray-900">
+                          <Pencil className="h-5 w-5" aria-label="Edit" />
                         </Link>
-                      </td>
-                    </tr>
+                        <button
+                          onClick={() => setShowCancelId(event.id)}
+                          className="inline-block text-yellow-600 hover:text-yellow-800"
+                          title="Cancel Event"
+                          disabled={event.status === "cancelled"}
+                        >
+                          <XCircle className="h-5 w-5" aria-label="Cancel Event" />
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteId(event.id)}
+                          className="inline-block text-red-600 hover:text-red-800"
+                          title="Delete Event"
+                        >
+                          <Trash2 className="h-5 w-5" aria-label="Delete Event" />
+                        </button>
+                      </TableCell>
+                    </TableRow>
                   ))
                 )}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-6">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setCurrentPage((p) => Math.max(1, p - 1))
+                      }}
+                      aria-disabled={currentPage === 1}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => (
+                    <PaginationItem key={i}>
+                      <PaginationLink
+                        href="#"
+                        isActive={currentPage === i + 1}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setCurrentPage(i + 1)
+                        }}
+                      >
+                        {i + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                      }}
+                      aria-disabled={currentPage === totalPages}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
+          {/* Cancel Event Dialog */}
+          <AlertDialog open={!!showCancelId} onOpenChange={() => setShowCancelId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Cancel Event</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to cancel this event? This will mark the event as cancelled but keep it in your list.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Dismiss</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handleCancel(showCancelId!)}>
+                  Yes, Cancel Event
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {/* Delete Event Dialog */}
+          <AlertDialog open={!!showDeleteId} onOpenChange={() => setShowDeleteId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Event</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this event? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handleDelete(showDeleteId!)}>
+                  Yes, Delete Event
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       )}
 

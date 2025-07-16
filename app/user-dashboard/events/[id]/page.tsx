@@ -3,8 +3,35 @@
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter, useParams } from "next/navigation"
 import { useEffect, useState } from "react"
-import { ArrowLeft, Calendar, MapPin, Users, Edit, Share2, Trash2, DollarSign, AlertCircle, Home, Ticket, CheckCircle, Building2, Building2Icon } from "lucide-react"
+import { ArrowLeft, Calendar, MapPin, Users, Edit, Share2, Trash2, DollarSign, AlertCircle, Home, Ticket, CheckCircle, Building2, Building2Icon, Eye, Pencil } from "lucide-react"
 import Link from "next/link"
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog"
+import { Input } from "@/components/ui/input"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+} from "@/components/ui/pagination"
 
 
 // Sample event data - in a real app, this would come from an API or database
@@ -83,6 +110,20 @@ const eventsData = [
   },
 ]
 
+// Helper to determine event pay type (same as dashboard)
+function getPayType(event: { ticketPrice: number | string }) {
+  let price = event.ticketPrice !== undefined ? event.ticketPrice : "Free"
+  if (typeof price === "string") price = price.trim()
+  if (
+    price === 0 ||
+    price === "0" ||
+    (typeof price === "string" && (price.toLowerCase() === "free" || price.toLowerCase() === "by invitation"))
+  ) {
+    return "Free Entrance"
+  }
+  return "Payable"
+}
+
 export default function EventDetails({ params }: { params: { id: string } }) {
   const { isLoggedIn, user } = useAuth()
   const router = useRouter()
@@ -92,6 +133,11 @@ export default function EventDetails({ params }: { params: { id: string } }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [activeTab, setActiveTab] = useState("attendees")
   const [isLoaded, setIsLoaded] = useState(false)
+  // Attendee table filter and pagination state (move here)
+  const [attendeeSearch, setAttendeeSearch] = useState("")
+  const [attendeeStatus, setAttendeeStatus] = useState("all")
+  const [attendeePage, setAttendeePage] = useState(1)
+  const ATTENDEES_PER_PAGE = 5
 
   // Redirect if not logged in
   useEffect(() => {
@@ -220,120 +266,120 @@ export default function EventDetails({ params }: { params: { id: string } }) {
     },
   ]
 
+  // Filtered attendees
+  const filteredAttendees = attendeesData
+    .filter(a =>
+      (attendeeStatus === "all" || a.status === attendeeStatus) &&
+      (attendeeSearch.trim() === "" ||
+        a.name.toLowerCase().includes(attendeeSearch.trim().toLowerCase()) ||
+        a.email.toLowerCase().includes(attendeeSearch.trim().toLowerCase()))
+    )
+  const totalAttendeePages = Math.ceil(filteredAttendees.length / ATTENDEES_PER_PAGE)
+  const paginatedAttendees = filteredAttendees.slice(
+    (attendeePage - 1) * ATTENDEES_PER_PAGE,
+    attendeePage * ATTENDEES_PER_PAGE
+  )
+
   return (
     <div className="p-8">
       <div className={`transform transition-all duration-1000 ease-out ${isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
-              {/* Event Header */}
-              <div className="mb-8">
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <Link href="/user-dashboard/events" className="text-blue-600 hover:underline flex items-center">
-                      <ArrowLeft className="mr-2 h-5 w-5" /> Back to Events
-                    </Link>
-                    <h1 className="text-3xl font-bold text-gray-800">{event.name}</h1>
-                  </div>
-                  <div className="space-x-2">
-                    <Link href={`/user-dashboard/events/${event.id}/edit`} className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center">
-                      <Edit className="mr-2 h-5 w-5" /> Edit
-                    </Link>
-                    <button className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center">
-                      <Share2 className="mr-2 h-5 w-5" /> Share
-                    </button>
-                    <button
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline flex items-center"
-                    >
-                      <Trash2 className="mr-2 h-5 w-5" /> Delete
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <MapPin className="mr-2 h-5 w-5" />
-                  <span>
-                    {event.venue}, {event.address}
-                  </span>
-                  <span className="mx-3">|</span>
-                  <Calendar className="mr-2 h-5 w-5" />
-                  <span>
-                    {event.date}, {event.time}
-                  </span>
-                </div>
+        {/* Event Header */}
+        <div className="mb-8">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4 gap-4">
+            <div>
+              <Link href="/user-dashboard/events" className="text-blue-600 hover:underline flex items-center">
+                <ArrowLeft className="mr-2 h-5 w-5" /> Back to Events
+              </Link>
+              <div className="flex items-center gap-3 mt-2">
+                <h1 className="text-3xl font-bold text-gray-800">{event.name}</h1>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPayType(event) === "Payable" ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>{getPayType(event)}</span>
               </div>
-
-     
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Attendees</p>
-              <p className="text-3xl font-bold">{event.registrations}</p>
-              <p className="text-sm text-green-600">+12 this week</p>
             </div>
-            <Users className="h-12 w-12 text-blue-500" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Tickets</p>
-              <p className="text-3xl font-bold">{ticketsData.reduce((sum, ticket) => sum + ticket.sold, 0)}</p>
-              <p className="text-sm text-gray-500">of {event.capacity} capacity</p>
+            <div className="flex gap-2">
+              <Link href={`/user-dashboard/events/${event.id}/edit`} className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center">
+                <Edit className="mr-2 h-5 w-5" aria-label="Edit" /> Edit
+              </Link>
+              <button className="bg-green-500 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center">
+                <Share2 className="mr-2 h-5 w-5" aria-label="Share" /> Share
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
+              >
+                <Trash2 className="mr-2 h-5 w-5" aria-label="Delete" /> Delete
+              </button>
             </div>
-            <Calendar className="h-12 w-12 text-green-500" />
+          </div>
+          <div className="flex items-center text-gray-600 mt-2">
+            <MapPin className="mr-2 h-5 w-5" />
+            <span>{event.venue}, {event.address}</span>
+            <span className="mx-3">|</span>
+            <Calendar className="mr-2 h-5 w-5" />
+            <span>{event.date}, {event.time}</span>
           </div>
         </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Revenue</p>
-              <p className="text-3xl font-bold">
-                ${ticketsData.reduce((sum, ticket) => sum + ticket.sold * ticket.price, 0).toLocaleString()}
-              </p>
-              <p className="text-sm text-green-600">+15% vs last event</p>
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total Attendees</p>
+                <p className="text-3xl font-bold">{event.registrations}</p>
+                <p className="text-sm text-green-600">+12 this week</p>
+              </div>
+              <Users className="h-12 w-12 text-blue-500" />
             </div>
-            <DollarSign className="h-12 w-12 text-purple-500" />
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total Tickets</p>
+                <p className="text-3xl font-bold">{ticketsData.reduce((sum, ticket) => sum + ticket.sold, 0)}</p>
+                <p className="text-sm text-gray-500">of {event.capacity} capacity</p>
+              </div>
+              <Calendar className="h-12 w-12 text-green-500" />
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-500">Total Revenue</p>
+                <p className="text-3xl font-bold">${ticketsData.reduce((sum, ticket) => sum + ticket.sold * ticket.price, 0).toLocaleString()}</p>
+                <p className="text-sm text-green-600">+15% vs last event</p>
+              </div>
+              <DollarSign className="h-12 w-12 text-purple-500" />
+            </div>
           </div>
         </div>
-      </div>
-
-       {/* Event Image */}
-      <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
-        <div className="h-64 md:h-80 bg-gray-200 relative">
-          <img
-            src={event.featuredImage || "/placeholder.svg?height=400&width=800"}
-            alt={event.name}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute top-4 right-4 flex gap-2">
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-medium ${
-                event.status === "published" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-              }`}
-            >
-              {event.status}
-            </span>
-          </div>
-          <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white px-3 py-2 rounded-md">
-            <p className="text-sm font-medium">{event.category}</p>
+        {/* Event Image */}
+        <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
+          <div className="h-64 md:h-80 bg-gray-200 relative">
+            <img
+              src={event.featuredImage || "/placeholder.svg?height=400&width=800"}
+              alt={event.name}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute top-4 right-4 flex gap-2">
+              <span
+                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  event.status === "published" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                }`}
+              >
+                {event.status}
+              </span>
+            </div>
+            <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white px-3 py-2 rounded-md">
+              <p className="text-sm font-medium">{event.category}</p>
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Event Details */}
-      <div className="w-full mb-8">
-   
-          <div className=" shadow p-6">
+        {/* Event Details */}
+        <div className="w-full mb-8">
+          <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-bold mb-4">Event Description</h2>
-            <p className="text-gray-700 whitespace-pre-line">{event.description}</p>
-         
-      
-          
+            <p className="text-gray-700 whitespace-pre-line mb-6">{event.description}</p>
             <h2 className="text-xl font-bold mb-4">Event Details</h2>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <p className="text-sm text-gray-500">Category</p>
                 <p className="font-medium">{event.category}</p>
@@ -352,179 +398,229 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               </div>
             </div>
           </div>
-       
-      </div>
-
-      {/* Tabs Section */}
-      <div className="bg-white rounded-lg shadow">
-        {/* Tab Navigation */}
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
-            <button
-              onClick={() => setActiveTab("attendees")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "attendees"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Attendees ({attendeesData.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("tickets")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "tickets"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Tickets ({ticketsData.length})
-            </button>
-          </nav>
         </div>
-
-        {/* Tab Content */}
-        <div className="p-6">
-          {activeTab === "attendees" && (
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold">Event Attendees</h3>
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Export List</button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Email
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Phone
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ticket Type
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Registration Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Amount
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {attendeesData.map((attendee) => (
-                      <tr key={attendee.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {attendee.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.email}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.phone}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{attendee.ticketType}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {attendee.registrationDate}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          ${attendee.amount}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              attendee.status === "confirmed"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-yellow-100 text-yellow-800"
-                            }`}
-                          >
-                            {attendee.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "tickets" && (
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold">Ticket Types</h3>
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                  Add Ticket Type
-                </button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {ticketsData.map((ticket) => (
-                  <div key={ticket.id} className="border rounded-lg p-6">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="text-lg font-semibold">{ticket.type}</h4>
-                      <span className="text-2xl font-bold text-blue-600">${ticket.price}</span>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Sold:</span>
-                        <span className="font-medium">{ticket.sold}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Available:</span>
-                        <span className="font-medium">{ticket.available}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Total:</span>
-                        <span className="font-medium">{ticket.total}</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full"
-                          style={{ width: `${(ticket.sold / ticket.total) * 100}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {Math.round((ticket.sold / ticket.total) * 100)}% sold
-                      </div>
-                      <div className="pt-2">
-                        <span className="text-lg font-semibold text-green-600">
-                          ${(ticket.sold * ticket.price).toLocaleString()} revenue
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-            <h3 className="text-xl font-bold mb-4">Delete Event</h3>
-            <p className="text-gray-700 mb-6">
-              Are you sure you want to delete "{event.name}"? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-4">
+        {/* Tabs Section */}
+        <div className="bg-white rounded-lg shadow">
+          {/* Tab Navigation */}
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 px-6">
               <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                onClick={() => setActiveTab("attendees")}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "attendees"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
               >
-                Cancel
+                Attendees ({attendeesData.length})
               </button>
-              <button onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
-                Delete Event
+              <button
+                onClick={() => setActiveTab("tickets")}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "tickets"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Tickets ({ticketsData.length})
               </button>
-            </div>
+            </nav>
+          </div>
+          {/* Tab Content */}
+          <div className="p-6">
+            {activeTab === "attendees" && (
+              <div>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                  <h3 className="text-lg font-semibold">Event Attendees</h3>
+                  <div className="flex flex-col md:flex-row gap-2 md:gap-4 w-full md:w-auto">
+                    <Input
+                      type="text"
+                      placeholder="Search by name or email..."
+                      value={attendeeSearch}
+                      onChange={e => {
+                        setAttendeeSearch(e.target.value)
+                        setAttendeePage(1)
+                      }}
+                      className="w-full md:w-56"
+                    />
+                    <select
+                      value={attendeeStatus}
+                      onChange={e => {
+                        setAttendeeStatus(e.target.value)
+                        setAttendeePage(1)
+                      }}
+                      className="border rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="pending">Pending</option>
+                    </select>
+                  </div>
+                  <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Export List</button>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Ticket Type</TableHead>
+                      <TableHead>Registration Date</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedAttendees.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">No attendees found.</TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedAttendees.map((attendee) => (
+                        <TableRow key={attendee.id}>
+                          <TableCell>{attendee.name}</TableCell>
+                          <TableCell>{attendee.email}</TableCell>
+                          <TableCell>{attendee.phone}</TableCell>
+                          <TableCell>{attendee.ticketType}</TableCell>
+                          <TableCell>{attendee.registrationDate}</TableCell>
+                          <TableCell>${attendee.amount}</TableCell>
+                          <TableCell>
+                            <span
+                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                attendee.status === "confirmed"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                              }`}
+                            >
+                              {attendee.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <button className="inline-block text-blue-600 hover:text-blue-800" aria-label="View Attendee">
+                              <Eye className="h-5 w-5" />
+                            </button>
+                            <button className="inline-block text-gray-600 hover:text-gray-900" aria-label="Edit Attendee">
+                              <Pencil className="h-5 w-5" />
+                            </button>
+                            <button className="inline-block text-red-600 hover:text-red-800" aria-label="Delete Attendee">
+                              <Trash2 className="h-5 w-5" />
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+                {totalAttendeePages > 1 && (
+                  <div className="mt-6">
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            href="#"
+                            onClick={e => {
+                              e.preventDefault()
+                              setAttendeePage(p => Math.max(1, p - 1))
+                            }}
+                            aria-disabled={attendeePage === 1}
+                          />
+                        </PaginationItem>
+                        {Array.from({ length: totalAttendeePages }, (_, i) => (
+                          <PaginationItem key={i}>
+                            <PaginationLink
+                              href="#"
+                              isActive={attendeePage === i + 1}
+                              onClick={e => {
+                                e.preventDefault()
+                                setAttendeePage(i + 1)
+                              }}
+                            >
+                              {i + 1}
+                            </PaginationLink>
+                          </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={e => {
+                              e.preventDefault()
+                              setAttendeePage(p => Math.min(totalAttendeePages, p + 1))
+                            }}
+                            aria-disabled={attendeePage === totalAttendeePages}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </div>
+            )}
+            {activeTab === "tickets" && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-lg font-semibold">Ticket Types</h3>
+                  <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                    Add Ticket Type
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {ticketsData.map((ticket) => (
+                    <div key={ticket.id} className="border rounded-lg p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <h4 className="text-lg font-semibold">{ticket.type}</h4>
+                        <span className="text-2xl font-bold text-blue-600">${ticket.price}</span>
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Sold:</span>
+                          <span className="font-medium">{ticket.sold}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Available:</span>
+                          <span className="font-medium">{ticket.available}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Total:</span>
+                          <span className="font-medium">{ticket.total}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full"
+                            style={{ width: `${(ticket.sold / ticket.total) * 100}%` }}
+                          ></div>
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {Math.round((ticket.sold / ticket.total) * 100)}% sold
+                        </div>
+                        <div className="pt-2">
+                          <span className="text-lg font-semibold text-green-600">
+                            ${(ticket.sold * ticket.price).toLocaleString()} revenue
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-      )}
+        {/* Delete Confirmation Modal */}
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Event</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{event.name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowDeleteConfirm(false)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete}>Delete Event</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )

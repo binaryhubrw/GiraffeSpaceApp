@@ -1,6 +1,7 @@
 "use client"
 
 import { Footer } from "@/components/footer"
+import { Header } from "@/components/header"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
@@ -826,6 +827,7 @@ export default function CreateEventPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <Header activePage="venues" />
       <main className="flex-1 bg-gray-50">
         <div className="container mx-auto px-4 md:px-16 max-w-4xl py-8">
           <button 
