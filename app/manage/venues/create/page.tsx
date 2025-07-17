@@ -131,7 +131,7 @@ export default function CreateVenuePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="ml-44 min-h-screen flex flex-col">
       <main className="flex-1 bg-white">
         <div className="container mx-auto px-4 md:px-16 max-w-7xl py-8">
           <div className="flex items-center mb-6">
@@ -141,214 +141,218 @@ export default function CreateVenuePage() {
             </Link>
           </div>
 
-          <h1 className="text-3xl font-bold mb-6">Add New Venue</h1>
+          <h1 className="text-3xl font-bold mb-8">Add New Venue</h1>
 
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSubmit} className="space-y-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               {/* Left Column - Venue Details */}
               <div>
-                <div className="mb-4">
-                  <label htmlFor="venueName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Venue Name
-                  </label>
-                  <input
-                    type="text"
-                    id="venueName"
-                    name="venueName"
-                    value={formData.venueName}
-                    onChange={handleInputChange}
-                    placeholder="Enter venue name"
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                    required
-                  />
-                </div>
-
-                <div className="mb-4">
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    placeholder="Describe your venue"
-                    rows={4}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                    required
-                  ></textarea>
-                </div>
-
-                <div className="mb-4">
-                  <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-                    Location
-                  </label>
-                  <input
-                    type="text"
-                    id="location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    placeholder="Enter venue location"
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                    required
-                  />
-                </div>
-
-                <div className="mb-4">
-                  <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
-                    Latitude
-                  </label>
-                  <input
-                    type="text"
-                    id="latitude"
-                    name="latitude"
-                    value={formData.latitude}
-                    onChange={handleInputChange}
-                    placeholder="Enter venue latitude"
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                    required
-                  />
-                </div>
-
-                <div className="mb-4">
-                  <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-1">
-                    Longitude
-                  </label>
-                  <input
-                    type="text"
-                    id="longitude"
-                    name="longitude"
-                    value={formData.longitude}
-                    onChange={handleInputChange}
-                    placeholder="Enter venue longitude"
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                    required
-                  />
-                </div>
-
-                <div className="mb-4">
-                  <label htmlFor="organizationId" className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
-                  {orgLoading ? (
-                    <div className="text-gray-500 text-sm">Loading organizations...</div>
-                  ) : orgError ? (
-                    <div className="text-red-500 text-sm">{orgError}</div>
-                  ) : (
-                    <select
-                      id="organizationId"
-                      name="organizationId"
-                      value={formData.organizationId}
-                      onChange={handleOrgChange}
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                      required
-                    >
-                      <option value="">Select organization</option>
-                      {organizations.map((org) => (
-                        <option key={org.organizationId} value={org.organizationId}>
-                          {org.organizationName}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <h2 className="text-xl font-semibold mb-6">Venue Details</h2>
+                <div className="space-y-4">
                   <div>
-                    <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
-                      Capacity
+                    <label htmlFor="venueName" className="block text-sm font-medium text-gray-700 mb-1">
+                      Venue Name
                     </label>
                     <input
-                      type="number"
-                      id="capacity"
-                      name="capacity"
-                      value={formData.capacity}
+                      type="text"
+                      id="venueName"
+                      name="venueName"
+                      value={formData.venueName}
                       onChange={handleInputChange}
-                      placeholder="Max number of people"
-                      min="1"
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
+                      placeholder="Enter venue name"
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
                     />
                   </div>
                   <div>
-                    <label htmlFor="venueType" className="block text-sm font-medium text-gray-700 mb-1">
-                      Venue Type
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      placeholder="Describe your venue"
+                      rows={4}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    ></textarea>
+                  </div>
+                  <div>
+                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                      Location
                     </label>
                     <input
                       type="text"
-                      id="venueType"
-                      name="venueType"
-                      value={formData.venueType}
+                      id="location"
+                      name="location"
+                      value={formData.location}
                       onChange={handleInputChange}
-                      placeholder="Enter venue venue Type"
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
+                      placeholder="Enter venue location"
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
                     />
                   </div>
-                  <div className="mb-4">
-                    <label htmlFor="contactPerson" className="block text-sm font-medium text-gray-700 mb-1">
-                      Owner Name
-                    </label>
-                    <input
-                      type="text"
-                      id="contactPerson"
-                      name="contactPerson"
-                      value={formData.contactPerson}
-                      onChange={handleInputChange}
-                      placeholder="Enter venue Owner Name"
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                      required
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
+                        Latitude
+                      </label>
+                      <input
+                        type="text"
+                        id="latitude"
+                        name="latitude"
+                        value={formData.latitude}
+                        onChange={handleInputChange}
+                        placeholder="Enter latitude"
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="longitude" className="block text-sm font-medium text-gray-700 mb-1">
+                        Longitude
+                      </label>
+                      <input
+                        type="text"
+                        id="longitude"
+                        name="longitude"
+                        value={formData.longitude}
+                        onChange={handleInputChange}
+                        placeholder="Enter longitude"
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
                   </div>
-                  <div className="mb-4">
-                    <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-700 mb-1">
-                      Owner Email
-                    </label>
-                    <input
-                      type="email"
-                      id="contactEmail"
-                      name="contactEmail"
-                      value={formData.contactEmail}
-                      onChange={handleInputChange}
-                      placeholder="Enter venue Owner Email"
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                      required
-                    />
+                  <div>
+                    <label htmlFor="organizationId" className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                    {orgLoading ? (
+                      <div className="text-gray-500 text-sm">Loading organizations...</div>
+                    ) : orgError ? (
+                      <div className="text-red-500 text-sm">{orgError}</div>
+                    ) : (
+                      <select
+                        id="organizationId"
+                        name="organizationId"
+                        value={formData.organizationId}
+                        onChange={handleOrgChange}
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      >
+                        <option value="">Select organization</option>
+                        {organizations.map((org) => (
+                          <option key={org.organizationId} value={org.organizationId}>
+                            {org.organizationName}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
-                  <div className="mb-4">
-                    <label htmlFor="contactPhone" className="block text-sm font-medium text-gray-700 mb-1">
-                      Owner Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      id="contactPhone"
-                      name="contactPhone"
-                      value={formData.contactPhone}
-                      onChange={handleInputChange}
-                      placeholder="Enter venue Owner Phone Number"
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                      required
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
+                        Capacity
+                      </label>
+                      <input
+                        type="number"
+                        id="capacity"
+                        name="capacity"
+                        value={formData.capacity}
+                        onChange={handleInputChange}
+                        placeholder="Max number of people"
+                        min="1"
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="venueType" className="block text-sm font-medium text-gray-700 mb-1">
+                        Venue Type
+                      </label>
+                      <input
+                        type="text"
+                        id="venueType"
+                        name="venueType"
+                        value={formData.venueType}
+                        onChange={handleInputChange}
+                        placeholder="Enter venue type"
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
                   </div>
-                  <div className="mb-4">
-                    <label htmlFor="websiteURL" className="block text-sm font-medium text-gray-700 mb-1">
-                      Website Url
-                    </label>
-                    <input
-                      type="text"
-                      id="websiteURL"
-                      name="websiteURL"
-                      value={formData.websiteURL}
-                      onChange={handleInputChange}
-                      placeholder="Enter venue website Url"
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="contactPerson" className="block text-sm font-medium text-gray-700 mb-1">
+                        Owner Name
+                      </label>
+                      <input
+                        type="text"
+                        id="contactPerson"
+                        name="contactPerson"
+                        value={formData.contactPerson}
+                        onChange={handleInputChange}
+                        placeholder="Enter owner name"
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="contactEmail" className="block text-sm font-medium text-gray-700 mb-1">
+                        Owner Email
+                      </label>
+                      <input
+                        type="email"
+                        id="contactEmail"
+                        name="contactEmail"
+                        value={formData.contactEmail}
+                        onChange={handleInputChange}
+                        placeholder="Enter owner email"
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="contactPhone" className="block text-sm font-medium text-gray-700 mb-1">
+                        Owner Phone Number
+                      </label>
+                      <input
+                        type="tel"
+                        id="contactPhone"
+                        name="contactPhone"
+                        value={formData.contactPhone}
+                        onChange={handleInputChange}
+                        placeholder="Enter owner phone number"
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="websiteURL" className="block text-sm font-medium text-gray-700 mb-1">
+                        Website URL
+                      </label>
+                      <input
+                        type="text"
+                        id="websiteURL"
+                        name="websiteURL"
+                        value={formData.websiteURL}
+                        onChange={handleInputChange}
+                        placeholder="Enter website URL"
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Right Column - Image Upload and Resources */}
               <div>
-                <div className="mb-6">
+                <h2 className="text-xl font-semibold mb-6">Venue Image & Resources</h2>
+                <div className="mb-8">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Venue Image</label>
                   <ImageUpload />
                   <p className="text-xs text-gray-500 mt-1">
@@ -356,7 +360,7 @@ export default function CreateVenuePage() {
                   </p>
                 </div>
                 {/* Resources Form */}
-                <div className="mb-6 bg-gray-50 rounded-lg p-4 shadow-sm max-w-md mx-auto">
+                <div className="mb-6 bg-gray-50 rounded-lg p-4 shadow-sm">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Resources</label>
                   <div className="flex flex-col gap-2 mb-2">
                     <input

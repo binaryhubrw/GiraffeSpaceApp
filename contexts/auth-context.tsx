@@ -4,6 +4,7 @@ import { type ReactNode, createContext, useContext, useState, useEffect } from "
 import { useRouter } from "next/navigation";
 import { getUserByEmail, getUserByUsername, type User, users, UserApiResponse } from "@/data/users"
 import ApiService from "@/api/apiConfig"
+import Cookies from 'js-cookie'
 
 type AuthContextType = {
   isLoggedIn: boolean
@@ -57,6 +58,8 @@ const login = async (
       localStorage.setItem("token", response.token);
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("currentUser", JSON.stringify(response.user));
+      // Set auth-token cookie for middleware protection
+      Cookies.set('auth-token', response.token, { path: '/', sameSite: 'lax' });
       return { success: true };
     } else {
       return { success: false, error: response?.message || "Login failed." };
@@ -100,6 +103,8 @@ const updateUser = async (
     setUser(null)
     localStorage.removeItem("isLoggedIn")
     localStorage.removeItem("currentUser")
+    // Remove auth-token cookie on logout
+    Cookies.remove('auth-token')
     router.push("/");
   }
 
