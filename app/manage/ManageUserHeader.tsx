@@ -4,5 +4,5 @@ import { useAuth } from "@/contexts/auth-context";
 
 export default function ManageUserHeader() {
   const { user } = useAuth();
-  return <UserHeader user={user} />;
+  return <UserHeader />;
 } 

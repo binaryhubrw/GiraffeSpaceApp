@@ -69,7 +69,7 @@ export default function SideBar() {
                     }`}
                   >
                     <Icon className="h-4 w-4 mr-3" />
-                    {item.label}
+                    <span className="truncate overflow-hidden whitespace-nowrap block flex-1 text-left">{item.label}</span>
                     {isOpen ? <ChevronUp className="ml-auto h-4 w-4" /> : <ChevronDown className="ml-auto h-4 w-4" />}
                   </button>
                   {isOpen && (
@@ -87,7 +87,7 @@ export default function SideBar() {
                             }`}
                           >
                             <SubIcon className="h-4 w-4 mr-3" />
-                            {sub.label}
+                            <span className="truncate overflow-hidden whitespace-nowrap block flex-1 text-left">{sub.label}</span>
                           </button>
                         )
                       })}
@@ -108,7 +108,7 @@ export default function SideBar() {
                 }`}
               >
                 <Icon className="h-4 w-4 mr-3" />
-                {item.label}
+                <span className="truncate overflow-hidden whitespace-nowrap block flex-1 text-left">{item.label}</span>
               </button>
             )
           })}

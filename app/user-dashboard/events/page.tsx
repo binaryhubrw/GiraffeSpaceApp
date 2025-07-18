@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Pencil, Eye, Trash2, XCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
 
 
 // Sample event data with updated status values
@@ -112,6 +113,9 @@ export default function EventSection() {
   const [events, setEvents] = useState(sampleEvents)
   const [eventNameFilter, setEventNameFilter] = useState("")
   const [payTypeFilter, setPayTypeFilter] = useState("all") // all, free, payable
+  const [dateFilter, setDateFilter] = useState("all")
+  const [customStartDate, setCustomStartDate] = useState("")
+  const [customEndDate, setCustomEndDate] = useState("")
 
 
   useEffect(() => {
@@ -132,8 +136,32 @@ export default function EventSection() {
     return <div>Loading...</div>
   }
 
+  // Date filter logic
+  const filteredByDate = events.filter(event => {
+    const eventDate = parseISO(event.date)
+    if (dateFilter === "today") {
+      return isToday(eventDate)
+    }
+    if (dateFilter === "week" || dateFilter === "thisWeek") {
+      return isThisWeek(eventDate, { weekStartsOn: 1 })
+    }
+    if (dateFilter === "month" || dateFilter === "thisMonth") {
+      return isThisMonth(eventDate)
+    }
+    if (dateFilter === "custom") {
+      if (customStartDate && customEndDate) {
+        const start = parseISO(customStartDate)
+        const end = parseISO(customEndDate)
+        return (isAfter(eventDate, start) || eventDate.getTime() === start.getTime()) &&
+               (isBefore(eventDate, end) || eventDate.getTime() === end.getTime())
+      }
+      return true
+    }
+    return true
+  })
+
   // Filter events based on status, name, and pay type
-  const filteredEvents = (statusFilter === "all" ? events : events.filter((event) => event.status === statusFilter.toLowerCase()))
+  const filteredEvents = (statusFilter === "all" ? filteredByDate : filteredByDate.filter((event) => event.status === statusFilter.toLowerCase()))
     .filter((event) =>
       eventNameFilter.trim() === "" || event.name.toLowerCase().includes(eventNameFilter.trim().toLowerCase())
     )
@@ -190,6 +218,7 @@ export default function EventSection() {
   return (
     <div className="p-8">
       <div className={`transform transition-all duration-1000 ease-out ${isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
+        {/* Remove old date filter buttons */}
               {/* Dashboard Header */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
                 <div>
@@ -357,6 +386,35 @@ export default function EventSection() {
                   </div>
                 )}
               </div>
+              {/* Date Filter Dropdown */}
+              <select
+                value={dateFilter}
+                onChange={e => setDateFilter(e.target.value)}
+                className="border rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="thisWeek">This Week</option>
+                <option value="thisMonth">This Month</option>
+                <option value="custom">Custom</option>
+              </select>
+              {dateFilter === "custom" && (
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={e => setCustomStartDate(e.target.value)}
+                    className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <span className="text-gray-500">to</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={e => setCustomEndDate(e.target.value)}
+                    className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
             </div>
           </div>
           {/* Events Table (shadcn) */}

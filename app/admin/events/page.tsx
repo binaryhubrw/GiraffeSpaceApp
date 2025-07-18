@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { format, parseISO, isSameDay } from "date-fns"
+import { format, parseISO, isSameDay, isToday, isThisWeek, isThisMonth, isAfter, isBefore } from "date-fns"
 import { useRouter } from "next/navigation"
 import {
   Dialog,
@@ -40,7 +40,9 @@ export default function AdminEvents() {
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState("all")
-  const [dateFilter, setDateFilter] = useState<Date | null>(null)
+  const [dateFilter, setDateFilter] = useState("all")
+  const [customStartDate, setCustomStartDate] = useState("")
+  const [customEndDate, setCustomEndDate] = useState("")
   const itemsPerPage = 10
   const [addOpen, setAddOpen] = useState(false)
   const [editOpen, setEditOpen] = useState<string | null>(null)
@@ -93,7 +95,28 @@ export default function AdminEvents() {
       (event.eventTitle?.toLowerCase() || '').includes(search) ||
       (event.organization?.organizationName?.toLowerCase() || '').includes(search)
     const matchesStatus = statusFilter === "all" || event.status === statusFilter.toUpperCase()
-    const matchesDate = !dateFilter || (event.startDate && isSameDay(parseISO(event.startDate), dateFilter))
+
+    // Date filtering
+    let matchesDate = true
+    const eventDate = event.startDate ? parseISO(event.startDate) : null
+    if (eventDate) {
+      if (dateFilter === "today") {
+        matchesDate = isToday(eventDate)
+      } else if (dateFilter === "thisWeek") {
+        matchesDate = isThisWeek(eventDate, { weekStartsOn: 1 })
+      } else if (dateFilter === "thisMonth") {
+        matchesDate = isThisMonth(eventDate)
+      } else if (dateFilter === "custom") {
+        if (customStartDate && customEndDate) {
+          const start = parseISO(customStartDate)
+          const end = parseISO(customEndDate)
+          matchesDate = (isAfter(eventDate, start) || eventDate.getTime() === start.getTime()) &&
+                        (isBefore(eventDate, end) || eventDate.getTime() === end.getTime())
+        } else {
+          matchesDate = true
+        }
+      }
+    }
     return matchesSearch && matchesStatus && matchesDate
   })
 
@@ -238,14 +261,37 @@ export default function AdminEvents() {
                 ))}
               </select>
             </div>
+            {/* Date Filter */}
             <div>
-              <Input
-                type="date"
-                value={dateFilter ? format(dateFilter, "yyyy-MM-dd") : ""}
-                onChange={e => setDateFilter(e.target.value ? parseISO(e.target.value) : null)}
-                className="w-[160px]"
-              />
+              <select
+                value={dateFilter}
+                onChange={e => setDateFilter(e.target.value)}
+                className="border rounded-md px-3 py-2 text-sm"
+              >
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="thisWeek">This Week</option>
+                <option value="thisMonth">This Month</option>
+                <option value="custom">Custom</option>
+              </select>
             </div>
+            {dateFilter === "custom" && (
+              <div className="flex gap-2 items-center">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={e => setCustomStartDate(e.target.value)}
+                  className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <span className="text-gray-500">to</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={e => setCustomEndDate(e.target.value)}
+                  className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            )}
           </div>
           {/* Events Table */}
           <Card>

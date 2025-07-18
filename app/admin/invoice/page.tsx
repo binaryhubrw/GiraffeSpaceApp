@@ -18,6 +18,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { format, isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
 
 // Mock invoice data
 const invoices = [
@@ -83,6 +84,9 @@ export default function AdminInvoice() {
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterStatus, setFilterStatus] = useState("all")
+  const [dateFilter, setDateFilter] = useState("all")
+  const [customStartDate, setCustomStartDate] = useState("")
+  const [customEndDate, setCustomEndDate] = useState("")
   const itemsPerPage = 10
   const [addOpen, setAddOpen] = useState(false)
   const [editOpen, setEditOpen] = useState<string | null>(null)
@@ -102,7 +106,28 @@ export default function AdminInvoice() {
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = invoice.customer.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = filterStatus === "all" || invoice.status === filterStatus
-    return matchesSearch && matchesStatus
+
+    // Date filtering
+    let matchesDate = true
+    const invoiceDate = parseISO(invoice.date)
+    if (dateFilter === "today") {
+      matchesDate = isToday(invoiceDate)
+    } else if (dateFilter === "thisWeek") {
+      matchesDate = isThisWeek(invoiceDate, { weekStartsOn: 1 })
+    } else if (dateFilter === "thisMonth") {
+      matchesDate = isThisMonth(invoiceDate)
+    } else if (dateFilter === "custom") {
+      if (customStartDate && customEndDate) {
+        const start = parseISO(customStartDate)
+        const end = parseISO(customEndDate)
+        matchesDate = (isAfter(invoiceDate, start) || invoiceDate.getTime() === start.getTime()) &&
+                      (isBefore(invoiceDate, end) || invoiceDate.getTime() === end.getTime())
+      } else {
+        matchesDate = true
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesDate
   })
 
   // Pagination
@@ -225,6 +250,35 @@ export default function AdminInvoice() {
                         <SelectItem value="Overdue">Overdue</SelectItem>
                       </SelectContent>
                     </Select>
+                    {/* Date Filter */}
+                    <select
+                      value={dateFilter}
+                      onChange={e => setDateFilter(e.target.value)}
+                      className="border rounded-md px-3 py-2 text-sm"
+                    >
+                      <option value="all">All Dates</option>
+                      <option value="today">Today</option>
+                      <option value="thisWeek">This Week</option>
+                      <option value="thisMonth">This Month</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                    {dateFilter === "custom" && (
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="date"
+                          value={customStartDate}
+                          onChange={e => setCustomStartDate(e.target.value)}
+                          className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <span className="text-gray-500">to</span>
+                        <input
+                          type="date"
+                          value={customEndDate}
+                          onChange={e => setCustomEndDate(e.target.value)}
+                          className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    )}
                   </div>
                   {/* Table */}
                   <div className="border rounded-md">

@@ -33,6 +33,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import ApiService from "@/api/apiConfig"
+import OrganizationForm from "@/components/OrganizationForm";
 
 // Define TypeScript interfaces for better type safety
 interface Organization {
@@ -60,146 +61,6 @@ interface RawOrganization {
   status?: string;
   createdAt?: string;
   updatedAt?: string;
-}
-
-function OrganizationForm({ initialData, onSubmit, loading, mode }: {
-  initialData?: Partial<Organization>,
-  onSubmit: (data: any) => void,
-  loading: boolean,
-  mode: 'add' | 'edit',
-}) {
-  const [form, setForm] = useState({
-    organizationName: initialData?.organizationName || '',
-    description: initialData?.description || '',
-    contactEmail: initialData?.contactEmail || '',
-    contactPhone: initialData?.contactPhone || '',
-    address: initialData?.address || '',
-    organizationType: initialData?.organizationType || '',
-    status: initialData?.status || 'Active',
-  })
-  const [error, setError] = useState<string | null>(null)
-
-  const handleChange = (e: any) => {
-    const { name, value } = e.target
-    setForm(f => ({ ...f, [name]: value }))
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    
-    // Debug: Log the form data being sent
-    console.log("Organization form data:", form)
-    
-    onSubmit(form)
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="organizationName">Organization Name</Label>
-            <Input 
-              id="organizationName" 
-              name="organizationName" 
-              value={form.organizationName} 
-              onChange={handleChange} 
-              placeholder="Enter organization name"
-              required 
-            />
-          </div>
-          <div>
-            <Label htmlFor="description">Description</Label>
-            <Input 
-              id="description" 
-              name="description" 
-              value={form.description} 
-              onChange={handleChange} 
-              placeholder="Enter organization description"
-              required 
-            />
-          </div>
-          <div>
-            <Label htmlFor="contactEmail">Contact Email</Label>
-            <Input 
-              id="contactEmail" 
-              name="contactEmail" 
-              type="email" 
-              value={form.contactEmail} 
-              onChange={handleChange} 
-              placeholder="Enter contact email"
-              required 
-            />
-          </div>
-        </div>
-        <div className="space-y-4">
-          <div>
-            <Label htmlFor="contactPhone">Contact Phone</Label>
-            <Input 
-              id="contactPhone" 
-              name="contactPhone" 
-              type="tel" 
-              value={form.contactPhone} 
-              onChange={handleChange} 
-              placeholder="Enter contact phone"
-              required 
-            />
-          </div>
-          <div>
-            <Label htmlFor="address">Address</Label>
-            <Input 
-              id="address" 
-              name="address" 
-              value={form.address} 
-              onChange={handleChange} 
-              placeholder="Enter organization address"
-              required 
-            />
-          </div>
-          <div>
-            <Label htmlFor="organizationType">Organization Type</Label>
-            <Input 
-              id="organizationType" 
-              name="organizationType" 
-              value={form.organizationType} 
-              onChange={handleChange} 
-              placeholder="Enter organization type (e.g., Event Management, Technology, etc.)"
-              required 
-            />
-          </div>
-          <div>
-            <Label htmlFor="status">Status</Label>
-            <Select value={form.status} onValueChange={val => setForm(f => ({ ...f, status: val }))} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-      {error && <div className="text-red-600 text-sm">{error}</div>}
-      <DialogFooter>
-        <DialogClose asChild>
-          <Button type="button" variant="outline" disabled={loading}>Cancel</Button>
-        </DialogClose>
-        <Button type="submit" disabled={loading}>
-          {loading ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              {mode === 'add' ? 'Creating...' : 'Saving...'}
-            </>
-          ) : (
-            mode === 'add' ? 'Create Organization' : 'Save Changes'
-          )}
-        </Button>
-      </DialogFooter>
-    </form>
-  )
 }
 
 export default function AdminOrganization() {
@@ -315,54 +176,13 @@ export default function AdminOrganization() {
   const paginatedOrganizations = filteredOrganizations.slice(startIndex, startIndex + itemsPerPage)
 
   const handleAdd = async (data: any) => {
-    try {
-      setLoading(true)
-      
-      // Debug: Log the data being sent to API
-      console.log("Data being sent to API:", data)
-      
-      const response = await ApiService.addOrganization(data)
-      
-      // Debug: Log the API response
-      console.log("API Response suceess :", response)
-      
-      if (response && response.success) {
-        // Refresh the organizations list
-        const updatedResponse = await ApiService.getAllOrganization()
-        if (updatedResponse && updatedResponse.success) {
-          setOrganizations(updatedResponse.data || [])
-        }
-        setAddOpen(false)
-        toast.success("Organization created successfully!")
-      } else {
-        const errorMessage = response?.error || 'Failed to create organization'
-        toast.error(errorMessage)
-        setError(errorMessage)
-      }
-    } catch (error: any) {
-      // Handle axios error response
-      console.log("Caught error:", error)
-      console.log("Error response data:", error.response?.data)
-      
-      if (error.response?.data) {
-        const errorData = error.response.data
-        const errorMessage = errorData.message || "Failed to create organization"
-        
-        // Log the full error details
-        console.log("Error data:", errorData)
-        
-        toast.error(errorMessage)
-        setError(errorMessage)
-      } else {
-        const genericError = "Failed to create organization. Please try again."
-        toast.error(genericError)
-        setError(genericError)
-      }
-      console.error('Error creating organization:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    setAddOpen(false);
+    setOrganizations(prev => [
+      ...prev,
+      { ...data, id: `ORG-${prev.length + 1}` }
+    ]);
+    toast.success("Organization created successfully!");
+  };
 
   const handleEdit = async (data: any) => {
     try {
@@ -441,19 +261,14 @@ export default function AdminOrganization() {
                 <h2 className="text-2xl font-bold">Organization Management</h2>
                 <Dialog open={addOpen} onOpenChange={setAddOpen}>
                   <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add New Organization
-                    </Button>
+                    <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> Add Organization</Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>Add New Organization</DialogTitle>
-                      <DialogDescription>
-                        Enter the details for the new organization.
-                      </DialogDescription>
+                      <DialogTitle>Add Organization</DialogTitle>
+                      <DialogDescription>Fill in the details to create a new organization.</DialogDescription>
                     </DialogHeader>
-                    <OrganizationForm mode="add" loading={loading} onSubmit={handleAdd} />
+                    <OrganizationForm onSuccess={handleAdd} onCancel={() => setAddOpen(false)} />
                   </DialogContent>
                 </Dialog>
               </div>
@@ -681,7 +496,7 @@ export default function AdminOrganization() {
             <DialogHeader>
               <DialogTitle>Edit Organization</DialogTitle>
             </DialogHeader>
-            <OrganizationForm mode="edit" initialData={editOrg} loading={loading} onSubmit={handleEdit} />
+            <OrganizationForm onSuccess={handleEdit} onCancel={() => setEditOpen(null)} />
           </DialogContent>
         </Dialog>
       )}

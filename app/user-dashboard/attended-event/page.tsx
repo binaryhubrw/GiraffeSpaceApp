@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Eye, Star } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
+import { isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
 
 interface UserEvent {
   eventId: string;
@@ -23,6 +24,10 @@ export default function AttendedEventsSection() {
   const [attendedPage, setAttendedPage] = useState(1)
   const [isLoaded, setIsLoaded] = useState(false)
   const itemsPerPage = 5
+  const [dateFilter, setDateFilter] = useState("all")
+  const [customStartDate, setCustomStartDate] = useState("")
+  const [customEndDate, setCustomEndDate] = useState("")
+  const [search, setSearch] = useState("")
 
   // Mock user events data
   const userEvents: UserEvent[] = [
@@ -73,7 +78,37 @@ export default function AttendedEventsSection() {
     return <div>Loading...</div>
   }
 
-  const attendedEvents = userEvents.filter((event) => event.attendanceStatus === "attended")
+  // Date and search filter logic
+  const filteredAttendedEvents = userEvents.filter((event) => {
+    if (event.attendanceStatus !== "attended") return false;
+    // Search filtering
+    const matchesSearch =
+      event.eventTitle.toLowerCase().includes(search.toLowerCase()) ||
+      event.description.toLowerCase().includes(search.toLowerCase()) ||
+      event.venue.toLowerCase().includes(search.toLowerCase());
+    // Date filtering
+    let matchesDate = true
+    const eventDate = parseISO(event.eventDate)
+    if (dateFilter === "today") {
+      matchesDate = isToday(eventDate)
+    } else if (dateFilter === "thisWeek") {
+      matchesDate = isThisWeek(eventDate, { weekStartsOn: 1 })
+    } else if (dateFilter === "thisMonth") {
+      matchesDate = isThisMonth(eventDate)
+    } else if (dateFilter === "custom") {
+      if (customStartDate && customEndDate) {
+        const start = parseISO(customStartDate)
+        const end = parseISO(customEndDate)
+        matchesDate = (isAfter(eventDate, start) || eventDate.getTime() === start.getTime()) &&
+                      (isBefore(eventDate, end) || eventDate.getTime() === end.getTime())
+      } else {
+        matchesDate = true
+      }
+    }
+    return matchesSearch && matchesDate
+  })
+
+  const attendedEvents = filteredAttendedEvents
   const getPaginatedData = (data: any[], page: number) => data.slice((page - 1) * itemsPerPage, page * itemsPerPage)
   const getTotalPages = (dataLength: number) => Math.ceil(dataLength / itemsPerPage)
   const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -87,6 +122,44 @@ export default function AttendedEventsSection() {
                   <div className="text-sm text-gray-600">
                     Total: {attendedEvents.length} events
                   </div>
+                </div>
+                {/* Date Filter */}
+                <div className="flex flex-col md:flex-row gap-4 mb-4 w-full items-center justify-between px-4 pt-4">
+                  <input
+                    type="text"
+                    placeholder="Search events..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="input input-bordered w-full md:w-64"
+                  />
+                  <select
+                    value={dateFilter}
+                    onChange={e => setDateFilter(e.target.value)}
+                    className="input input-bordered w-full md:w-48"
+                  >
+                    <option value="all">All Dates</option>
+                    <option value="today">Today</option>
+                    <option value="thisWeek">This Week</option>
+                    <option value="thisMonth">This Month</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                  {dateFilter === "custom" && (
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={e => setCustomStartDate(e.target.value)}
+                        className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <span className="text-gray-500">to</span>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={e => setCustomEndDate(e.target.value)}
+                        className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  )}
                 </div>
                 <Card>
                   <CardContent className="p-0">

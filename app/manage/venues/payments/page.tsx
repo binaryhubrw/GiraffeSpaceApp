@@ -16,6 +16,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import Link from "next/link"
+import { format, isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
 
 // Mock data for payments
 const mockPayments = [
@@ -93,6 +94,9 @@ export default function PaymentsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [methodFilter, setMethodFilter] = useState("all")
+  const [dateFilter, setDateFilter] = useState("all")
+  const [customStartDate, setCustomStartDate] = useState("")
+  const [customEndDate, setCustomEndDate] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 5
 
@@ -113,7 +117,27 @@ export default function PaymentsPage() {
     const matchesStatus = statusFilter === "all" || payment.status === statusFilter
     const matchesMethod = methodFilter === "all" || payment.method === methodFilter
 
-    return matchesSearch && matchesStatus && matchesMethod
+    // Date filtering
+    let matchesDate = true
+    const paymentDate = parseISO(payment.date)
+    if (dateFilter === "today") {
+      matchesDate = isToday(paymentDate)
+    } else if (dateFilter === "thisWeek") {
+      matchesDate = isThisWeek(paymentDate, { weekStartsOn: 1 })
+    } else if (dateFilter === "thisMonth") {
+      matchesDate = isThisMonth(paymentDate)
+    } else if (dateFilter === "custom") {
+      if (customStartDate && customEndDate) {
+        const start = parseISO(customStartDate)
+        const end = parseISO(customEndDate)
+        matchesDate = (isAfter(paymentDate, start) || paymentDate.getTime() === start.getTime()) &&
+                      (isBefore(paymentDate, end) || paymentDate.getTime() === end.getTime())
+      } else {
+        matchesDate = true
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesMethod && matchesDate
   })
 
   // Pagination
@@ -153,7 +177,7 @@ export default function PaymentsPage() {
     <main className="ml-44 flex-1 bg-white">
       <div className="p-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Payments</h1>
+          <h1 className="text-2xl font-bold">Payments Management</h1>
           <Link
             href="/manage/payments/create"
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
@@ -244,6 +268,36 @@ export default function PaymentsPage() {
                 <option value="Bank Transfer">Bank Transfer</option>
                 <option value="PayPal">PayPal</option>
               </select>
+
+              {/* Date Filter */}
+              <select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="thisWeek">This Week</option>
+                <option value="thisMonth">This Month</option>
+                <option value="custom">Custom</option>
+              </select>
+              {dateFilter === "custom" && (
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <span className="text-gray-500">to</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -252,6 +306,7 @@ export default function PaymentsPage() {
               <thead>
                 <tr>
                  
+                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Payment_Id</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Customer</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Venue</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Amount</th>

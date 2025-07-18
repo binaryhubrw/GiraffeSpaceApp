@@ -26,6 +26,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
+import { format, isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
 
 // Mock event and ticket data
 const events = [
@@ -126,6 +127,9 @@ export default function TicketList() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [eventFilter, setEventFilter] = useState("all")
+  const [dateFilter, setDateFilter] = useState("all")
+  const [customStartDate, setCustomStartDate] = useState("")
+  const [customEndDate, setCustomEndDate] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
   const [data, setData] = useState(tickets)
@@ -150,7 +154,28 @@ export default function TicketList() {
       ticket.holder.toLowerCase().includes(search)
     const matchesStatus = statusFilter === "all" || ticket.status === statusFilter
     const matchesEvent = eventFilter === "all" || ticket.eventId === eventFilter
-    return matchesSearch && matchesStatus && matchesEvent
+
+    // Date filtering
+    let matchesDate = true
+    const ticketDate = parseISO(ticket.date)
+    if (dateFilter === "today") {
+      matchesDate = isToday(ticketDate)
+    } else if (dateFilter === "thisWeek") {
+      matchesDate = isThisWeek(ticketDate, { weekStartsOn: 1 })
+    } else if (dateFilter === "thisMonth") {
+      matchesDate = isThisMonth(ticketDate)
+    } else if (dateFilter === "custom") {
+      if (customStartDate && customEndDate) {
+        const start = parseISO(customStartDate)
+        const end = parseISO(customEndDate)
+        matchesDate = (isAfter(ticketDate, start) || ticketDate.getTime() === start.getTime()) &&
+                      (isBefore(ticketDate, end) || ticketDate.getTime() === end.getTime())
+      } else {
+        matchesDate = true
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesEvent && matchesDate
   })
 
   // Pagination
@@ -283,6 +308,37 @@ export default function TicketList() {
             ))}
           </select>
         </div>
+        {/* Date Filter */}
+        <div>
+          <select
+            value={dateFilter}
+            onChange={e => setDateFilter(e.target.value)}
+            className="border rounded-md px-3 py-2 text-sm"
+          >
+            <option value="all">All Dates</option>
+            <option value="today">Today</option>
+            <option value="thisWeek">This Week</option>
+            <option value="thisMonth">This Month</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        {dateFilter === "custom" && (
+          <div className="flex gap-2 items-center">
+            <input
+              type="date"
+              value={customStartDate}
+              onChange={e => setCustomStartDate(e.target.value)}
+              className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <span className="text-gray-500">to</span>
+            <input
+              type="date"
+              value={customEndDate}
+              onChange={e => setCustomEndDate(e.target.value)}
+              className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        )}
       </div>
       {/* Ticket Table */}
       <Card>

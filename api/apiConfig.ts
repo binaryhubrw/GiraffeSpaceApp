@@ -10,6 +10,20 @@ interface DecodedToken extends JwtPayload {
   role?: string;
 }
 
+interface Organization {
+  organizationName: string;
+  organizationType: string;
+  description: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  city: string;
+  country: string;
+  postalCode: string;
+  stateProvince: string;
+  // add other fields if needed
+}
+
 class ApiService {
   static BASE_URL: string ="https://giraffespace.onrender.com/api/v1"
     // process.env.NODE_ENV === "production"

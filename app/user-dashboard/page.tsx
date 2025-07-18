@@ -48,7 +48,11 @@ export default function UserDashboard() {
   }
 
   if (userLoading) {
-    return <div>Loading user data...</div>
+    return (
+      <div className="flex items-center justify-center h-[60vh] w-full">
+        <span className="text-lg text-gray-500">Loading user data...</span>
+      </div>
+    );
   }
 
   if (userError) {
