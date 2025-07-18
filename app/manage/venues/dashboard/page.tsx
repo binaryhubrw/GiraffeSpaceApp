@@ -17,7 +17,7 @@ export default function DashboardPage() {
   }, [isLoggedIn, router])
 
   return (
-    <main className="ml-44 flex-1  bg-white">
+    <main className="flex-1  bg-white">
       <div className="p-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold">Dashboard</h1>

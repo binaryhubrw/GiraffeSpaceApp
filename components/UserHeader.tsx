@@ -44,7 +44,7 @@ export function UserHeader() {
   return (
     <header className="fixed top-0 h-16 left-0 w-full z-30 border-b bg-white">
       <div className="w-full">
-        <div className="px-6 py-3 max-w-[1440px] w-full mx-auto flex items-center justify-between">
+        <div className="px-6 py-3 w-full flex justify-between">
           {/* Left: Logo and App Name */}
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8">
