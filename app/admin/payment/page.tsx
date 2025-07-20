@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
-import { Eye, Edit, Trash2, CalendarCheck, CreditCard, DollarSign, Building2 } from "lucide-react"
+import { Eye, Edit, Trash2, CalendarCheck, CreditCard, DollarSign, Building2, Filter, Search } from "lucide-react"
 import {
   Dialog,
   DialogTrigger,
@@ -87,11 +87,46 @@ export default function AdminPayment() {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState("all")
   const [filterStatus, setFilterStatus] = useState("all")
-  const itemsPerPage = 10
+  const [dateFilter, setDateFilter] = useState("all") // "all", "today", "weekly", "monthly"
+  const itemsPerPage = 5 // Changed from 10 to 5 for consistency
   const [addOpen, setAddOpen] = useState(false)
   const [editOpen, setEditOpen] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [editPayment, setEditPayment] = useState<any>(null)
+
+  // Date filtering functions
+  const isWithinDateRange = (dateString: string, filterType: string) => {
+    if (!dateString) return false
+    
+    const date = new Date(dateString)
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    
+    switch (filterType) {
+      case "today":
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        return date >= today && date < tomorrow
+        
+      case "weekly":
+        const weekAgo = new Date(today)
+        weekAgo.setDate(weekAgo.getDate() - 7)
+        return date >= weekAgo && date <= now
+        
+      case "monthly":
+        const monthAgo = new Date(today)
+        monthAgo.setMonth(monthAgo.getMonth() - 1)
+        return date >= monthAgo && date <= now
+        
+      default:
+        return true
+    }
+  }
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, filterType, filterStatus, dateFilter])
 
   // Statistics
   const stats = {
@@ -111,7 +146,8 @@ export default function AdminPayment() {
     const matchesSearch = payment.user.toLowerCase().includes(searchQuery.toLowerCase()) || payment.ref.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesType = filterType === "all" || payment.type === filterType
     const matchesStatus = filterStatus === "all" || payment.status === filterStatus
-    return matchesSearch && matchesType && matchesStatus
+    const matchesDate = dateFilter === "all" || isWithinDateRange(payment.date, dateFilter)
+    return matchesSearch && matchesType && matchesStatus && matchesDate
   })
 
   // Pagination
@@ -207,44 +243,78 @@ export default function AdminPayment() {
                   </CardContent>
                 </Card>
               </div>
+              {/* Filter Controls */}
+              <div className="mb-6">
+                <Card>
+                  <CardContent>
+                    <div className="flex flex-col md:flex-row gap-4 items-center">
+                      {/* Search Input */}
+                      <div className="flex-1 relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                        <input
+                          type="text"
+                          placeholder="Search payments..."
+                          value={searchQuery}
+                          onChange={e => setSearchQuery(e.target.value)}
+                          className="pl-10 w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      
+                      {/* Date Filter Dropdown */}
+                      <div className="w-full md:w-48">
+                        <Select value={dateFilter} onValueChange={setDateFilter}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="All Time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Time</SelectItem>
+                            <SelectItem value="today">Today</SelectItem>
+                            <SelectItem value="weekly">Last 7 Days</SelectItem>
+                            <SelectItem value="monthly">Last 30 Days</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Type Filter Dropdown */}
+                      <div className="w-full md:w-48">
+                        <Select value={filterType} onValueChange={setFilterType}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="All Types" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            <SelectItem value="Event">Event</SelectItem>
+                            <SelectItem value="Venue">Venue</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Status Filter Dropdown */}
+                      <div className="w-full md:w-48">
+                        <Select value={filterStatus} onValueChange={setFilterStatus}>
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="All Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="Completed">Completed</SelectItem>
+                            <SelectItem value="Pending">Pending</SelectItem>
+                            <SelectItem value="Failed">Failed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    {/* Filter Status Display */}
+                  </CardContent>
+                </Card>
+              </div>
               {/* Payments Table */}
               <Card>
                 <CardHeader>
                   <CardTitle>All Payments</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {/* Filters */}
-                  <div className="flex flex-col md:flex-row gap-4 mb-6">
-                    <div className="flex-1">
-                      <Input
-                        placeholder="Search by user or reference..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="pl-8"
-                      />
-                    </div>
-                    <Select value={filterType} onValueChange={setFilterType}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filter by type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="Event">Event</SelectItem>
-                        <SelectItem value="Venue">Venue</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select value={filterStatus} onValueChange={setFilterStatus}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filter by status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="Failed">Failed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                   {/* Table */}
                   <div className="border rounded-md">
                     <Table>
@@ -283,11 +353,29 @@ export default function AdminPayment() {
                     </Table>
                   </div>
                   {/* Pagination */}
-                  <div className="flex justify-end mt-4 space-x-2">
-                    <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
-                    <span className="self-center">Page {currentPage} of {totalPages}</span>
-                    <Button size="sm" variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
-                  </div>
+                  {totalPages > 1 && (
+                    <div className="flex justify-center mt-4 space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage(p => p - 1)}
+                      >
+                        Previous
+                      </Button>
+                      <span className="px-2 py-1 text-sm text-gray-600">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage(p => p + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
