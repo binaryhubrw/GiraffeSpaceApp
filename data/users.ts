@@ -59,6 +59,7 @@ export interface UserApiResponse {
 // Example mock data
 export const users: User[] = [
   {
+    events: [],
     userId: "f460b67c-d8a6-459d-9e6a",
     username: "gison456",
     email: "gison28466@finfave.com",
