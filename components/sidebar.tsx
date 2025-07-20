@@ -12,7 +12,7 @@ export function Sidebar() {
   }
 
   return (
-    <div className="w-44 border-r bg-white h-screen left-0 fixed">
+    <div className="w-55 border-r bg-white h-screen left-0 fixed">
     
       <nav className="p-4">
         <ul className="space-y-2">

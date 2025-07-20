@@ -9,7 +9,7 @@ export default function VenueLayout({
   return (
     <>
       <ManageUserHeader />
-      <div className="flex mt-16 min-h-screen">
+      <div className="pl-60 flex mt-16 min-h-screen">
         <Sidebar />
         <main className="flex-1 ">{children}</main>
       </div>

@@ -202,9 +202,9 @@ export default function ManageVenuesPage() {
     <div className="min-h-screen flex">
       <Sidebar />
 
-      <main className="flex-1 bg-white ml-44 p-4">
+      <main className="flex-1 bg-white p-4">
       
-      <div className="max-w-7xl mx-auto px-2 sm:px-4">
+      <div className="max-w-8xl mx-auto px-2 sm:px-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div>
