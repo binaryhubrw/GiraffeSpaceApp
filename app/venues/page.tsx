@@ -91,7 +91,7 @@ export default function VenuesPage() {
                 isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
               }`}
             >
-              Browse and book venues for your events at the University of Rwanda.
+              Browse and book venues for your events here.
             </p>
           </div>
         </div>

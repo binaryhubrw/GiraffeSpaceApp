@@ -1,30 +1,16 @@
+/* Tailwind Directives */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 255, 255, 255;
-  --background-end-rgb: 255, 255, 255;
-}
-
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
-}
-
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-}
-
+/* Root Variables */
 @layer base {
   :root {
+    --foreground-rgb: 0, 0, 0;
+    --background-start-rgb: 255, 255, 255;
+    --background-end-rgb: 255, 255, 255;
+    
+    /* Theme Colors */
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
     --card: 0 0% 100%;
@@ -44,12 +30,18 @@ body {
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
     --ring: 0 0% 3.9%;
+    
+    /* Chart Colors */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    
+    /* Border Radius */
     --radius: 0.5rem;
+    
+    /* Sidebar Theme */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -59,6 +51,8 @@ body {
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  /* Dark Mode Variables */
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
@@ -95,11 +89,171 @@ body {
   }
 }
 
+/* Base Styles */
 @layer base {
   * {
     @apply border-border;
   }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    ) rgb(var(--background-start-rgb));
   }
+}
+
+/* Utility Classes */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Component Classes */
+@layer components {
+  /* Container */
+  .container-responsive {
+    @apply container mx-auto px-4 sm:px-6 lg:px-16 max-w-7xl;
+  }
+
+  /* Typography */
+  .heading-1 {
+    @apply text-2xl sm:text-3xl lg:text-4xl font-bold;
+  }
+
+  .heading-2 {
+    @apply text-xl sm:text-2xl font-bold;
+  }
+
+  .heading-3 {
+    @apply text-lg sm:text-xl font-bold;
+  }
+
+  .text-body {
+    @apply text-sm sm:text-base text-gray-600;
+  }
+
+  .text-small {
+    @apply text-xs sm:text-sm;
+  }
+
+  /* Grid */
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8;
+  }
+
+  /* Spacing */
+  .section-padding {
+    @apply py-6 sm:py-8 lg:py-12;
+  }
+
+  .card-padding {
+    @apply p-4 sm:p-6;
+  }
+
+  .gap-responsive {
+    @apply gap-4 sm:gap-6 lg:gap-8;
+  }
+
+  /* Images */
+  .image-container-sm {
+    @apply h-32 sm:h-40 lg:h-48;
+  }
+
+  .image-container-md {
+    @apply w-32 h-32 sm:w-40 sm:h-40;
+  }
+
+  /* Cards */
+  .card-base {
+    @apply bg-white rounded-lg overflow-hidden shadow hover:shadow-lg transition-all duration-200;
+  }
+
+  /* Buttons */
+  .btn-base {
+    @apply px-4 py-2 rounded-md transition-all duration-200;
+  }
+
+  .btn-primary {
+    @apply btn-base bg-blue-600 text-white hover:bg-blue-700;
+  }
+
+  .btn-secondary {
+    @apply btn-base border border-gray-300 text-gray-700 hover:bg-gray-50;
+  }
+
+  /* Icons */
+  .icon-sm {
+    @apply h-3 w-3 sm:h-4 sm:w-4;
+  }
+
+  .icon-md {
+    @apply h-4 w-4 sm:h-5 sm:w-5;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-block px-2 py-1 text-xs sm:text-sm font-medium rounded;
+  }
+
+  .badge-blue {
+    @apply badge bg-blue-100 text-blue-800;
+  }
+
+  .badge-green {
+    @apply badge bg-green-100 text-green-800;
+  }
+
+  .badge-purple {
+    @apply badge bg-purple-100 text-purple-800;
+  }
+
+  /* Flex Layouts */
+  .flex-responsive {
+    @apply flex flex-col sm:flex-row;
+  }
+
+  .flex-center {
+    @apply flex items-center justify-center;
+  }
+
+  .flex-between {
+    @apply flex items-center justify-between;
+  }
+
+  /* Forms */
+  .input-base {
+    @apply w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500;
+  }
+
+  /* Animations */
+  .fade-in {
+    @apply transform transition-all duration-700 ease-out;
+  }
+
+  .fade-in-up {
+    @apply fade-in translate-y-0 opacity-100;
+  }
+
+  .fade-in-down {
+    @apply fade-in -translate-y-8 opacity-0;
+  }
+}
+
+/* Line Clamping */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }

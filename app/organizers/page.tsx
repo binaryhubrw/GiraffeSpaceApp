@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Filter, Users, Calendar, MapPin, ChevronDown, ChevronUp } from "lucide-react"
+import { Search, Filter, Users, Calendar } from "lucide-react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import Link from "next/link"
 
 export default function OrganizersPage() {
   const [organizers, setOrganizers] = useState<any[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
-  const [expandedOrg, setExpandedOrg] = useState<string | null>(null)
   const [isTypeOpen, setIsTypeOpen] = useState(false)
   const [selectedType, setSelectedType] = useState<string>("Type")
 
@@ -27,10 +27,6 @@ export default function OrganizersPage() {
   const handleTypeSelect = (type: string) => {
     setSelectedType(type)
     setIsTypeOpen(false)
-  }
-
-  const toggleVenues = (orgId: string) => {
-    setExpandedOrg(expandedOrg === orgId ? null : orgId)
   }
 
   return (
@@ -65,7 +61,7 @@ export default function OrganizersPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
-                placeholder="Search organizers..."
+                placeholder="Search organizations..."
                 className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -128,70 +124,13 @@ export default function OrganizersPage() {
                         <span>{org.members} members</span>
                       </div>
                     </div>
-                    
-                    {/* Venue Toggle Button */}
-                    {org.venues.length > 0 && (
-                      <button
-                        onClick={() => toggleVenues(org.organizationId)}
-                        className="flex items-center justify-center w-full gap-2 py-2 text-sm text-gray-600 hover:text-gray-900"
-                      >
-                        {expandedOrg === org.organizationId ? (
-                          <>
-                            Hide Venues <ChevronUp className="h-4 w-4" />
-                          </>
-                        ) : (
-                          <>
-                            Show Venues <ChevronDown className="h-4 w-4" />
-                          </>
-                        )}
-                      </button>
-                    )}
 
-                    {/* Venues Section */}
-                    {expandedOrg === org.organizationId && org.venues.length > 0 && (
-                      <div className="mt-4 space-y-4 border-t pt-4">
-                        <h4 className="font-semibold text-gray-900">Available Venues</h4>
-                        <div className="space-y-3">
-                          {org.venues.map((venue: any) => (
-                            <div key={venue.venueId} className="bg-gray-50 rounded-lg p-4">
-                              <div className="flex items-center justify-between mb-2">
-                                <h5 className="font-medium text-gray-900">{venue.venueName}</h5>
-                                <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                  {venue.venueTypeId}
-                                </span>
-                              </div>
-                              <div className="space-y-2 text-sm text-gray-600">
-                                <div className="flex items-center">
-                                  <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                                  <span>{venue.location}</span>
-                                </div>
-                                <div className="flex items-center">
-                                  <Users className="h-4 w-4 mr-2 text-gray-400" />
-                                  <span>Capacity: {venue.capacity} people</span>
-                                </div>
-                                {venue.virtualTourUrl && (
-                                  <a
-                                    href={venue.virtualTourUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 hover:underline flex items-center"
-                                  >
-                                    Virtual Tour
-                                  </a>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <a
+                    <Link
                       href={`/organizations/${org.organizationId}`}
                       className="block w-full text-center py-2 mt-4 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 transition-all duration-200 hover:border-blue-300 hover:text-blue-600"
                     >
                       View Organization
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>
