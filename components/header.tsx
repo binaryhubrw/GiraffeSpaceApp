@@ -112,7 +112,7 @@ export function Header({ activePage }: HeaderProps) {
               activePage === "organizers" ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
             }`}
           >
-            Organizers
+            Organizations
           </Link>
           {/* <Link
             href="/dashboard"
