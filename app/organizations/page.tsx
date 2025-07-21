@@ -1,102 +1,46 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Filter } from "lucide-react"
+import { Search, Filter, Users, Calendar, MapPin, ChevronDown, ChevronUp } from "lucide-react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { Users, Calendar } from "lucide-react"
-
-// Sample organizer data
-const organizers = [
-  {
-    id: "binary-hub",
-    name: "Binary Hub",
-    description: "Global leader in innovative solutions for various industries",
-    logo: "/binary.png?height=120&width=200&text=BINARY+HUB",
-    memberCount: 45,
-    eventCount: 12,
-    tags: ["Corporate", "Admin"],
-  },
-  {
-    id: "university-of-rwanda",
-    name: "University Of Rwanda",
-    description: "Top Higher Education Institution in Rwanda",
-    logo: "/UR.png?height=120&width=200&text=UNIVERSITY+OF+RWANDA",
-    memberCount: 120,
-    eventCount: 25,
-    tags: ["Corporate", "Member"],
-  },
-  {
-    id: "techstars-incubator",
-    name: "TechStars Incubator",
-    description: "Supporting early-stage technology startups and entrepreneurs",
-    logo: "/techstars.png?height=120&width=200&text=TECHSTARS",
-    memberCount: 35,
-    eventCount: 8,
-    tags: ["Non-profit", "Admin"],
-  },
-  {
-    id: "green-earth-foundation",
-    name: "Green Earth Foundation",
-    description: "Environmental organization focused on sustainability initiatives",
-    logo: "/greenearth.png?height=120&width=200&text=GREEN+EARTH",
-    memberCount: 50,
-    eventCount: 5,
-    tags: ["Non-profit", "Member"],
-  },
-  {
-    id: "city-business-network",
-    name: "City Business Network",
-    description: "Local business networking and development association",
-    logo: "/citybuz.png?height=120&width=200&text=CITY+BUSINESS+NETWORK",
-    memberCount: 85,
-    eventCount: 4,
-    tags: ["Community", "Member"],
-  },
-  {
-    id: "creative-arts-alliance",
-    name: "Creative Arts Alliance",
-    description: "Supporting and promoting local artists and creative professionals",
-    logo: "/creali.png?height=120&width=200&text=CREATIVE+ALLIANCE",
-    memberCount: 62,
-    eventCount: 7,
-    tags: ["Community", "Admin"],
-  },
-]
 
 export default function OrganizersPage() {
+  const [organizers, setOrganizers] = useState<any[]>([])
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [expandedOrg, setExpandedOrg] = useState<string | null>(null)
   const [isTypeOpen, setIsTypeOpen] = useState(false)
   const [selectedType, setSelectedType] = useState<string>("Type")
-  const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
-    // Trigger animations after component mounts
-    const timer = setTimeout(() => {
-      setIsLoaded(true)
-    }, 100)
-
-    return () => clearTimeout(timer)
+    fetch("https://giraffespacev2.onrender.com/api/v1/organizations/public")
+      .then(res => res.json())
+      .then(data => {
+        setOrganizers(data.data)
+        setIsLoaded(true)
+      })
+      .catch(() => setIsLoaded(true))
   }, [])
 
-  const typeOptions = ["All Types", "Corporate", "Non-profit", "Community"]
+  const typeOptions = ["All Types", "Public", "NGOs", "Private"]
 
   const handleTypeSelect = (type: string) => {
     setSelectedType(type)
     setIsTypeOpen(false)
   }
 
-  const getTagClass = (tag: string) => {
-    switch (tag.toLowerCase()) {
-      case "corporate":
+  const toggleVenues = (orgId: string) => {
+    setExpandedOrg(expandedOrg === orgId ? null : orgId)
+  }
+
+  const getTagClass = (type: string) => {
+    switch (type.toLowerCase()) {
+      case "public":
         return "bg-blue-50 text-blue-700"
-      case "non-profit":
+      case "ngos":
         return "bg-green-50 text-green-700"
-      case "community":
+      case "private":
         return "bg-purple-50 text-purple-700"
-      case "admin":
-        return "bg-gray-50 text-gray-700"
-      case "member":
-        return "bg-yellow-50 text-yellow-700"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -115,19 +59,19 @@ export default function OrganizersPage() {
                 isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
               }`}
             >
-              My Organizer
+              All Organizations
             </h1>
             <p
               className={`text-gray-600 transform transition-all duration-1000 ease-out delay-200 ${
                 isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
               }`}
             >
-              Manage your organizers and create new ones to organize events.
+              Manage your organizations and create new ones to organize events.
             </p>
           </div>
         </div>
 
-        {/* Search and Filters with*/}
+        {/* Search and Filters */}
         <div className="container mx-auto px-16 max-w-7xl py-8 relative z-20">
           <div
             className={`flex flex-col md:flex-row gap-4 items-center transform transition-all duration-1000 ease-out delay-400 ${
@@ -138,7 +82,7 @@ export default function OrganizersPage() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
-                placeholder="Search organizers..."
+                placeholder="Search organizations..."
                 className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               />
             </div>
@@ -172,12 +116,12 @@ export default function OrganizersPage() {
           </div>
         </div>
 
-        {/* Organizers Grid with Staggered Animation */}
+        {/* Organizations Grid */}
         <div className="container mx-auto px-16 max-w-7xl pb-16 relative z-10">
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {organizers.map((org, index) => (
               <div
-                key={org.id}
+                key={org.organizationId}
                 className={`bg-white rounded-lg overflow-hidden shadow transform transition-all duration-700 ease-out hover:shadow-lg hover:-translate-y-1 ${
                   isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
                 }`}
@@ -188,45 +132,97 @@ export default function OrganizersPage() {
                 <div className="h-48 relative flex items-center justify-center p-4 bg-white">
                   <img
                     src={org.logo || "/placeholder.svg"}
-                    alt={org.name}
+                    alt={org.organizationName}
                     className="max-h-full max-w-full object-contain transition-transform duration-300 hover:scale-105"
                   />
                 </div>
                 <div className="p-6">
                   <div className="flex flex-wrap gap-2 mb-3">
-                    {org.tags.map((tag, tagIndex) => (
-                      <span
-                        key={tagIndex}
-                        className={`inline-block px-2 py-1 text-xs font-medium rounded transition-colors duration-200 hover:scale-105 ${getTagClass(
-                          tag,
-                        )}`}
-                        style={{
-                          animationDelay: `${800 + index * 100 + tagIndex * 50}ms`,
-                        }}
-                      >
-                        {tag}
-                      </span>
-                    ))}
+                    <span
+                      className={`inline-block px-2 py-1 text-xs font-medium rounded transition-colors duration-200 hover:scale-105 ${getTagClass(
+                        org.organizationType
+                      )}`}
+                    >
+                      {org.organizationType}
+                    </span>
                   </div>
                   <h3 className="text-xl font-bold mb-2 transition-colors duration-200 hover:text-blue-600">
-                    {org.name}
+                    {org.organizationName}
                   </h3>
                   <p className="text-sm text-gray-600 mb-4">{org.description}</p>
                   <div className="flex justify-between text-sm text-gray-600 mb-4">
                     <div className="flex items-center">
-                      <Users className="h-4 w-4 mr-2 text-gray-400" />
-                      <span>{org.memberCount} members</span>
+                      <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                      <span>{org.venues.length} Venues</span>
                     </div>
                     <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                      <span>{org.eventCount} events</span>
+                      <Users className="h-4 w-4 mr-2 text-gray-400" />
+                      <span>{org.members} Members</span>
                     </div>
                   </div>
+
+                  {/* Venue Toggle Button */}
+                  {org.venues.length > 0 && (
+                    <button
+                      onClick={() => toggleVenues(org.organizationId)}
+                      className="flex items-center justify-center w-full gap-2 py-2 text-sm text-gray-600 hover:text-gray-900 mb-4"
+                    >
+                      {expandedOrg === org.organizationId ? (
+                        <>
+                          Hide Venues <ChevronUp className="h-4 w-4" />
+                        </>
+                      ) : (
+                        <>
+                          Show Venues <ChevronDown className="h-4 w-4" />
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {/* Venues Section */}
+                  {expandedOrg === org.organizationId && org.venues.length > 0 && (
+                    <div className="mt-4 space-y-4 border-t pt-4 mb-4">
+                      <h4 className="font-semibold text-gray-900">Available Venues</h4>
+                      <div className="space-y-3">
+                        {org.venues.map((venue: any) => (
+                          <div key={venue.venueId} className="bg-gray-50 rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <h5 className="font-medium text-gray-900">{venue.venueName}</h5>
+                              <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                {venue.venueTypeId}
+                              </span>
+                            </div>
+                            <div className="space-y-2 text-sm text-gray-600">
+                              <div className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                                <span>{venue.location}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <Users className="h-4 w-4 mr-2 text-gray-400" />
+                                <span>Capacity: {venue.capacity} people</span>
+                              </div>
+                              {venue.virtualTourUrl && (
+                                <a
+                                  href={venue.virtualTourUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline flex items-center"
+                                >
+                                  Virtual Tour
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <a
-                    href={`/organizations/${org.id}`}
+                    href={`/organizations/${org.organizationId}`}
                     className="block w-full text-center py-2 border border-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 transition-all duration-200 hover:border-blue-300 hover:text-blue-600"
                   >
-                    View Organizer
+                    View Organization
                   </a>
                 </div>
               </div>

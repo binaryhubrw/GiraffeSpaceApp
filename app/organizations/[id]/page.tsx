@@ -14,7 +14,7 @@ const organizersData = [
     name: "Binary Hub",
     description: "Global leader in innovative solutions for various industries",
     logo: "/binary.png?height=120&width=200&text=BINARY+HUB",
-    memberCount: 45,
+    venueCount: 4,
     eventCount: 12,
     tags: ["Corporate", "Admin"],
     fullDescription:
@@ -29,6 +29,12 @@ const organizersData = [
       { id: "event-1", name: "Tech Innovation Summit", date: "June 15, 2025", location: "Kigali Convention Center" },
       { id: "event-2", name: "Coding Bootcamp", date: "July 3, 2025", location: "Binary Hub HQ" },
     ],
+    venues: [
+      { id: "venue-1", name: "Binary Hub HQ", address: "Kigali Innovation City", capacity: 200, type: "Conference Center" },
+      { id: "venue-2", name: "Tech Lab", address: "Kigali Heights", capacity: 50, type: "Workshop Space" },
+      { id: "venue-3", name: "Innovation Hall", address: "Kigali Innovation City", capacity: 150, type: "Meeting Hall" },
+      { id: "venue-4", name: "Startup Space", address: "Downtown Kigali", capacity: 100, type: "Co-working Space" },
+    ],
     members: [
       { id: "member-1", name: "John Smith", role: "CEO", avatar: "/placeholder.svg?height=40&width=40" },
       { id: "member-2", name: "Sarah Johnson", role: "CTO", avatar: "/placeholder.svg?height=40&width=40" },
@@ -40,7 +46,7 @@ const organizersData = [
     name: "University Of Rwanda",
     description: "Top Higher Education Institution in Rwanda",
     logo: "/UR.png?height=120&width=200&text=UNIVERSITY+OF+RWANDA",
-    memberCount: 120,
+    venueCount: 12,
     eventCount: 25,
     tags: ["Corporate", "Member"],
     fullDescription:
@@ -54,6 +60,20 @@ const organizersData = [
     upcomingEvents: [
       { id: "event-3", name: "Annual Graduation Ceremony", date: "August 20, 2025", location: "Main Campus" },
       { id: "event-4", name: "Research Symposium", date: "September 5, 2025", location: "Science Building" },
+    ],
+    venues: [
+      { id: "venue-5", name: "Main Campus Auditorium", address: "Huye Campus", capacity: 500, type: "Auditorium" },
+      { id: "venue-6", name: "Science Building Hall", address: "Huye Campus", capacity: 200, type: "Lecture Hall" },
+      { id: "venue-7", name: "Library Conference Room", address: "Huye Campus", capacity: 100, type: "Meeting Room" },
+      { id: "venue-8", name: "Sports Complex", address: "Huye Campus", capacity: 1000, type: "Sports Facility" },
+      { id: "venue-9", name: "Engineering Lab", address: "Huye Campus", capacity: 80, type: "Laboratory" },
+      { id: "venue-10", name: "Student Center", address: "Huye Campus", capacity: 300, type: "Multi-purpose Hall" },
+      { id: "venue-11", name: "Medical School Auditorium", address: "Kigali Campus", capacity: 400, type: "Auditorium" },
+      { id: "venue-12", name: "Business School Hall", address: "Kigali Campus", capacity: 150, type: "Lecture Hall" },
+      { id: "venue-13", name: "Research Center", address: "Huye Campus", capacity: 120, type: "Conference Center" },
+      { id: "venue-14", name: "Computer Lab", address: "Huye Campus", capacity: 60, type: "Computer Lab" },
+      { id: "venue-15", name: "Art Studio", address: "Huye Campus", capacity: 40, type: "Studio Space" },
+      { id: "venue-16", name: "Outdoor Amphitheater", address: "Huye Campus", capacity: 800, type: "Outdoor Venue" },
     ],
     members: [
       {
@@ -81,7 +101,7 @@ const organizersData = [
     name: "TechStars Incubator",
     description: "Supporting early-stage technology startups and entrepreneurs",
     logo: "/techstars.png?height=120&width=200&text=TECHSTARS",
-    memberCount: 35,
+    venueCount: 3,
     eventCount: 8,
     tags: ["Non-profit", "Admin"],
     fullDescription:
@@ -95,6 +115,11 @@ const organizersData = [
     upcomingEvents: [
       { id: "event-5", name: "Startup Pitch Day", date: "July 25, 2025", location: "TechStars Hub" },
       { id: "event-6", name: "Investor Networking Event", date: "August 10, 2025", location: "Marriott Hotel" },
+    ],
+    venues: [
+      { id: "venue-17", name: "TechStars Hub", address: "Kigali Heights", capacity: 150, type: "Incubator Space" },
+      { id: "venue-18", name: "Pitch Room", address: "Kigali Heights", capacity: 80, type: "Presentation Space" },
+      { id: "venue-19", name: "Co-working Area", address: "Kigali Heights", capacity: 200, type: "Co-working Space" },
     ],
     members: [
       {
@@ -117,7 +142,7 @@ const organizersData = [
     name: "Green Earth Foundation",
     description: "Environmental organization focused on sustainability initiatives",
     logo: "/greenearth.png?height=120&width=200&text=GREEN+EARTH",
-    memberCount: 50,
+    venueCount: 5,
     eventCount: 5,
     tags: ["Non-profit", "Member"],
     fullDescription:
@@ -131,6 +156,13 @@ const organizersData = [
     upcomingEvents: [
       { id: "event-7", name: "Tree Planting Day", date: "June 5, 2025", location: "Nyungwe Forest" },
       { id: "event-8", name: "Environmental Workshop", date: "July 15, 2025", location: "Green Earth HQ" },
+    ],
+    venues: [
+      { id: "venue-20", name: "Green Earth HQ", address: "Nyarutarama, Kigali", capacity: 100, type: "Office Space" },
+      { id: "venue-21", name: "Eco Center", address: "Nyarutarama, Kigali", capacity: 80, type: "Education Center" },
+      { id: "venue-22", name: "Community Garden", address: "Nyarutarama, Kigali", capacity: 200, type: "Outdoor Space" },
+      { id: "venue-23", name: "Recycling Facility", address: "Kigali Industrial Park", capacity: 50, type: "Industrial Space" },
+      { id: "venue-24", name: "Nature Reserve", address: "Nyungwe Forest", capacity: 500, type: "Outdoor Venue" },
     ],
     members: [
       {
@@ -158,7 +190,7 @@ const organizersData = [
     name: "City Business Network",
     description: "Local business networking and development association",
     logo: "/citybuz.png?height=120&width=200&text=CITY+BUSINESS+NETWORK",
-    memberCount: 85,
+    venueCount: 7,
     eventCount: 4,
     tags: ["Community", "Member"],
     fullDescription:
@@ -172,6 +204,15 @@ const organizersData = [
     upcomingEvents: [
       { id: "event-9", name: "Business Networking Breakfast", date: "June 20, 2025", location: "Serena Hotel" },
       { id: "event-10", name: "Small Business Workshop", date: "July 8, 2025", location: "City Business Center" },
+    ],
+    venues: [
+      { id: "venue-25", name: "City Business Center", address: "Downtown Kigali", capacity: 120, type: "Business Center" },
+      { id: "venue-26", name: "Networking Lounge", address: "Downtown Kigali", capacity: 80, type: "Lounge Space" },
+      { id: "venue-27", name: "Conference Hall", address: "Downtown Kigali", capacity: 200, type: "Conference Room" },
+      { id: "venue-28", name: "Training Room", address: "Downtown Kigali", capacity: 60, type: "Training Space" },
+      { id: "venue-29", name: "Business Incubator", address: "Downtown Kigali", capacity: 100, type: "Incubator Space" },
+      { id: "venue-30", name: "Meeting Rooms", address: "Downtown Kigali", capacity: 40, type: "Meeting Space" },
+      { id: "venue-31", name: "Exhibition Area", address: "Downtown Kigali", capacity: 300, type: "Exhibition Space" },
     ],
     members: [
       {
@@ -199,7 +240,7 @@ const organizersData = [
     name: "Creative Arts Alliance",
     description: "Supporting and promoting local artists and creative professionals",
     logo: "/creali.png?height=120&width=200&text=CREATIVE+ALLIANCE",
-    memberCount: 62,
+    venueCount: 6,
     eventCount: 7,
     tags: ["Community", "Admin"],
     fullDescription:
@@ -213,6 +254,14 @@ const organizersData = [
     upcomingEvents: [
       { id: "event-11", name: "Annual Art Exhibition", date: "August 15, 2025", location: "Kigali Art Gallery" },
       { id: "event-12", name: "Music Festival", date: "September 12, 2025", location: "Amahoro Stadium" },
+    ],
+    venues: [
+      { id: "venue-32", name: "Kigali Art Gallery", address: "Kimihurura, Kigali", capacity: 150, type: "Art Gallery" },
+      { id: "venue-33", name: "Performance Studio", address: "Kimihurura, Kigali", capacity: 100, type: "Performance Space" },
+      { id: "venue-34", name: "Creative Workshop", address: "Kimihurura, Kigali", capacity: 60, type: "Workshop Space" },
+      { id: "venue-35", name: "Exhibition Hall", address: "Kimihurura, Kigali", capacity: 200, type: "Exhibition Space" },
+      { id: "venue-36", name: "Music Studio", address: "Kimihurura, Kigali", capacity: 80, type: "Recording Studio" },
+      { id: "venue-37", name: "Outdoor Amphitheater", address: "Kimihurura, Kigali", capacity: 500, type: "Outdoor Venue" },
     ],
     members: [
       {
@@ -285,7 +334,7 @@ export default function OrganizerDetailsPage() {
           <div className="container mx-auto px-16 max-w-7xl">
             <Link href="/organizations" className="flex items-center text-gray-600 hover:text-gray-900">
               <ChevronLeft className="h-4 w-4 mr-1" />
-              <span>Back to Organizers</span>
+              <span>Back to Organiznization</span>
             </Link>
           </div>
         </div>
@@ -340,7 +389,7 @@ export default function OrganizerDetailsPage() {
                     <div className="flex flex-wrap gap-6 text-sm text-gray-600">
                       <div className="flex items-center">
                         <Users className="h-4 w-4 mr-2 text-gray-400" />
-                        <span>{organizer.memberCount} members</span>
+                        <span>{organizer.venueCount} venues</span>
                       </div>
                       <div className="flex items-center">
                         <Calendar className="h-4 w-4 mr-2 text-gray-400" />
@@ -390,6 +439,36 @@ export default function OrganizerDetailsPage() {
                           {organizer.contactInfo.website}
                         </a>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Venues Section */}
+                  <div className="bg-white rounded-lg shadow p-6 mt-8">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-xl font-bold">Venues</h2>
+                      <span className="text-sm text-gray-500">{organizer.venueCount} total</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {organizer.venues.map((venue: any) => (
+                        <div key={venue.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <h3 className="font-semibold text-gray-900 mb-2">{venue.name}</h3>
+                          <div className="space-y-2 text-sm text-gray-600">
+                            <div className="flex items-center">
+                              <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                              <span>{venue.address}</span>
+                            </div>
+                            <div className="flex items-center">
+                              <Users className="h-4 w-4 mr-2 text-gray-400" />
+                              <span>Capacity: {venue.capacity} people</span>
+                            </div>
+                            <div className="flex items-center">
+                              <span className="inline-block px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 rounded">
+                                {venue.type}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>

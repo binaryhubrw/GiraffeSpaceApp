@@ -292,58 +292,58 @@ export default function AdminOverview() {
       <h2 className="text-2xl font-bold mb-4">Admin Overview</h2>
       {/* Statistics Cards */}
       {showStatistics && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Events</p>
-                  <p className="text-2xl font-bold">{stats.totalEvents}</p>
-                </div>
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Events</p>
+                <p className="text-2xl font-bold">{stats.totalEvents}</p>
+              </div>
                 <Calendar className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Total Venues</p>
+                <p className="text-2xl font-bold">{stats.totalVenues}</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Venues</p>
-                  <p className="text-2xl font-bold">{stats.totalVenues}</p>
-                </div>
                 <MapPin className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Pending Approvals</p>
+                <p className="text-2xl font-bold">{stats.pendingApprovals}</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Pending Approvals</p>
-                  <p className="text-2xl font-bold">{stats.pendingApprovals}</p>
-                </div>
                 <AlertTriangle className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Approved Events</p>
+                <p className="text-2xl font-bold">{stats.approvedEvents}</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Approved Events</p>
-                  <p className="text-2xl font-bold">{stats.approvedEvents}</p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-blue-600" />
+              <CheckCircle className="h-8 w-8 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Approved Venues</p>
+                <p className="text-2xl font-bold">{stats.approvedVenues}</p>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Approved Venues</p>
-                  <p className="text-2xl font-bold">{stats.approvedVenues}</p>
-                </div>
                 <CheckCircle className="h-8 w-8 text-blue-600" />
               </div>
             </CardContent>
@@ -430,25 +430,25 @@ export default function AdminOverview() {
 
       {/* Pending Items with Countdowns */}
       <div className="grid md:grid-cols-2 gap-8 mb-8">
-        {/* Pending Events */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Clock className="h-5 w-5 mr-2" />
-              Pending Event Approvals
-            </CardTitle>
-            <CardDescription>Events waiting for approval</CardDescription>
-          </CardHeader>
-          <CardContent>
+          {/* Pending Events */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Clock className="h-5 w-5 mr-2" />
+                Pending Event Approvals
+              </CardTitle>
+              <CardDescription>Events waiting for approval</CardDescription>
+            </CardHeader>
+            <CardContent>
             <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-              {paginatedEvents.length > 0 ? (
-                paginatedEvents.map((event) => (
-                  <div
-                    key={event.eventId}
+                {paginatedEvents.length > 0 ? (
+                  paginatedEvents.map((event) => (
+                    <div
+                      key={event.eventId}
                     className="flex items-center justify-between p-3 border rounded-lg bg-white"
-                  >
-                    <div>
-                      <p className="font-medium">{event.eventTitle}</p>
+                    >
+                      <div>
+                        <p className="font-medium">{event.eventTitle}</p>
                       <p className="text-sm text-gray-600">
                         Start Date: {event.startDate ? new Date(event.startDate).toLocaleDateString() : "-"}
                         <br />
@@ -461,22 +461,22 @@ export default function AdminOverview() {
                           Approval Deadline: {event.approvalDeadline ? getCountdown(event.approvalDeadline) : "N/A"}
                         </p>
                       )}
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline" onClick={() => handleApproveEvent(event.eventId)}>
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleRejectEvent(event.eventId)}>
+                          <XCircle className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="outline" onClick={() => handleApproveEvent(event.eventId)}>
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleRejectEvent(event.eventId)}>
-                        <XCircle className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">No pending event approvals</p>
-              )}
-            </div>
-            {totalEventPages > 1 && (
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No pending event approvals</p>
+                )}
+              </div>
+              {totalEventPages > 1 && (
               <div className="flex justify-center mt-4">
                 <Button
                   variant="outline"
@@ -495,30 +495,30 @@ export default function AdminOverview() {
                 >
                   Next
                 </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Pending Venues */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Clock className="h-5 w-5 mr-2" />
-              Pending Venue Approvals
-            </CardTitle>
-            <CardDescription>Venues waiting for approval</CardDescription>
-          </CardHeader>
-          <CardContent>
+          {/* Pending Venues */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Clock className="h-5 w-5 mr-2" />
+                Pending Venue Approvals
+              </CardTitle>
+              <CardDescription>Venues waiting for approval</CardDescription>
+            </CardHeader>
+            <CardContent>
             <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-              {paginatedVenues.length > 0 ? (
-                paginatedVenues.map((venue) => (
-                  <div
-                    key={venue.venueId}
+                {paginatedVenues.length > 0 ? (
+                  paginatedVenues.map((venue) => (
+                    <div
+                      key={venue.venueId}
                     className="flex items-center justify-between p-3 border rounded-lg bg-white"
-                  >
-                    <div>
-                      <p className="font-medium">{venue.venueName}</p>
+                    >
+                      <div>
+                        <p className="font-medium">{venue.venueName}</p>
                       <p className="text-sm text-gray-600">
                         Location: {venue.location}
                         <br />
@@ -531,22 +531,22 @@ export default function AdminOverview() {
                           Approval Deadline: {venue.approvalDeadline ? getCountdown(venue.approvalDeadline) : "N/A"}
                         </p>
                       )}
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button size="sm" variant="outline" onClick={() => handleApproveVenue(venue.venueId)}>
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleRejectVenue(venue.venueId)}>
+                          <XCircle className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex space-x-2">
-                      <Button size="sm" variant="outline" onClick={() => handleApproveVenue(venue.venueId)}>
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleRejectVenue(venue.venueId)}>
-                        <XCircle className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">No pending venue approvals</p>
-              )}
-            </div>
-            {totalVenuePages > 1 && (
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-4">No pending venue approvals</p>
+                )}
+              </div>
+              {totalVenuePages > 1 && (
               <div className="flex justify-center mt-4">
                 <Button
                   variant="outline"
@@ -663,8 +663,8 @@ export default function AdminOverview() {
               </ChartContainer>
             </CardContent>
           </Card>
-        </div>
-      )}
+                </div>
+              )}
 
       {/* Doughnut Chart for Comparison */}
       {showCharts && (
