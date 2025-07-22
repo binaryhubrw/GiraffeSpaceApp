@@ -965,7 +965,7 @@ export default function AdminVenues() {
               {/* Venues Table */}
               <Card>
                 <CardHeader>
-                  <CardTitle>All Venues</CardTitle>
+                  <CardTitle>All Venue</CardTitle>
                   <CardDescription>Manage venue availability and bookings</CardDescription>
                 </CardHeader>
                 <CardContent>

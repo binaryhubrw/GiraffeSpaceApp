@@ -11,11 +11,14 @@ import { Container } from "@/components/container"
 import { Section } from "@/components/section"
 import { HeroSlideshow } from "@/components/hero-slideshow"
 import { events } from "@/data/events"
-import { getAvailableVenues } from "@/data/venues"
 import { useEffect, useState } from "react"
+import ApiService from "@/api/apiConfig"
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)
+  const [availableVenues, setAvailableVenues] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Trigger animations after component mounts
@@ -24,6 +27,29 @@ export default function Home() {
     }, 100)
 
     return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    const fetchVenues = async () => {
+      try {
+        setLoading(true)
+        const response = await ApiService.getAllVenues()
+        if (response.success) {
+          // Get first 3 available venues
+          const venues = response.data.filter((venue: any) => venue.isAvailable).slice(0, 3)
+          setAvailableVenues(venues)
+        } else {
+          setError('Failed to fetch venues')
+        }
+      } catch (error) {
+        console.error('Error fetching venues:', error)
+        setError('Failed to fetch venues')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchVenues()
   }, [])
 
   const heroImages = [
@@ -39,9 +65,6 @@ export default function Home() {
 
   // Get first 3 events for upcoming events section
   const upcomingEvents = events.slice(0, 3)
-
-  // Get first 3 available venues for sample section
-  const availableVenues = getAvailableVenues().slice(0, 3)
 
   const formatEventDate = (eventDate: string, startTime: string, endTime: string) => {
     const date = new Date(eventDate).toLocaleDateString("en-US", {
@@ -112,33 +135,44 @@ export default function Home() {
         </Section>
 
         {/* Sample Available Venues Section */}
-        <Section background="gray">
+        <Section>
           <Container>
             <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Available Venues</h2>
             <p className="text-center text-gray-600 mb-12">
               Explore some of our top available venues for your next event.
             </p>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {availableVenues.map((venue) => (
-                <div key={venue.venueId} className="bg-white rounded-lg shadow p-4 flex flex-col items-center">
-                  {venue.imageSrc && (
-                    <img src={venue.imageSrc} alt={venue.venueName} className="w-full h-40 object-cover rounded mb-2" />
-                  )}
-                  <h3 className="text-lg font-semibold">{venue.venueName}</h3>
-                  <p className="text-gray-600 text-sm mb-2">{venue.location}</p>
-                  <p className="text-gray-500 text-xs mb-2">{venue.description?.slice(0, 80)}...</p>
-                  <a
-                    href={`/venues/${venue.venueId}`}
-                    className="mt-2 text-blue-600 hover:underline text-sm"
-                  >
-                    View Details
-                  </a>
-                </div>
-              ))}
-            </div>
+            {loading ? (
+              <div className="text-center py-8">Loading venues...</div>
+            ) : error ? (
+              <div className="text-center text-red-600 py-8">{error}</div>
+            ) : availableVenues.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {availableVenues.map((venue) => (
+                  <div key={venue.venueId} className="bg-white rounded-lg shadow p-4 flex flex-col items-center">
+                    {venue.imageSrc && (
+                      <img src={venue.imageSrc} alt={venue.venueName} className="w-full h-40 object-cover rounded mb-2" />
+                    )}
+                    <h3 className="text-lg font-semibold">{venue.venueName}</h3>
+                    <p className="text-gray-600 text-sm mb-2">{venue.location}</p>
+                    <p className="text-gray-600 text-sm mb-2">
+                      Organization: {venue.organization?.organizationName || 'N/A'}
+                    </p>
+                    <p className="text-gray-500 text-xs mb-2">{venue.description?.slice(0, 80)}...</p>
+                    <a
+                      href={`/venues/${venue.venueId}`}
+                      className="mt-2 text-blue-600 hover:underline text-sm"
+                    >
+                      View Details
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">No venues available</div>
+            )}
             <div className="text-center mt-12">
               <Button href="/venues" variant="outline">
-                View All Venue
+                View All Venues
               </Button>
             </div>
           </Container>
