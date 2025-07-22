@@ -16,8 +16,13 @@ import {
   ExternalLink,
   Star,
   CalendarIcon,
-  Clock,
-  DollarSign,
+  Projector,
+  Volume2,
+  Wifi,
+  Wind,
+  Shield,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,9 +31,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/contexts/auth-context"
-import ApiService from "@/api/apiConfig"
-import { notFound } from "next/navigation"
+import { Header } from "@/components/header"
 
 // Inline Badge component
 const Badge = ({
@@ -51,11 +54,6 @@ const Badge = ({
 
   return <div className={cn(baseClasses, variantClasses[variant], className)}>{children}</div>
 }
-
-// Inline Separator component
-const Separator = ({ className }: { className?: string }) => (
-  <div className={cn("shrink-0 bg-gray-200 h-[1px] w-full", className)} />
-)
 
 interface Amenity {
   id: string
@@ -119,16 +117,18 @@ interface Comment {
 }
 
 export default function VenuePage({ params }: { params: Promise<{ id: string }> }) {
-  // Use React.use() to unwrap the params Promise
   const { id } = use(params)
-  const router = useRouter()
-  const { isLoggedIn } = useAuth()
+
   const [venue, setVenue] = useState<VenueData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("Details")
+  const router = useRouter()
+  // Start with Availability tab as default
+  const [activeTab, setActiveTab] = useState("Availability")
   const [selectedRange, setSelectedRange] = useState<DateRange | undefined>(undefined)
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
+  // Mock authentication state - you can replace this with real auth
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   // Comment form state
   const [newComment, setNewComment] = useState({
@@ -138,7 +138,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     rating: 0,
   })
 
-  // Mock comments data
+  // Mock comments data matching the images
   const [userComments, setUserComments] = useState<Comment[]>([
     {
       id: "1",
@@ -170,7 +170,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     const fetchVenue = async () => {
       try {
         setLoading(true)
-        // Using the provided API endpoint
         const response = await fetch(`https://giraffespacev2.onrender.com/api/v1/venue/public/${id}`)
         const data = await response.json()
 
@@ -225,8 +224,33 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     })
   }
 
+  const handleBookingClick = () => {
+    if (!isLoggedIn) {
+      // Redirect to login page
+      router.push("/login")
+    } else {
+      // Navigate directly to booking form with venue ID and selected dates
+      const searchParams = new URLSearchParams({
+        venueId: venue?.venueId || "",
+        ...(selectedRange?.from && { checkIn: selectedRange.from.toISOString() }),
+        ...(selectedRange?.to && { checkOut: selectedRange.to.toISOString() }),
+      })
+      router.push(`/booking?${searchParams.toString()}`)
+    }
+  }
+
   const averageRating =
     userComments.length > 0 ? userComments.reduce((sum, comment) => sum + comment.rating, 0) / userComments.length : 0
+
+  // Get amenity icon
+  const getAmenityIcon = (name: string) => {
+    const iconName = name.toLowerCase()
+    if (iconName.includes("projector")) return <Projector className="h-5 w-5 text-blue-600" />
+    if (iconName.includes("sound") || iconName.includes("audio")) return <Volume2 className="h-5 w-5 text-green-600" />
+    if (iconName.includes("wifi") || iconName.includes("internet")) return <Wifi className="h-5 w-5 text-purple-600" />
+    if (iconName.includes("air") || iconName.includes("conditioning")) return <Wind className="h-5 w-5 text-cyan-600" />
+    return <CheckCircle className="h-5 w-5 text-gray-600" />
+  }
 
   if (loading) {
     return (
@@ -257,9 +281,11 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Back Button */}
+      <Header activePage="venues" />
+
+      {/* Back Button Bar */}
       <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-4 py-3">
           <Link href="/venues" className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Venues
@@ -329,9 +355,8 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
             {/* Venue Title and Basic Info */}
             <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
               <h1 className="text-3xl font-bold mb-4 text-gray-900">{venue.venueName}</h1>
-              <p className="text-gray-600 mb-6 leading-relaxed">{venue.description}</p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="flex items-start space-x-3">
                   <MapPin className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
                   <div>
@@ -364,7 +389,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     <p className="font-medium text-gray-900">
                       {venue.manager.firstName} {venue.manager.lastName}
                     </p>
-                    <p className="text-sm text-gray-500">{venue.manager.email}</p>
                   </div>
                 </div>
 
@@ -406,25 +430,160 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
               </div>
 
               <div className="p-6">
-                {activeTab === "Details" ? (
+                {activeTab === "Availability" ? (
+                  <div>
+                    <div className="mb-6">
+                      <h3 className="text-lg font-semibold mb-2 text-gray-900">Venue Availability</h3>
+                      <p className="text-gray-600">Choose your check-in and check-out dates to book this venue</p>
+                    </div>
+
+                    {/* Custom Calendar with enhanced styling */}
+                    <div className="mb-6">
+                      <Calendar
+                        mode="range"
+                        selected={selectedRange}
+                        onSelect={setSelectedRange}
+                        numberOfMonths={2}
+                        disabled={(date) => date < new Date()}
+                        className="rounded-lg border"
+                        classNames={{
+                          day_today: "bg-blue-500 text-white rounded-full font-bold",
+                          day_selected: "bg-black text-white rounded-full font-bold hover:bg-black hover:text-white",
+                          day_range_middle: "bg-gray-100 text-black rounded-full hover:bg-gray-200 hover:text-black",
+                          day_range_start: "bg-black text-white rounded-full font-bold hover:bg-black hover:text-white",
+                          day_range_end: "bg-black text-white rounded-full font-bold hover:bg-black hover:text-white",
+                          day: "h-9 w-9 p-0 font-normal rounded-full aria-selected:opacity-100 hover:bg-gray-100 hover:rounded-full",
+                          day_disabled: "text-gray-400 hover:bg-transparent hover:text-gray-400 rounded-full",
+                          cell: "h-9 w-9 text-center text-sm relative p-0 hover:bg-gray-100 hover:rounded-full focus-within:relative focus-within:z-20",
+                        }}
+                      />
+                    </div>
+
+                    <div className="mt-6">
+                      <div className="flex items-center gap-4 text-sm">
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-blue-100 rounded-full mr-2"></div>
+                          <span>Available</span>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-red-100 rounded-full mr-2"></div>
+                          <span>Fully Booked</span>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="w-3 h-3 bg-gray-100 rounded-full mr-2"></div>
+                          <span>Past Dates</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                   <div className="space-y-8">
+                    {/* About This Venue */}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">About This Venue</h2>
+                      <p className="text-gray-600 leading-relaxed">{venue.description}</p>
+                    </div>
+
+                    {/* Venue Location with Map */}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Venue Location</h2>
+                      <div className="rounded-lg overflow-hidden border border-gray-200 mb-4 p-6 bg-gray-50">
+                        <div className="flex flex-col items-center justify-center space-y-4">
+                          <MapPin className="h-8 w-8 text-gray-400" />
+                          <p className="text-center text-gray-600">{venue.venueLocation}</p>
+                          <a
+                            href={venue.googleMapsLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                          >
+                            <MapPin className="h-4 w-4 mr-2" />
+                            View on Google Maps
+                          </a>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <MapPin className="h-4 w-4" />
+                          <span>{venue.venueLocation}</span>
+                        </div>
+                        <a
+                          href={venue.googleMapsLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700 transition-colors"
+                        >
+                          Get Directions →
+                        </a>
+                      </div>
+                    </div>
+
                     {/* Amenities */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Amenities</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {venue.amenities.map((amenity) => (
-                          <div
-                            key={amenity.id}
-                            className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow"
-                          >
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <h3 className="font-medium text-gray-900">{amenity.resourceName}</h3>
-                                <p className="text-sm text-gray-600 mt-1">{amenity.amenitiesDescription}</p>
+                          <div key={amenity.id} className="flex items-center space-x-3 p-3 border rounded-lg">
+                            {getAmenityIcon(amenity.resourceName)}
+                            <div>
+                              <p className="font-medium text-sm text-gray-900">{amenity.resourceName}</p>
+                              <p className="text-xs text-gray-500">Qty: {amenity.quantity}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {/* Add common amenities if not in API */}
+                        <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                          <Wifi className="h-5 w-5 text-purple-600" />
+                          <div>
+                            <p className="font-medium text-sm text-gray-900">Wi-Fi</p>
+                            <p className="text-xs text-gray-500">Free</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3 p-3 border rounded-lg">
+                          <Wind className="h-5 w-5 text-cyan-600" />
+                          <div>
+                            <p className="font-medium text-sm text-gray-900">Air Conditioning</p>
+                            <p className="text-xs text-gray-500">Available</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Booking Conditions & Policies */}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Booking Conditions & Policies</h2>
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-medium text-gray-900 mb-2">Cancellation Policy</h3>
+                          <p className="text-sm text-gray-600 mb-2">Up to 48 hours before the event date</p>
+                          <p className="text-sm text-gray-600">
+                            <strong>Late Cancellation:</strong> 50% fee for cancellations within 48 hours
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            <strong>No-Show:</strong> Full charge applies for no-shows
+                          </p>
+                        </div>
+
+                        {venue.bookingConditions.map((condition) => (
+                          <div key={condition.id} className="border-t pt-4">
+                            <h3 className="font-medium text-gray-900 mb-2">{condition.descriptionCondition}</h3>
+                            <p className="text-sm text-gray-600 mb-2">{condition.notaBene}</p>
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <p className="text-gray-500">Deposit</p>
+                                <p className="font-medium">
+                                  {condition.depositRequiredPercent}% of total booking required upon confirmation
+                                </p>
                               </div>
-                              <div className="text-right ml-4">
-                                <p className="text-sm font-medium text-gray-900">Qty: {amenity.quantity}</p>
-                                <p className="text-sm text-green-600 font-medium">${amenity.costPerUnit}</p>
+                              <div>
+                                <p className="text-gray-500">Final Payment</p>
+                                <p className="font-medium">
+                                  Remaining balance due {condition.paymentComplementTimeBeforeEvent} days before event
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-gray-500">Payment Methods</p>
+                                <p className="font-medium">Bank transfer, mobile money, or cash</p>
                               </div>
                             </div>
                           </div>
@@ -432,96 +591,145 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                       </div>
                     </div>
 
-                    {/* Booking Conditions */}
+                    {/* Venue Rules & Regulations */}
                     <div>
-                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Booking Conditions</h2>
-                      {venue.bookingConditions.map((condition) => (
-                        <div
-                          key={condition.id}
-                          className="border border-gray-200 rounded-lg p-6 mb-4 hover:shadow-sm transition-shadow"
-                        >
-                          <h3 className="font-medium mb-2 text-gray-900">{condition.descriptionCondition}</h3>
-                          <p className="text-gray-600 mb-4">{condition.notaBene}</p>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="flex items-center space-x-2">
-                              <DollarSign className="h-4 w-4 text-gray-400" />
-                              <div>
-                                <p className="text-sm text-gray-500">Deposit Required</p>
-                                <p className="font-medium text-gray-900">{condition.depositRequiredPercent}%</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <CalendarIcon className="h-4 w-4 text-gray-400" />
-                              <div>
-                                <p className="text-sm text-gray-500">Payment Due</p>
-                                <p className="font-medium text-gray-900">
-                                  {condition.paymentComplementTimeBeforeEvent} days before
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Clock className="h-4 w-4 text-gray-400" />
-                              <div>
-                                <p className="text-sm text-gray-500">Transition Time</p>
-                                <p className="font-medium text-gray-900">{condition.transitionTime} minutes</p>
-                              </div>
-                            </div>
-                          </div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Venue Rules & Regulations</h2>
+                      <div className="space-y-3">
+                        <div>
+                          <h3 className="font-medium text-gray-900 mb-2">General Rules</h3>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>• No smoking inside the venue premises</li>
+                            <li>• Maximum capacity must not be exceeded</li>
+                            <li>• Noise level should be kept within acceptable limits</li>
+                            <li>• External catering allowed with prior approval</li>
+                            <li>• Decorations must not damage venue property</li>
+                            <li>• All guests must register at reception</li>
+                          </ul>
                         </div>
-                      ))}
+                        <div>
+                          <h3 className="font-medium text-gray-900 mb-2">Safety & Security</h3>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>• Fire safety equipment must not be obstructed</li>
+                            <li>• Emergency exits must remain accessible</li>
+                            <li>• Security deposit may be required for large events</li>
+                            <li>• Venue staff must be notified of any incidents</li>
+                          </ul>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Organization Info */}
+                    {/* Insurance & Liability */}
                     <div>
-                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Managed By</h2>
-                      <div className="border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow">
-                        <h3 className="font-medium text-lg text-gray-900">{venue.organization.organizationName}</h3>
-                        {venue.organization.description && (
-                          <p className="text-gray-600 mt-2">{venue.organization.description}</p>
-                        )}
-                        <div className="mt-4 space-y-2">
-                          <p className="text-sm">
-                            <span className="font-medium text-gray-900">Email:</span>
-                            <span className="text-gray-600 ml-1">{venue.organization.contactEmail}</span>
-                          </p>
-                          <p className="text-sm">
-                            <span className="font-medium text-gray-900">Phone:</span>
-                            <span className="text-gray-600 ml-1">{venue.organization.contactPhone}</span>
-                          </p>
-                          <p className="text-sm">
-                            <span className="font-medium text-gray-900">Address:</span>
-                            <span className="text-gray-600 ml-1">{venue.organization.address}</span>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Insurance & Liability</h2>
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <div className="flex items-start space-x-2">
+                          <Shield className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                          <div className="text-sm">
+                            <p className="font-medium text-yellow-800 mb-2">Event Liability Insurance</p>
+                            <p className="text-yellow-700 mb-2">Strongly recommended for all bookings</p>
+                            <ul className="text-yellow-700 space-y-1">
+                              <li>• Venue insurance: General venue damage up to $50,000</li>
+                              <li>• Personal Property: Venue not responsible for personal items</li>
+                              <li>• Third-Party Vendors: Must provide their own insurance certificates</li>
+                              <li>• Additional Services: Available at additional cost</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Services */}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Additional Services</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="border rounded-lg p-4">
+                          <h3 className="font-medium text-gray-900 mb-2">Setup Services</h3>
+                          <p className="text-sm text-gray-600 mb-2">Available at additional cost</p>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>• Table and chair arrangement</li>
+                            <li>• Audio/visual equipment setup</li>
+                            <li>• Decoration assistance</li>
+                          </ul>
+                        </div>
+                        <div className="border rounded-lg p-4">
+                          <h3 className="font-medium text-gray-900 mb-2">Cleaning Services</h3>
+                          <p className="text-sm text-gray-600 mb-2">Post-event cleaning included</p>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>• Basic cleaning after events</li>
+                            <li>• Deep cleaning available</li>
+                            <li>• Waste disposal included</li>
+                          </ul>
+                        </div>
+                        <div className="border rounded-lg p-4">
+                          <h3 className="font-medium text-gray-900 mb-2">Technical Support</h3>
+                          <p className="text-sm text-gray-600 mb-2">On-site technical support available</p>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>• Equipment troubleshooting</li>
+                            <li>• Technical assistance during events</li>
+                            <li>• Emergency support available</li>
+                          </ul>
+                        </div>
+                        <div className="border rounded-lg p-4">
+                          <h3 className="font-medium text-gray-900 mb-2">Parking</h3>
+                          <p className="text-sm text-gray-600 mb-2">Free parking available for up to 50 vehicles</p>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>• Secure parking area</li>
+                            <li>• Valet parking on request</li>
+                            <li>• Accessible parking spaces</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Important Notice */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-start space-x-2">
+                        <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-sm text-blue-800">
+                          <p className="font-medium mb-2">Important Notice</p>
+                          <p>
+                            By booking this venue, you agree to all terms and conditions outlined above. Please read
+                            carefully and contact us if you have any questions about our policies.
                           </p>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <div>
-                    <div className="mb-6">
-                      <h3 className="text-lg font-semibold mb-2 text-gray-900">Select Your Dates</h3>
-                      <p className="text-gray-600">Choose your check-in and check-out dates to book this venue</p>
-                    </div>
-                    <Calendar
-                      mode="range"
-                      selected={selectedRange}
-                      onSelect={setSelectedRange}
-                      numberOfMonths={2}
-                      disabled={(date) => date < new Date()}
-                      className="rounded-lg border"
-                    />
-                    <div className="mt-6 flex items-center gap-6 text-sm">
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-green-200 rounded-sm mr-2"></div>
-                        <span className="text-gray-600">Available</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-red-200 rounded-sm mr-2"></div>
-                        <span className="text-gray-600">Fully Booked</span>
-                      </div>
-                      <div className="flex items-center">
-                        <div className="w-3 h-3 bg-gray-200 rounded-sm mr-2"></div>
-                        <span className="text-gray-600">Past Dates</span>
+
+                    {/* Contact Information */}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Contact Information</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <h3 className="font-medium text-gray-900 mb-2">Venue Manager</h3>
+                          <div className="space-y-2 text-sm">
+                            <p>
+                              <strong>Name:</strong> {venue.manager.firstName} {venue.manager.lastName}
+                            </p>
+                            <p>
+                              <strong>Email:</strong> {venue.manager.email}
+                            </p>
+                            <p>
+                              <strong>Phone:</strong> {venue.manager.phoneNumber}
+                            </p>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="font-medium text-gray-900 mb-2">Organization</h3>
+                          <div className="space-y-2 text-sm">
+                            <p>
+                              <strong>Name:</strong> {venue.organization.organizationName}
+                            </p>
+                            <p>
+                              <strong>Email:</strong> {venue.organization.contactEmail}
+                            </p>
+                            <p>
+                              <strong>Phone:</strong> {venue.organization.contactPhone}
+                            </p>
+                            <p>
+                              <strong>Address:</strong> {venue.organization.address}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -545,36 +753,28 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                   <div>
                     <p className="text-sm text-gray-500 mb-3 font-medium">Selected Dates</p>
                     <div className="space-y-2">
-                      <div className="p-3 bg-gray-50 rounded-md">
-                        <p className="text-sm font-medium text-gray-900">
-                          Check-in: {selectedRange?.from ? selectedRange.from.toLocaleDateString() : "Not selected"}
+                      <div>
+                        <p className="text-sm text-gray-500">Check-in</p>
+                        <p className="font-medium">
+                          {selectedRange?.from ? selectedRange.from.toLocaleDateString() : "Not selected"}
                         </p>
                       </div>
-                      <div className="p-3 bg-gray-50 rounded-md">
-                        <p className="text-sm font-medium text-gray-900">
-                          Check-out: {selectedRange?.to ? selectedRange.to.toLocaleDateString() : "Not selected"}
+                      <div>
+                        <p className="text-sm text-gray-500">Check-out</p>
+                        <p className="font-medium">
+                          {selectedRange?.to ? selectedRange.to.toLocaleDateString() : "Not selected"}
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <Button
-                    onClick={() => {
-                      if (!isLoggedIn) {
-                        router.push("/login")
-                      } else if (selectedRange?.from && selectedRange?.to) {
-                        router.push(`/venues/book?venueId=${venue.venueId}`)
-                      }
-                    }}
-                    className="w-full"
-                    disabled={!selectedRange?.from || !selectedRange?.to}
-                  >
+                  <Button onClick={handleBookingClick} className="w-full">
                     {isLoggedIn ? "Book Now" : "Book Now - Continue to Login"}
                   </Button>
 
                   <p className="text-xs text-gray-500 text-center leading-relaxed">
-                    By clicking above button, you'll be redirected to login or make an account if you don't have an
-                    account.
+                    By clicking above button, you'll be redirected to{" "}
+                    {isLoggedIn ? "the booking form" : "login or make an account if you don't have an account"}.
                   </p>
                 </CardContent>
               </Card>
@@ -597,8 +797,8 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                   <div className="space-y-4 mb-6 max-h-60 overflow-y-auto">
                     {userComments.length > 0 ? (
                       userComments.map((comment) => (
-                        <div key={comment.id} className="border-b border-gray-100 pb-4 last:border-b-0">
-                          <div className="flex items-center justify-between mb-2">
+                        <div key={comment.id} className="space-y-2">
+                          <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium text-sm text-gray-900">{comment.userName}</p>
                               <p className="text-xs text-gray-500">{comment.userEmail}</p>
@@ -609,19 +809,14 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                               ))}
                             </div>
                           </div>
-                          <p className="text-sm text-gray-600 leading-relaxed">{comment.content}</p>
-                          <p className="text-xs text-gray-400 mt-1">{comment.date}</p>
+                          <p className="text-sm text-gray-600">{comment.content}</p>
+                          <hr className="border-gray-100" />
                         </div>
                       ))
                     ) : (
-                      <div className="text-center text-gray-500 py-8">
-                        <Star className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                        <p>No ratings yet</p>
-                      </div>
+                      <div className="text-center text-gray-500 py-4">No ratings yet</div>
                     )}
                   </div>
-
-                  <Separator className="my-4" />
 
                   {/* Comment Form */}
                   <div>
@@ -639,7 +834,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                                 newComment.rating >= star ? "text-yellow-400" : "text-gray-300 hover:text-yellow-400"
                               }`}
                             >
-                              <Star className={`h-6 w-6 ${newComment.rating >= star ? "fill-current" : ""}`} />
+                              ★
                             </button>
                           ))}
                         </div>
@@ -689,6 +884,19 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
       </main>
+
+      {/* Fixed Book Now Button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button 
+          onClick={handleBookingClick} 
+          className="px-8 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-lg text-base font-medium"
+        >
+          {isLoggedIn ? "Book Now" : "Book Now"}
+        </Button>
+      </div>
+
+      {/* Add padding-bottom to account for fixed button */}
+      <div className="pb-20"></div>
     </div>
   )
 }

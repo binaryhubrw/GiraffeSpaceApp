@@ -9,6 +9,7 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/button"
 import { useSearchParams } from 'next/navigation'
 import ApiService from "@/api/apiConfig"
+import { useAuth } from "@/contexts/auth-context"
 
 interface Amenity {
   id: string;
@@ -45,6 +46,7 @@ interface VenueData {
 export default function VenuesPage() {
   const searchParams = useSearchParams()
   const organizationId = searchParams.get('organizationId')
+  const { isLoggedIn } = useAuth()
   
   const [isCapacityOpen, setIsCapacityOpen] = useState(false)
   const [selectedCapacity, setSelectedCapacity] = useState<string>("Any capacity")
@@ -67,28 +69,44 @@ export default function VenuesPage() {
     const fetchVenues = async () => {
       try {
         setLoading(true)
-        let response;
+        let data;
+        
         if (organizationId) {
-          response = await ApiService.getVenueByOrganizationId(organizationId)
+          if (!isLoggedIn) {
+            setError('Please log in to view organization venues')
+            setVenues([])
+            return
+          }
+          
+          const response = await ApiService.getVenueByOrganizationId(organizationId)
+          if (response.success) {
+            setVenues(response.data || [])
+          } else {
+            setError('Failed to fetch organization venues')
+          }
         } else {
-          response = await fetch('https://giraffespacev2.onrender.com/api/v1/venue/public-venues/list')
-          const data = await response.json()
+          const response = await fetch('https://giraffespacev2.onrender.com/api/v1/venue/public-venues/list')
+          data = await response.json()
           if (data.success) {
             setVenues(data.data || [])
           } else {
             setError('Failed to fetch venues')
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching venues:', error)
-        setError('Failed to fetch venues')
+        if (error?.response?.status === 401) {
+          setError('Please log in to view organization venues')
+        } else {
+          setError('Failed to fetch venues')
+        }
       } finally {
         setLoading(false)
       }
     }
 
     fetchVenues()
-  }, [organizationId])
+  }, [organizationId, isLoggedIn])
 
   const capacityOptions = [
     "Any capacity",
@@ -248,7 +266,14 @@ export default function VenuesPage() {
             </div>
           ) : error ? (
             <div className="text-center py-12">
-              <p className="text-red-600">{error}</p>
+              <p className="text-red-600 mb-4">{error}</p>
+              {error.includes('Please log in') && (
+                <Link href="/login" className="inline-block">
+                  <Button>
+                    Log In to View Venues
+                  </Button>
+                </Link>
+              )}
             </div>
           ) : filteredVenues.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
