@@ -156,7 +156,7 @@ export default function BookingRequestsPage() {
     <div className="min-h-screen flex">
       <Sidebar />
 
-      <main className="max-w-8xl flex-1 bg-white">
+      <main className="max-w-8xl flex-1 ">
         <div className="p-8">
           <div className="mb-6">
             <h1 className="text-2xl font-bold">Booking Requests</h1>
@@ -275,7 +275,7 @@ export default function BookingRequestsPage() {
           </div>
 
           {/* Bookings Table */}
-          <div className="border rounded-lg overflow-hidden">
+          <div className="border rounded-lg overflow-hidden bg-white">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>

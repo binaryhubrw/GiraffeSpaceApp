@@ -518,7 +518,7 @@ static async removeVenueFromOrganization(
   static async createVenue(venueData: any): Promise<any> {
     try {
       const response = await axios.post(
-        `${this.BASE_URL}/venue/add-with-resources`,
+        `${this.BASE_URL}/venue/add`,
         venueData,
         {
           headers: this.getHeader(venueData),
@@ -565,7 +565,7 @@ static async removeVenueFromOrganization(
   /** get venue by managerId*/
   static async getVenueByManagerId(managerId: string): Promise<any> {
     try {
-      const response = await axios.get(`${this.BASE_URL}/venue/manager-venues/${managerId}`, {
+      const response = await axios.get(`${this.BASE_URL}/venue/managers/${managerId}/venues`, {
         headers: this.getHeader(),
         withCredentials: true,
       });

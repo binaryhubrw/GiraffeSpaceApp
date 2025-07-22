@@ -17,7 +17,7 @@ export default function DashboardPage() {
   }, [isLoggedIn, router])
 
   return (
-    <main className="flex-1  bg-white">
+    <main className="flex-1  ">
       <div className="p-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold">Dashboard</h1>
@@ -32,8 +32,8 @@ export default function DashboardPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="border rounded-lg p-4">
-            <div className="flex justify-between items-start mb-2">
+          <div className="border rounded-lg p-4 bg-white">
+            <div className="flex justify-between items-start mb-2 ">
               <h2 className="text-gray-600 text-sm">Total Venues</h2>
               <Building className="h-5 w-5 text-gray-400" />
             </div>
@@ -43,7 +43,7 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-gray-600 text-sm">Total Bookings</h2>
               <Calendar className="h-5 w-5 text-gray-400" />
@@ -54,7 +54,7 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-gray-600 text-sm">Pending Approvals</h2>
               <Clock className="h-5 w-5 text-gray-400" />
@@ -65,7 +65,7 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-gray-600 text-sm">Total Revenue</h2>
               <DollarSign className="h-5 w-5 text-gray-400" />
@@ -76,7 +76,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent Booking Requests */}
-        <div className="border rounded-lg p-6">
+        <div className="border rounded-lg p-6 bg-white shadow-sm">
           <h2 className="text-xl font-bold mb-2">Recent Approval Requests</h2>
           <p className="text-gray-600 mb-6">You have 3 pending Approval requests that need admin approval.</p>
 

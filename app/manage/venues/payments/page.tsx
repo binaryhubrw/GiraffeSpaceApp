@@ -174,7 +174,7 @@ export default function PaymentsPage() {
   }
 
   return (
-    <main className="flex-1 bg-white">
+    <main className="flex-1">
       <div className="p-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold">Payments Management</h1>
@@ -189,7 +189,7 @@ export default function PaymentsPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-gray-600 text-sm">Total Revenue</h2>
               <DollarSign className="h-5 w-5 text-gray-400" />
@@ -198,7 +198,7 @@ export default function PaymentsPage() {
             <p className="text-xs text-green-600">+15% from last month</p>
           </div>
 
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-gray-600 text-sm">Total Payments</h2>
               <CreditCard className="h-5 w-5 text-gray-400" />
@@ -207,7 +207,7 @@ export default function PaymentsPage() {
             <p className="text-xs text-gray-500">This month</p>
           </div>
 
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-gray-600 text-sm">Pending Payments</h2>
               <Clock className="h-5 w-5 text-gray-400" />
@@ -216,7 +216,7 @@ export default function PaymentsPage() {
             <p className="text-xs text-yellow-600">Awaiting processing</p>
           </div>
 
-          <div className="border rounded-lg p-4">
+          <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-gray-600 text-sm">Average Payment</h2>
               <TrendingUp className="h-5 w-5 text-gray-400" />
@@ -227,7 +227,7 @@ export default function PaymentsPage() {
         </div>
 
         {/* Payments Table */}
-        <div className="border rounded-lg p-6">
+        <div className="border rounded-lg p-6 bg-white">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">Payment History</h2>
 
