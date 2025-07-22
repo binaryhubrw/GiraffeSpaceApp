@@ -35,8 +35,10 @@ export default function Home() {
         setLoading(true)
         const response = await ApiService.getAllVenues()
         if (response.success) {
-          // Get first 3 available venues
-          const venues = response.data.filter((venue: any) => venue.isAvailable).slice(0, 3)
+          // Get first 3 approved venues
+          const venues = response.data
+            .filter((venue: any) => venue.status === "APPROVED")
+            .slice(0, 3)
           setAvailableVenues(venues)
         } else {
           setError('Failed to fetch venues')
@@ -148,22 +150,53 @@ export default function Home() {
             ) : availableVenues.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {availableVenues.map((venue) => (
-                  <div key={venue.venueId} className="bg-white rounded-lg shadow p-4 flex flex-col items-center">
-                    {venue.imageSrc && (
-                      <img src={venue.imageSrc} alt={venue.venueName} className="w-full h-40 object-cover rounded mb-2" />
-                    )}
-                    <h3 className="text-lg font-semibold">{venue.venueName}</h3>
-                    <p className="text-gray-600 text-sm mb-2">{venue.location}</p>
-                    <p className="text-gray-600 text-sm mb-2">
-                      Organization: {venue.organization?.organizationName || 'N/A'}
-                    </p>
-                    <p className="text-gray-500 text-xs mb-2">{venue.description?.slice(0, 80)}...</p>
-                    <a
-                      href={`/venues/${venue.venueId}`}
-                      className="mt-2 text-blue-600 hover:underline text-sm"
-                    >
-                      View Details
-                    </a>
+                  <div key={venue.venueId} className="bg-white rounded-lg shadow overflow-hidden">
+                    <div className="relative h-48">
+                      <img 
+                        src={venue.mainPhotoUrl || "/placeholder.svg"} 
+                        alt={venue.venueName} 
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute top-2 right-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {venue.bookingType}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">{venue.venueName}</h3>
+                        <span className="text-sm font-medium text-gray-600">
+                          {venue.capacity} people
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-start space-x-2">
+                          <MapPin className="h-4 w-4 text-gray-400 mt-0.5" />
+                          <p className="text-sm text-gray-600">{venue.venueLocation}</p>
+                        </div>
+                        <div className="flex items-start space-x-2">
+                          <Users className="h-4 w-4 text-gray-400 mt-0.5" />
+                          <p className="text-sm text-gray-600">
+                            {venue.organization?.organizationName || 'N/A'}
+                          </p>
+                        </div>
+                        <p className="text-sm text-gray-500 line-clamp-2 mt-2">
+                          {venue.description || 'No description available'}
+                        </p>
+                        <div className="pt-2">
+                          <a
+                            href={`/venues/${venue.venueId}`}
+                            className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500"
+                          >
+                            View Details
+                            <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
