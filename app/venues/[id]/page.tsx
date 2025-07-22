@@ -23,6 +23,8 @@ import {
   Shield,
   AlertCircle,
   CheckCircle,
+  Navigation,
+  Info,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -93,6 +95,7 @@ interface VenueData {
     contactEmail: string
     contactPhone: string
     address: string
+    organizationType?: string // Added for new UI
   }
   manager: {
     userId: string
@@ -170,6 +173,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     const fetchVenue = async () => {
       try {
         setLoading(true)
+        // Using the public venues endpoint
         const response = await fetch(`https://giraffespacev2.onrender.com/api/v1/venue/public/${id}`)
         const data = await response.json()
 
@@ -191,14 +195,14 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
 
   const nextPhoto = () => {
     if (!venue) return
-    const totalPhotos = [venue.mainPhotoUrl, ...venue.photoGallery].length
-    setCurrentPhotoIndex((prev) => (prev + 1) % totalPhotos)
+    const photos = [venue.mainPhotoUrl, ...venue.photoGallery].filter(Boolean)
+    setCurrentPhotoIndex((prev) => (prev + 1) % photos.length)
   }
 
   const prevPhoto = () => {
     if (!venue) return
-    const totalPhotos = [venue.mainPhotoUrl, ...venue.photoGallery].length
-    setCurrentPhotoIndex((prev) => (prev - 1 + totalPhotos) % totalPhotos)
+    const photos = [venue.mainPhotoUrl, ...venue.photoGallery].filter(Boolean)
+    setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length)
   }
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
@@ -300,16 +304,18 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
             {/* Photo Gallery */}
             <div className="relative h-[400px] mb-4 rounded-lg overflow-hidden bg-gray-200">
               <div className="absolute top-4 left-4 z-10">
-                <Badge variant="default">{venue.bookingType}</Badge>
+                <Badge variant="default">{venue?.bookingType}</Badge>
               </div>
-              <Image
-                src={photos[currentPhotoIndex] || "/placeholder.svg?height=400&width=800&text=Venue+Photo"}
-                alt={venue.venueName}
-                fill
-                className="object-cover"
-                priority
-              />
-              {photos.length > 1 && (
+              {venue && (
+                <Image
+                  src={venue.mainPhotoUrl || "/placeholder.svg"}
+                  alt={venue.venueName}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              )}
+              {venue?.photoGallery?.length > 0 && (
                 <>
                   <button
                     onClick={prevPhoto}
@@ -324,7 +330,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     <ChevronRight className="h-6 w-6" />
                   </button>
                   <div className="absolute bottom-4 right-4 bg-black/50 text-white text-sm px-2 py-1 rounded">
-                    {currentPhotoIndex + 1} / {photos.length}
+                    {currentPhotoIndex + 1} / {[venue.mainPhotoUrl, ...venue.photoGallery].length}
                   </div>
                 </>
               )}
@@ -337,9 +343,8 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                   <button
                     key={index}
                     onClick={() => setCurrentPhotoIndex(index)}
-                    className={`relative w-20 h-14 flex-shrink-0 rounded-md overflow-hidden border-2 transition-colors ${
-                      currentPhotoIndex === index ? "border-blue-500" : "border-transparent hover:border-gray-300"
-                    }`}
+                    className={`relative w-20 h-14 flex-shrink-0 rounded-md overflow-hidden border-2 transition-colors ${currentPhotoIndex === index ? "border-blue-500" : "border-transparent hover:border-gray-300"
+                      }`}
                   >
                     <Image
                       src={photo || "/placeholder.svg?height=56&width=80&text=Photo"}
@@ -354,23 +359,26 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
 
             {/* Venue Title and Basic Info */}
             <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
-              <h1 className="text-3xl font-bold mb-4 text-gray-900">{venue.venueName}</h1>
+              <h1 className="text-3xl font-bold mb-4 text-gray-900">{venue?.venueName}</h1>
+              <p className="text-gray-600 mb-6 leading-relaxed">{venue?.description}</p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex items-start space-x-3">
                   <MapPin className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
                   <div>
                     <p className="text-sm text-gray-500 font-medium">Location</p>
-                    <p className="font-medium text-gray-900">{venue.venueLocation}</p>
-                    <a
-                      href={venue.googleMapsLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center mt-1 transition-colors"
-                    >
-                      View on Google Maps
-                      <ExternalLink className="h-3 w-3 ml-1" />
-                    </a>
+                    <p className="font-medium text-gray-900">{venue?.venueLocation}</p>
+                    {venue?.googleMapsLink && (
+                      <a
+                        href={venue.googleMapsLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:text-blue-700 inline-flex items-center mt-1 transition-colors"
+                      >
+                        View on Google Maps
+                        <ExternalLink className="h-3 w-3 ml-1" />
+                      </a>
+                    )}
                   </div>
                 </div>
 
@@ -378,7 +386,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                   <Users className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
                   <div>
                     <p className="text-sm text-gray-500 font-medium">Capacity</p>
-                    <p className="font-medium text-gray-900">{venue.capacity} people</p>
+                    <p className="font-medium text-gray-900">{venue?.capacity} people</p>
                   </div>
                 </div>
 
@@ -387,8 +395,9 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                   <div>
                     <p className="text-sm text-gray-500 font-medium">Contact Person</p>
                     <p className="font-medium text-gray-900">
-                      {venue.manager.firstName} {venue.manager.lastName}
+                      {venue?.manager.firstName} {venue?.manager.lastName}
                     </p>
+                    <p className="text-sm text-gray-500">{venue?.manager.email}</p>
                   </div>
                 </div>
 
@@ -396,7 +405,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                   <Phone className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
                   <div>
                     <p className="text-sm text-gray-500 font-medium">Phone</p>
-                    <p className="font-medium text-gray-900">{venue.manager.phoneNumber}</p>
+                    <p className="font-medium text-gray-900">{venue?.manager.phoneNumber}</p>
                   </div>
                 </div>
               </div>
@@ -408,21 +417,19 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                 <div className="flex space-x-8">
                   <button
                     onClick={() => setActiveTab("Details")}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === "Details"
+                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "Details"
                         ? "border-blue-600 text-blue-600"
                         : "border-transparent text-gray-500 hover:text-gray-700"
-                    }`}
+                      }`}
                   >
                     Details
                   </button>
                   <button
                     onClick={() => setActiveTab("Availability")}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                      activeTab === "Availability"
+                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "Availability"
                         ? "border-blue-600 text-blue-600"
                         : "border-transparent text-gray-500 hover:text-gray-700"
-                    }`}
+                      }`}
                   >
                     Availability
                   </button>
@@ -430,7 +437,162 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
               </div>
 
               <div className="p-6">
-                {activeTab === "Availability" ? (
+                {activeTab === "Details" ? (
+                  <div className="space-y-8">
+                    {/* About This Venue */}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">About This Venue</h2>
+                      <p className="text-gray-600 leading-relaxed">{venue?.description}</p>
+                    </div>
+
+                    {/* Venue Location */}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Location</h2>
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex flex-col space-y-4">
+                          <div className="flex items-start space-x-3">
+                            <MapPin className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm text-gray-500 font-medium">Address</p>
+                              <p className="font-medium text-gray-900">{venue?.venueLocation}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start space-x-3">
+                            <Navigation className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm text-gray-500 font-medium">Coordinates</p>
+                              <p className="font-medium text-gray-900">
+                                {venue?.latitude}, {venue?.longitude}
+                              </p>
+                            </div>
+                          </div>
+                          <a
+                            href={venue?.googleMapsLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors w-full"
+                          >
+                            <MapPin className="h-4 w-4 mr-2" />
+                            View on Google Maps
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Amenities */}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Amenities</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {venue?.amenities.map((amenity) => (
+                          <div key={amenity.id} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h3 className="font-medium text-gray-900">{amenity.resourceName}</h3>
+                                <p className="text-sm text-gray-600 mt-1">{amenity.amenitiesDescription}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-medium text-gray-900">Qty: {amenity.quantity}</p>
+                                <p className="text-sm text-green-600 font-medium">${amenity.costPerUnit}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Booking Conditions */}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Booking Conditions</h2>
+                      <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
+                        <div className="flex items-start space-x-3">
+                          <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm text-blue-900 font-medium">Important Booking Information</p>
+                            <p className="text-sm text-blue-800 mt-1">
+                              To secure your booking, a deposit of <span className="font-semibold">
+                                {venue?.bookingConditions[0]?.depositRequiredPercent ?? "N/A"}%
+                              </span> is required. The remaining payment is due{" "}
+                              <span className="font-semibold">
+                                {venue?.bookingConditions[0]?.paymentComplementTimeBeforeEvent ?? "N/A"}{" "}
+                                {venue?.bookingType === "DAILY" ? "days" : "hours"}
+                              </span>{" "}
+                              before the event. Please review all conditions carefully before proceeding.
+                            </p>
+
+                          </div>
+                        </div>
+                      </div>
+                      {venue?.bookingConditions.map((condition) => (
+                        <div key={condition.id} className="border border-gray-200 rounded-lg p-4 mb-4">
+                          <h3 className="font-medium text-gray-900 mb-2">{condition.descriptionCondition}</h3>
+                          <p className="text-gray-600 mb-4">{condition.notaBene}</p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <p className="text-gray-500">Deposit Required</p>
+                              <p className="font-medium text-gray-900">{condition.depositRequiredPercent}%</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Payment Due</p>
+                              <p className="font-medium text-gray-900">
+                                {condition.paymentComplementTimeBeforeEvent} {venue?.bookingType === 'DAILY' ? 'days' : 'hours'} before
+                              </p>
+                            </div>
+                            {/* <div>
+                              <p className="text-gray-500">Transition Time</p>
+                              <p className="font-medium text-gray-900">{condition.transitionTime} minutes</p>
+                            </div> */}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Organization Information */}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Organization Information</h2>
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <h3 className="font-medium text-lg text-gray-900 mb-2">{venue?.organization.organizationName}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500">Contact Email</p>
+                            <p className="font-medium text-gray-900">{venue?.organization.contactEmail}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Contact Phone</p>
+                            <p className="font-medium text-gray-900">{venue?.organization.contactPhone}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Address</p>
+                            <p className="font-medium text-gray-900">{venue?.organization.address}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Organization Type</p>
+                            <p className="font-medium text-gray-900">{venue?.organization.organizationType}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Manager Information */}
+                    <div>
+                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Venue Manager</h2>
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <h3 className="font-medium text-lg text-gray-900 mb-2">
+                          {venue?.manager.firstName} {venue?.manager.lastName}
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-gray-500">Email</p>
+                            <p className="font-medium text-gray-900">{venue?.manager.email}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Phone</p>
+                            <p className="font-medium text-gray-900">{venue?.manager.phoneNumber}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
                   <div>
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold mb-2 text-gray-900">Venue Availability</h3>
@@ -472,263 +634,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                         <div className="flex items-center">
                           <div className="w-3 h-3 bg-gray-100 rounded-full mr-2"></div>
                           <span>Past Dates</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-8">
-                    {/* About This Venue */}
-                    <div>
-                      <h2 className="text-xl font-semibold mb-4 text-gray-900">About This Venue</h2>
-                      <p className="text-gray-600 leading-relaxed">{venue.description}</p>
-                    </div>
-
-                    {/* Venue Location with Map */}
-                    <div>
-                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Venue Location</h2>
-                      <div className="rounded-lg overflow-hidden border border-gray-200 mb-4 p-6 bg-gray-50">
-                        <div className="flex flex-col items-center justify-center space-y-4">
-                          <MapPin className="h-8 w-8 text-gray-400" />
-                          <p className="text-center text-gray-600">{venue.venueLocation}</p>
-                          <a
-                            href={venue.googleMapsLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                          >
-                            <MapPin className="h-4 w-4 mr-2" />
-                            View on Google Maps
-                          </a>
-                        </div>
-                      </div>
-                      <div className="mt-4 flex items-center justify-between text-sm">
-                        <div className="flex items-center space-x-2 text-gray-600">
-                          <MapPin className="h-4 w-4" />
-                          <span>{venue.venueLocation}</span>
-                        </div>
-                        <a
-                          href={venue.googleMapsLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-700 transition-colors"
-                        >
-                          Get Directions →
-                        </a>
-                      </div>
-                    </div>
-
-                    {/* Amenities */}
-                    <div>
-                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Amenities</h2>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {venue.amenities.map((amenity) => (
-                          <div key={amenity.id} className="flex items-center space-x-3 p-3 border rounded-lg">
-                            {getAmenityIcon(amenity.resourceName)}
-                            <div>
-                              <p className="font-medium text-sm text-gray-900">{amenity.resourceName}</p>
-                              <p className="text-xs text-gray-500">Qty: {amenity.quantity}</p>
-                            </div>
-                          </div>
-                        ))}
-                        {/* Add common amenities if not in API */}
-                        <div className="flex items-center space-x-3 p-3 border rounded-lg">
-                          <Wifi className="h-5 w-5 text-purple-600" />
-                          <div>
-                            <p className="font-medium text-sm text-gray-900">Wi-Fi</p>
-                            <p className="text-xs text-gray-500">Free</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3 p-3 border rounded-lg">
-                          <Wind className="h-5 w-5 text-cyan-600" />
-                          <div>
-                            <p className="font-medium text-sm text-gray-900">Air Conditioning</p>
-                            <p className="text-xs text-gray-500">Available</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Booking Conditions & Policies */}
-                    <div>
-                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Booking Conditions & Policies</h2>
-                      <div className="space-y-4">
-                        <div>
-                          <h3 className="font-medium text-gray-900 mb-2">Cancellation Policy</h3>
-                          <p className="text-sm text-gray-600 mb-2">Up to 48 hours before the event date</p>
-                          <p className="text-sm text-gray-600">
-                            <strong>Late Cancellation:</strong> 50% fee for cancellations within 48 hours
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            <strong>No-Show:</strong> Full charge applies for no-shows
-                          </p>
-                        </div>
-
-                        {venue.bookingConditions.map((condition) => (
-                          <div key={condition.id} className="border-t pt-4">
-                            <h3 className="font-medium text-gray-900 mb-2">{condition.descriptionCondition}</h3>
-                            <p className="text-sm text-gray-600 mb-2">{condition.notaBene}</p>
-                            <div className="grid grid-cols-3 gap-4 text-sm">
-                              <div>
-                                <p className="text-gray-500">Deposit</p>
-                                <p className="font-medium">
-                                  {condition.depositRequiredPercent}% of total booking required upon confirmation
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Final Payment</p>
-                                <p className="font-medium">
-                                  Remaining balance due {condition.paymentComplementTimeBeforeEvent} days before event
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-gray-500">Payment Methods</p>
-                                <p className="font-medium">Bank transfer, mobile money, or cash</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Venue Rules & Regulations */}
-                    <div>
-                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Venue Rules & Regulations</h2>
-                      <div className="space-y-3">
-                        <div>
-                          <h3 className="font-medium text-gray-900 mb-2">General Rules</h3>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            <li>• No smoking inside the venue premises</li>
-                            <li>• Maximum capacity must not be exceeded</li>
-                            <li>• Noise level should be kept within acceptable limits</li>
-                            <li>• External catering allowed with prior approval</li>
-                            <li>• Decorations must not damage venue property</li>
-                            <li>• All guests must register at reception</li>
-                          </ul>
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-gray-900 mb-2">Safety & Security</h3>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            <li>• Fire safety equipment must not be obstructed</li>
-                            <li>• Emergency exits must remain accessible</li>
-                            <li>• Security deposit may be required for large events</li>
-                            <li>• Venue staff must be notified of any incidents</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Insurance & Liability */}
-                    <div>
-                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Insurance & Liability</h2>
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <div className="flex items-start space-x-2">
-                          <Shield className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                          <div className="text-sm">
-                            <p className="font-medium text-yellow-800 mb-2">Event Liability Insurance</p>
-                            <p className="text-yellow-700 mb-2">Strongly recommended for all bookings</p>
-                            <ul className="text-yellow-700 space-y-1">
-                              <li>• Venue insurance: General venue damage up to $50,000</li>
-                              <li>• Personal Property: Venue not responsible for personal items</li>
-                              <li>• Third-Party Vendors: Must provide their own insurance certificates</li>
-                              <li>• Additional Services: Available at additional cost</li>
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Additional Services */}
-                    <div>
-                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Additional Services</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="border rounded-lg p-4">
-                          <h3 className="font-medium text-gray-900 mb-2">Setup Services</h3>
-                          <p className="text-sm text-gray-600 mb-2">Available at additional cost</p>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            <li>• Table and chair arrangement</li>
-                            <li>• Audio/visual equipment setup</li>
-                            <li>• Decoration assistance</li>
-                          </ul>
-                        </div>
-                        <div className="border rounded-lg p-4">
-                          <h3 className="font-medium text-gray-900 mb-2">Cleaning Services</h3>
-                          <p className="text-sm text-gray-600 mb-2">Post-event cleaning included</p>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            <li>• Basic cleaning after events</li>
-                            <li>• Deep cleaning available</li>
-                            <li>• Waste disposal included</li>
-                          </ul>
-                        </div>
-                        <div className="border rounded-lg p-4">
-                          <h3 className="font-medium text-gray-900 mb-2">Technical Support</h3>
-                          <p className="text-sm text-gray-600 mb-2">On-site technical support available</p>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            <li>• Equipment troubleshooting</li>
-                            <li>• Technical assistance during events</li>
-                            <li>• Emergency support available</li>
-                          </ul>
-                        </div>
-                        <div className="border rounded-lg p-4">
-                          <h3 className="font-medium text-gray-900 mb-2">Parking</h3>
-                          <p className="text-sm text-gray-600 mb-2">Free parking available for up to 50 vehicles</p>
-                          <ul className="text-sm text-gray-600 space-y-1">
-                            <li>• Secure parking area</li>
-                            <li>• Valet parking on request</li>
-                            <li>• Accessible parking spaces</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Important Notice */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-start space-x-2">
-                        <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <div className="text-sm text-blue-800">
-                          <p className="font-medium mb-2">Important Notice</p>
-                          <p>
-                            By booking this venue, you agree to all terms and conditions outlined above. Please read
-                            carefully and contact us if you have any questions about our policies.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Contact Information */}
-                    <div>
-                      <h2 className="text-xl font-semibold mb-4 text-gray-900">Contact Information</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <h3 className="font-medium text-gray-900 mb-2">Venue Manager</h3>
-                          <div className="space-y-2 text-sm">
-                            <p>
-                              <strong>Name:</strong> {venue.manager.firstName} {venue.manager.lastName}
-                            </p>
-                            <p>
-                              <strong>Email:</strong> {venue.manager.email}
-                            </p>
-                            <p>
-                              <strong>Phone:</strong> {venue.manager.phoneNumber}
-                            </p>
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-gray-900 mb-2">Organization</h3>
-                          <div className="space-y-2 text-sm">
-                            <p>
-                              <strong>Name:</strong> {venue.organization.organizationName}
-                            </p>
-                            <p>
-                              <strong>Email:</strong> {venue.organization.contactEmail}
-                            </p>
-                            <p>
-                              <strong>Phone:</strong> {venue.organization.contactPhone}
-                            </p>
-                            <p>
-                              <strong>Address:</strong> {venue.organization.address}
-                            </p>
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -830,9 +735,8 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                               key={star}
                               type="button"
                               onClick={() => setNewComment((prev) => ({ ...prev, rating: star }))}
-                              className={`text-2xl transition-colors ${
-                                newComment.rating >= star ? "text-yellow-400" : "text-gray-300 hover:text-yellow-400"
-                              }`}
+                              className={`text-2xl transition-colors ${newComment.rating >= star ? "text-yellow-400" : "text-gray-300 hover:text-yellow-400"
+                                }`}
                             >
                               ★
                             </button>
@@ -887,8 +791,8 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
 
       {/* Fixed Book Now Button */}
       <div className="fixed bottom-6 right-6 z-50">
-        <Button 
-          onClick={handleBookingClick} 
+        <Button
+          onClick={handleBookingClick}
           className="px-8 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-lg text-base font-medium"
         >
           {isLoggedIn ? "Book Now" : "Book Now"}
