@@ -5,7 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
 // Create custom marker icon
-const createCustomIcon = () => {
+const createCustomIcon = (): L.DivIcon => {
   return L.divIcon({
     html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="red" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8">
       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -18,8 +18,12 @@ const createCustomIcon = () => {
   });
 };
 
+interface LocationSelectorProps {
+  onSelect: (latlng: { lat: number; lng: number }) => void;
+}
+
 // Location selector based on map click
-function LocationSelector({ onSelect }: { onSelect: (latlng: { lat: number; lng: number }) => void }) {
+function LocationSelector({ onSelect }: LocationSelectorProps) {
   useMapEvents({
     click(e) {
       onSelect(e.latlng);
@@ -41,6 +45,18 @@ interface MapPickerProps {
   width?: string;
 }
 
+interface LocationInfo {
+  address: string;
+  district: string;
+}
+
+interface SearchResult {
+  place_id: string;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
 export const MapPicker: React.FC<MapPickerProps> = ({ 
   value, 
   onChange, 
@@ -48,11 +64,11 @@ export const MapPicker: React.FC<MapPickerProps> = ({
   width = '100%' 
 }) => {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(value || null);
-  const [locationInfo, setLocationInfo] = useState<{ address: string; district: string } | null>(null);
+  const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const customIcon = createCustomIcon();
 
-  const getLocationInfo = async (lat: number, lng: number) => {
+  const getLocationInfo = async (lat: number, lng: number): Promise<LocationInfo> => {
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
@@ -84,7 +100,7 @@ export const MapPicker: React.FC<MapPickerProps> = ({
     }
   };
 
-  const updateLocation = async (lat: number, lng: number) => {
+  const updateLocation = async (lat: number, lng: number): Promise<void> => {
     const { district, address } = await getLocationInfo(lat, lng);
     const googleMapsLink = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
     
@@ -113,9 +129,9 @@ export const MapPicker: React.FC<MapPickerProps> = ({
         () => console.warn('Location permission denied or failed')
       );
     }
-  }, []);
+  }, [value]);
 
-  const handleUseMyLocation = () => {
+  const handleUseMyLocation = (): void => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
@@ -131,7 +147,7 @@ export const MapPicker: React.FC<MapPickerProps> = ({
     }
   };
 
-  const handleMapClick = async (latlng: { lat: number; lng: number }) => {
+  const handleMapClick = async (latlng: { lat: number; lng: number }): Promise<void> => {
     await updateLocation(latlng.lat, latlng.lng);
   };
 
@@ -152,13 +168,14 @@ export const MapPicker: React.FC<MapPickerProps> = ({
           center={[defaultCenter.lat, defaultCenter.lng]}
           zoom={13}
           style={{ height: '100%', width: '100%' }}
-          whenCreated={(map) => {
+          whenCreated={(map: L.Map) => {
             mapRef.current = map;
           }}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            maxZoom={19}
           />
           <LocationSelector onSelect={handleMapClick} />
           {position && (
