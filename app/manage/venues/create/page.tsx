@@ -1,7 +1,8 @@
 "use client"
 
 import type React from "react"
-import ImageUpload from './uploadImage';
+import MediaUpload from './uploadImage';
+import { MapPicker } from './MapPicker';
 
 import { Footer } from "@/components/footer"
 import { useAuth } from "@/contexts/auth-context"
@@ -10,6 +11,7 @@ import { useEffect, useState } from "react"
 import { ArrowLeft, Upload } from "lucide-react"
 import Link from "next/link"
 import ApiService from "@/api/apiConfig";
+import { toast } from "@/components/ui/use-toast";
 
 export default function CreateVenuePage() {
   const { isLoggedIn, user } = useAuth()
@@ -106,9 +108,30 @@ export default function CreateVenuePage() {
     setResources((prev) => prev.filter((_, i) => i !== idx))
   }
 
+  const handleImageChange = (files: FileList | null) => {
+    if (files && files[0]) {
+      // Create a URL for the selected image
+      const imageUrl = URL.createObjectURL(files[0]);
+      setFormData(prev => ({
+        ...prev,
+        imageSrc: imageUrl
+      }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
+    e.preventDefault();
+
+    if (!formData.organizationId) {
+      toast({
+        title: "Organization Required",
+        description: "Please select an organization for this venue.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSaving(true);
     try {
       const venuePayload = {
         ...formData,
@@ -117,18 +140,33 @@ export default function CreateVenuePage() {
         longitude: parseFloat(formData.longitude) || 0,
         managerId: user?.userId,
         resources,
-        imageSrc: formData.imageSrc, // TODO: handle image upload
+        imageSrc: formData.imageSrc,
+      };
+
+      const response = await ApiService.createVenue(venuePayload);
+      
+      if (response.success) {
+        toast({
+          title: "Venue Created Successfully! 🎉",
+          description: `${formData.venueName} has been added to your venues.`,
+          variant: "default",
+          className: "bg-green-500 text-white",
+        });
+        router.push("/manage/venues/myvenues");
+      } else {
+        throw new Error(response.message || 'Failed to create venue');
       }
-       console.log("Venue created successfully", venuePayload)
-      await ApiService.createVenue(venuePayload)
-     
-      router.push("/manage/venues")
-    } catch (err) {
-      // handle error (show toast, etc)
+    } catch (err: any) {
+      console.error("Error creating venue:", err);
+      toast({
+        title: "Error Creating Venue",
+        description: err.message || "There was a problem creating your venue. Please try again.",
+        variant: "destructive"
+      });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <div className="ml-44 min-h-screen flex flex-col">
@@ -354,7 +392,11 @@ export default function CreateVenuePage() {
                 <h2 className="text-xl font-semibold mb-6">Venue Image & Resources</h2>
                 <div className="mb-8">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Venue Image</label>
-                  <ImageUpload />
+                  <MediaUpload 
+                    onChange={handleImageChange}
+                    accept="image/*"
+                    multiple={false}
+                  />
                   <p className="text-xs text-gray-500 mt-1">
                     Upload a high-quality image of your venue. Recommended size: 1200x600px.
                   </p>
@@ -421,6 +463,36 @@ export default function CreateVenuePage() {
               </div>
             </div>
 
+            {/* Add Map Picker below the form fields */}
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Pick Venue Location
+              </label>
+              <div className="mt-1">
+                <MapPicker
+                  value={formData.latitude && formData.longitude ? 
+                    { lat: parseFloat(formData.latitude), lng: parseFloat(formData.longitude) } : 
+                    undefined
+                  }
+                  onChange={({ lat, lng, address, district, googleMapsLink }) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      latitude: lat.toString(),
+                      longitude: lng.toString(),
+                      location: district, // Store the district as the location
+                      googleMapsLink: googleMapsLink
+                    }));
+                  }}
+                  height="400px"
+                  width="100%"
+                />
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                Click on the map or use the "My Location" button to set the venue's location.
+              </p>
+            </div>
+
+            {/* Submit buttons */}
             <div className="mt-8 flex justify-end gap-4">
               <Link
                 href="/manage/venues"
