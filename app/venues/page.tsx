@@ -6,25 +6,89 @@ import Link from "next/link"
 import { MapPin, Users, ChevronDown, Search, Calendar } from "lucide-react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { venues } from "@/data/venues"
 import { Button } from "@/components/button"
+import { useSearchParams } from 'next/navigation'
+import ApiService from "@/api/apiConfig"
+
+interface Amenity {
+  id: string;
+  resourceName: string;
+  quantity: number;
+  amenitiesDescription: string;
+  costPerUnit: string;
+}
+
+interface Organization {
+  organizationId: string;
+  organizationName: string;
+  description: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  organizationType: string;
+  status: string;
+}
+
+interface VenueData {
+  venueId: string;
+  venueName: string;
+  description: string;
+  capacity: number;
+  venueLocation: string;
+  mainPhotoUrl: string;
+  status: string;
+  bookingType: string;
+  organization: Organization;
+  amenities: Amenity[];
+}
 
 export default function VenuesPage() {
+  const searchParams = useSearchParams()
+  const organizationId = searchParams.get('organizationId')
+  
   const [isCapacityOpen, setIsCapacityOpen] = useState(false)
   const [selectedCapacity, setSelectedCapacity] = useState<string>("Any capacity")
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string>("")
   const [searchTerm, setSearchTerm] = useState("")
   const [isLoaded, setIsLoaded] = useState(false)
+  const [venues, setVenues] = useState<VenueData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Trigger animations after component mounts
     const timer = setTimeout(() => {
       setIsLoaded(true)
     }, 100)
-
     return () => clearTimeout(timer)
   }, [])
+
+  useEffect(() => {
+    const fetchVenues = async () => {
+      try {
+        setLoading(true)
+        let response;
+        if (organizationId) {
+          response = await ApiService.getVenueByOrganizationId(organizationId)
+        } else {
+          response = await fetch('https://giraffespacev2.onrender.com/api/v1/venue/public-venues/list')
+          const data = await response.json()
+          if (data.success) {
+            setVenues(data.data || [])
+          } else {
+            setError('Failed to fetch venues')
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching venues:', error)
+        setError('Failed to fetch venues')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchVenues()
+  }, [organizationId])
 
   const capacityOptions = [
     "Any capacity",
@@ -55,8 +119,8 @@ export default function VenuesPage() {
   const filteredVenues = venues.filter((venue) => {
     const matchesSearch =
       venue.venueName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      venue.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      venue.venueType.toLowerCase().includes(searchTerm.toLowerCase())
+      venue.venueLocation.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      venue.bookingType.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesCapacity = (() => {
       if (selectedCapacity === "Any capacity") return true
@@ -68,7 +132,7 @@ export default function VenuesPage() {
       return true
     })()
 
-    return matchesSearch && matchesCapacity && venue.isAvailable
+    return matchesSearch && matchesCapacity && venue.status === "APPROVED"
   })
 
   return (
@@ -84,7 +148,7 @@ export default function VenuesPage() {
                 isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
               }`}
             >
-              Venues
+              {organizationId ? "Organization Venues" : "All Venues"}
             </h1>
             <p
               className={`text-gray-600 transform transition-all duration-1000 ease-out delay-200 ${
@@ -97,7 +161,7 @@ export default function VenuesPage() {
         </div>
 
         {/* Search and Filters with Animation */}
-        <div className="container mx-auto px-16 max-w-7xl py-8 relative z-20">
+        <div className="container mx-auto px-16 max-w-7xl py-8">
           <div
             className={`flex flex-col md:flex-row gap-4 items-center transform transition-all duration-1000 ease-out delay-400 ${
               isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
@@ -114,72 +178,79 @@ export default function VenuesPage() {
               />
             </div>
 
-            <div className="flex gap-4 w-full md:w-auto">
-              {/* Capacity Dropdown */}
-              <div className="relative z-30">
-                <button
-                  className="flex items-center justify-between gap-2 border rounded-md px-4 py-2 text-gray-700 bg-white min-w-[160px] hover:bg-gray-50 transition-colors duration-200"
-                  onClick={() => setIsCapacityOpen(!isCapacityOpen)}
-                >
-                  <span>{selectedCapacity}</span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${isCapacityOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
+            {/* Capacity Dropdown */}
+            <div className="relative z-30">
+              <button
+                className="flex items-center justify-between gap-2 border rounded-md px-4 py-2 text-gray-700 bg-white min-w-[160px] hover:bg-gray-50 transition-colors duration-200"
+                onClick={() => setIsCapacityOpen(!isCapacityOpen)}
+              >
+                <span>{selectedCapacity}</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-200 ${isCapacityOpen ? "rotate-180" : ""}`}
+                />
+              </button>
 
-                {isCapacityOpen && (
-                  <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
-                    <ul className="py-1">
-                      {capacityOptions.map((option) => (
-                        <li
-                          key={option}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm transition-colors duration-150"
-                          onClick={() => handleCapacitySelect(option)}
-                        >
-                          {option}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* Date Picker */}
-              <div className="relative z-30">
-                <button
-                  className="flex items-center justify-between gap-2 border rounded-md px-4 py-2 text-gray-700 bg-white min-w-[160px] hover:bg-gray-50 transition-colors duration-200"
-                  onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-                >
-                  <Calendar className="h-4 w-4 mr-1" />
-                  <span>{formatDate(selectedDate)}</span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${isDatePickerOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
-
-                {isDatePickerOpen && (
-                  <div className="absolute z-50 mt-1 bg-white border rounded-md shadow-lg p-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <input
-                      type="date"
-                      className="border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-                      value={selectedDate}
-                      onChange={(e) => {
-                        setSelectedDate(e.target.value)
-                        setIsDatePickerOpen(false)
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <Button href="/manage/venues/create" >   Create New Venue </Button>
+              {isCapacityOpen && (
+                <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
+                  <ul className="py-1">
+                    {capacityOptions.map((option) => (
+                      <li
+                        key={option}
+                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm transition-colors duration-150"
+                        onClick={() => handleCapacitySelect(option)}
+                      >
+                        {option}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
+
+            {/* Date Picker */}
+            <div className="relative z-20">
+              <button
+                className="flex items-center justify-between gap-2 border rounded-md px-4 py-2 text-gray-700 bg-white min-w-[160px] hover:bg-gray-50 transition-colors duration-200"
+                onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+              >
+                <Calendar className="h-4 w-4 mr-1" />
+                <span>{formatDate(selectedDate)}</span>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform duration-200 ${isDatePickerOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {isDatePickerOpen && (
+                <div className="absolute z-50 mt-1 bg-white border rounded-md shadow-lg p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <input
+                    type="date"
+                    className="border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                    value={selectedDate}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value)
+                      setIsDatePickerOpen(false)
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <Button href="/manage/venues/create">Create New Venue</Button>
           </div>
         </div>
 
         {/* Venues Grid with Staggered Animation */}
         <div className="container mx-auto px-16 max-w-7xl pb-16 relative z-10">
-          {filteredVenues.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading venues...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-12">
+              <p className="text-red-600">{error}</p>
+            </div>
+          ) : filteredVenues.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredVenues.map((venue, index) => (
                 <div
@@ -193,11 +264,14 @@ export default function VenuesPage() {
                 >
                   <div className="h-48 relative overflow-hidden">
                     <Image
-                      src={venue.imageSrc || "/placeholder.svg"}
+                      src={venue.mainPhotoUrl || "/placeholder.svg"}
                       alt={venue.venueName}
                       fill
                       className="object-cover transition-transform duration-300 hover:scale-105"
                     />
+                    <span className="absolute top-2 right-2 px-2 py-1 bg-blue-600 text-white rounded-full text-xs">
+                      {venue.bookingType}
+                    </span>
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold mb-4 transition-colors duration-200 hover:text-blue-600">
@@ -206,31 +280,33 @@ export default function VenuesPage() {
                     <div className="space-y-2 text-sm text-gray-600 mb-4">
                       <div className="flex items-center">
                         <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                        <span>{venue.location}</span>
+                        <span>{venue.venueLocation}</span>
                       </div>
                       <div className="flex items-center">
                         <Users className="h-4 w-4 mr-2 text-gray-400" />
                         <span>Capacity: {venue.capacity}</span>
                       </div>
+                      {venue.organization && (
+                        <div className="text-sm text-gray-600">
+                          Organization: {venue.organization.organizationName}
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {venue.amenities
-                        .split(",")
-                        .slice(0, 3)
-                        .map((amenity, amenityIndex) => (
-                          <span
-                            key={amenity}
-                            className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded transition-colors duration-200 hover:bg-blue-100 hover:text-blue-800"
-                            style={{
-                              animationDelay: `${800 + index * 100 + amenityIndex * 50}ms`,
-                            }}
-                          >
-                            {amenity.trim()}
-                          </span>
-                        ))}
-                      {venue.amenities.split(",").length > 3 && (
+                      {venue.amenities.slice(0, 3).map((amenity: Amenity) => (
+                        <span
+                          key={amenity.id}
+                          className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded transition-colors duration-200 hover:bg-blue-100 hover:text-blue-800"
+                          style={{
+                            animationDelay: `${800 + index * 100}ms`,
+                          }}
+                        >
+                          {amenity.resourceName} ({amenity.quantity})
+                        </span>
+                      ))}
+                      {venue.amenities.length > 3 && (
                         <span className="inline-block px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded">
-                          +{venue.amenities.split(",").length - 3} more
+                          +{venue.amenities.length - 3} more
                         </span>
                       )}
                     </div>
@@ -245,11 +321,7 @@ export default function VenuesPage() {
               ))}
             </div>
           ) : (
-            <div
-              className={`text-center py-12 transform transition-all duration-1000 ease-out delay-600 ${
-                isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-              }`}
-            >
+            <div className="text-center py-12">
               <div className="text-gray-400 mb-4">
                 <MapPin className="h-12 w-12 mx-auto mb-2" />
                 <h3 className="text-lg font-medium text-gray-900">No venues found</h3>

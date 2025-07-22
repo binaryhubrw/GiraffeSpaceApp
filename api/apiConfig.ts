@@ -534,7 +534,7 @@ static async removeVenueFromOrganization(
   /** Get all venues */
   static async getAllVenues(): Promise<any> {
     try {
-      const response = await axios.get(`${this.BASE_URL}/venue/all`, {
+      const response = await axios.get(`${this.BASE_URL}/venue/public-venues/list`, {
         headers: this.getHeader(),
         withCredentials: true,
       });
@@ -546,15 +546,18 @@ static async removeVenueFromOrganization(
   }
 
   /** Get venue by ID */
-  static async getVenueById(venueId: string): Promise<any> {      
+  static async getVenueById(id: string): Promise<any> {
     try {
-      const response = await axios.get(`${this.BASE_URL}/venue/get/${venueId}`, {
-        headers: this.getHeader(),
-        withCredentials: true,
-      });
+      const response = await axios.get(
+        `${this.BASE_URL}/venue/public/${id}`,
+        {
+          headers: this.getHeader(), // Use your standard headers
+          withCredentials: true      // Include credentials if needed
+        }
+      );
       return response.data;
     } catch (error) {
-      console.error(`Error fetching venue with ID ${venueId}:`, error);
+      console.error(`Error fetching venue with ID ${id}:`, error);
       throw error;
     }
   }
@@ -888,7 +891,8 @@ static async getBookingByEventId(eventId: string): Promise<any> {
   } catch (error) {
     console.error(`Error fetching bookings for event with ID ${eventId}:`, error);
     throw error;
-  }}
+  }
+}
 
 
 }

@@ -192,10 +192,18 @@ export default function OrganizationDetailsPage() {
                       Explore our {organization.venues.length} venues available for your events. 
                       Each venue offers unique features and facilities to make your event successful.
                     </p>
+                    <div className="mt-6">
+                      <Link
+                        href={`/venues?organizationId=${organization.organizationId}`}
+                        className="btn-primary inline-flex items-center"
+                      >
+                        View All Organization Venues
+                      </Link>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {organization.venues.map((venue: any) => (
+                    {organization.venues.slice(0, 3).map((venue: any) => (
                       <div key={venue.venueId} className="card-base bg-white">
                         {/* Venue Image */}
                         <div className="h-48 relative">
@@ -210,65 +218,24 @@ export default function OrganizationDetailsPage() {
                         </div>
 
                         {/* Venue Details */}
-                        <div className="p-6 space-y-4">
-                          <div>
-                            <h3 className="heading-3 mb-2">{venue.venueName}</h3>
-                            <div className="flex items-center text-small text-gray-600">
-                              <MapPin className="icon-sm mr-2 text-gray-400" />
+                        <div className="p-6">
+                          <h3 className="text-xl font-bold mb-4">{venue.venueName}</h3>
+                          <div className="space-y-2 text-sm text-gray-600 mb-4">
+                            <div className="flex items-center">
+                              <MapPin className="h-4 w-4 mr-2 text-gray-400" />
                               <span>{venue.location}</span>
                             </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <div className="flex-between">
-                              <span className="text-small text-gray-600">Capacity</span>
-                              <span className="text-small font-medium">{venue.capacity} people</span>
-                            </div>
-                            <div className="flex-between">
-                              <span className="text-small text-gray-600">Booking Type</span>
-                              <span className="text-small font-medium">{venue.bookingType}</span>
+                            <div className="flex items-center">
+                              <Users className="h-4 w-4 mr-2 text-gray-400" />
+                              <span>Capacity: {venue.capacity} people</span>
                             </div>
                           </div>
-
-                          {/* Venue Actions */}
-                          <div className="flex gap-2 pt-2">
-                            {venue.virtualTourUrl && (
-                              <a
-                                href={venue.virtualTourUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn-secondary flex-1 text-center text-small"
-                              >
-                                Virtual Tour
-                              </a>
-                            )}
-                            <a
-                              href={venue.googleMapsLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="btn-primary flex-1 text-center text-small"
-                            >
-                              View on Map
-                            </a>
-                          </div>
-
-                          {/* Photo Gallery */}
-                          {venue.photoGallery && venue.photoGallery.length > 0 && (
-                            <div className="pt-4 border-t">
-                              <h4 className="text-small font-medium mb-2">Photo Gallery</h4>
-                              <div className="grid grid-cols-3 gap-2">
-                                {venue.photoGallery.slice(0, 3).map((photo: string, index: number) => (
-                                  <div key={index} className="h-16 rounded overflow-hidden">
-                                    <img
-                                      src={photo}
-                                      alt={`${venue.venueName} photo ${index + 1}`}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                          <Link
+                            href={`/venues/${venue.venueId}`}
+                            className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                          >
+                            View Details
+                          </Link>
                         </div>
                       </div>
                     ))}
