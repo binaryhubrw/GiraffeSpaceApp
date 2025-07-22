@@ -549,7 +549,7 @@ static async removeVenueFromOrganization(
   static async getVenueById(id: string): Promise<any> {
     try {
       const response = await axios.get(
-        `${this.BASE_URL}/venue/public/${id}`,
+        `${this.BASE_URL}/venue/${id}`,
         {
           headers: this.getHeader(), // Use your standard headers
           withCredentials: true      // Include credentials if needed

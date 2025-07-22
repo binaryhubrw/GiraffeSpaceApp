@@ -25,7 +25,7 @@ interface LocationSelectorProps {
 // Location selector based on map click
 function LocationSelector({ onSelect }: LocationSelectorProps) {
   useMapEvents({
-    click(e) {
+    click(e: { latlng: { lat: number; lng: number; }; }) {
       onSelect(e.latlng);
     },
   });
@@ -168,8 +168,11 @@ export const MapPicker: React.FC<MapPickerProps> = ({
           center={[defaultCenter.lat, defaultCenter.lng]}
           zoom={13}
           style={{ height: '100%', width: '100%' }}
-          whenCreated={(map: L.Map) => {
-            mapRef.current = map;
+          whenReady={() => {
+            if (mapRef.current === null) {
+              // The map instance will be available via the ref after ready
+              mapRef.current = (document.querySelector('.leaflet-container') as any)?._leaflet_map || null;
+            }
           }}
         >
           <TileLayer

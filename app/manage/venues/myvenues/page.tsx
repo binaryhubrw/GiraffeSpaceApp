@@ -8,7 +8,7 @@ import Link from "next/link"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
 import {  useMemo } from "react"
-import { MapPin, Edit, Eye, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { MapPin, Edit, Eye, Trash2, Search, ChevronLeft, ChevronRight, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -134,6 +134,42 @@ export default function ManageVenuesPage() {
     return status === "Active" ? "default" : "secondary"
   }
 
+  if (loading) return null;
+
+  if (venues.length === 0) {
+    return (
+      <div className="min-h-screen flex">
+        <Sidebar />
+        <main className="flex-1 p-8">
+          <div className="max-w-8xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">My Venues</h1>
+                <p className="text-muted-foreground">Manage your venues and their availability</p>
+              </div>
+              <Button className="flex items-center gap-2 bg-primary text-white hover:bg-primary/90 shadow-md px-5 py-2 rounded-lg">
+                <Link href="manage/venues/create">
+                  <span className="text-lg">+</span>
+                  Add New Venue
+                </Link>
+              </Button>
+            </div>
+            <div className="bg-white rounded-lg shadow p-8 text-center">
+              <h2 className="text-2xl font-bold mb-2">No Venues Found</h2>
+              <p className="text-gray-600 mb-6">You haven't added any venues yet.</p>
+              <Button className="bg-primary text-white hover:bg-primary/90">
+                <Link href="manage/venues/create" className="flex items-center gap-2">
+                  <span className="text-lg">+</span>
+                  Add Your First Venue
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <>
     <div className="min-h-screen flex">
@@ -226,9 +262,23 @@ export default function ManageVenuesPage() {
                           size="sm"
                           className="h-8 w-8 p-0"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Link href={`/manage/venues/${venue.venueId}/edit`}>
+                            <Edit className="h-4 w-4" />
+                          </Link>
                         </Button>
                         <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">Edit</span>
+                      </div>
+                      <div className="group relative">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <Link href={`/manage/venues/availability`}>
+                            <Calendar className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">Availability</span>
                       </div>
                       <div className="group relative">
                         <AlertDialog>
