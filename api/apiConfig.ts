@@ -419,7 +419,7 @@ class ApiService {
     }
   }
 
-  //**** AMENITIES ROUTE *** */
+  
 
   /** Add user to organization */
   static async addUserToOrganization(
@@ -445,7 +445,11 @@ class ApiService {
     }
   }
 
-  /**** VENUES**** */
+
+
+
+
+  /**** VENUES   **** */
 
   /** add venue to organization */
 
@@ -554,6 +558,21 @@ class ApiService {
       throw error;
     }
   }
+
+  /**** getAllVenueAdminOnly **** */
+  static async getAllVenueAdminOnly(): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/venue/all`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching all admin-only venues:", error);
+      throw error;
+    }
+  }
+
 
   /** Get venue by ID */
   static async getVenueById(id: string): Promise<any> {
@@ -779,39 +798,68 @@ class ApiService {
   }
 
   /** Aprove venue */
-  static async approveVenue(venueId: string): Promise<any> {
-    try {
-      const response = await axios.post(
-        `${this.BASE_URL}/venue/approve/${venueId}`,
-
-        {
-          headers: this.getHeader(),
-          withCredentials: true,
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Error approving venue with ID ${venueId}:`, error);
-      throw error;
+  static async approveVenueAdmin(venueId: string): Promise<any> {
+   
+  try {
+    
+    const token = localStorage.getItem("token");
+    
+    
+    if (!token) {
+      throw new Error("No token found. Please login again.");
     }
+
+    const response = await axios.patch(
+      `${this.BASE_URL}/venue/${venueId}/approve`,
+      {}, // no request body needed
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true, // optional, use only if your backend needs cookies
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error approving venue with ID ${venueId}:`, error);
+    throw error;
+  }
   }
 
+
+ 
+
+
   /*** cancel venue */
-  static async cancelVenue(venueId: string, data: any): Promise<any> {
+  static async cancelVenueAproveAdmin(venueId: string, data: any): Promise<any> {
     try {
-      const response = await axios.put(
-        `${this.BASE_URL}/venue/cancel/${venueId}`,
-        data,
-        {
-          headers: this.getHeader(),
-          withCredentials: true,
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Error canceling venue with ID ${venueId}:`, error);
-      throw error;
+    
+    const token = localStorage.getItem("token");
+    
+    
+    if (!token) {
+      throw new Error("No token found. Please login again.");
     }
+
+    const response = await axios.patch(
+      `${this.BASE_URL}/venue/${venueId}/reject`,
+      data, //  request body needed
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true, // optional, use only if your backend needs cookies
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error canceling venue approval with ID ${venueId}:`, error);
+    throw error;
+  }
   }
 
   /**************************************** */
