@@ -1,16 +1,37 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { MapPicker } from "../create/MapPicker";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Mail, Phone, Users, Calendar as CalendarIcon, Clock, Info, Pencil, Trash2, CalendarPlus, ArrowLeft } from "lucide-react";
+import { MapPin, Mail, Phone, Users, Calendar as CalendarIcon, Clock, Info, Pencil, Trash2, CalendarPlus, ArrowLeft, Plus } from "lucide-react";
 import ApiService from "@/api/apiConfig";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Progress } from "@/components/ui/progress";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from "@/components/ui/carousel";
+import type { AxiosProgressEvent } from "axios";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 interface TimeSlot {
   startTime: string;
@@ -86,6 +107,96 @@ export default function VenueDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedDateSlots, setSelectedDateSlots] = useState<TimeSlot[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // File input refs
+  const mainPhotoInputRef = useRef<HTMLInputElement>(null);
+  const subPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  // Add handlers for image actions
+  const handleEditMainPhoto = () => {
+    mainPhotoInputRef.current?.click();
+  };
+  const handleMainPhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && venue) {
+      const formData = new FormData();
+      formData.append("mainPhoto", file);
+      try {
+        setUploading(true);
+        setUploadProgress(0);
+        await ApiService.updateVenueMainPhoto(venue.venueId, formData, (progressEvent) => {
+          if (progressEvent.total) {
+            setUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+          }
+        });
+        // Refresh venue details
+        const response = await ApiService.getVenueById(venue.venueId);
+        if (response.success) setVenue(response.data);
+        toast.success("Main photo updated successfully.");
+      } catch (err) {
+        toast.error("Failed to update main photo.");
+      } finally {
+        setUploading(false);
+        setUploadProgress(0);
+      }
+    }
+  };
+  const handleAddSubPhoto = () => {
+    subPhotoInputRef.current?.click();
+  };
+  const handleSubPhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && venue) {
+      const formData = new FormData();
+      formData.append("photo", file);
+      try {
+        setUploading(true);
+        setUploadProgress(0);
+        await ApiService.addVenueGalleryImage(venue.venueId, formData, (progressEvent) => {
+          if (progressEvent.total) {
+            setUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+          }
+        });
+        // Refresh venue details
+        const response = await ApiService.getVenueById(venue.venueId);
+        if (response.success) setVenue(response.data);
+        toast.success("Sub image added successfully.");
+      } catch (err) {
+        toast.error("Failed to add sub image.");
+      } finally {
+        setUploading(false);
+        setUploadProgress(0);
+      }
+    }
+  };
+  const handleDeleteSubPhoto = (index: number) => {
+    setDeleteIndex(index);
+    setDeleteDialogOpen(true);
+  };
+  const confirmDeleteSubPhoto = async () => {
+    if (venue && deleteIndex !== null && venue.subPhotoUrls[deleteIndex]) {
+      setDeleting(true);
+      try {
+        await ApiService.removeVenueGalleryImage(venue.venueId, venue.subPhotoUrls[deleteIndex]);
+        // Refresh venue details
+        const response = await ApiService.getVenueById(venue.venueId);
+        if (response.success) setVenue(response.data);
+        setDeleteDialogOpen(false);
+        setDeleteIndex(null);
+        toast.success("Sub image deleted successfully.");
+        window.location.reload(); // Reload the page to ensure the update is visible
+      } catch (err) {
+        toast.error("Failed to delete sub image.");
+      } finally {
+        setDeleting(false);
+      }
+    }
+  };
 
   useEffect(() => {
     const fetchVenueDetails = async () => {
@@ -144,7 +255,17 @@ export default function VenueDetailsPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 relative">
+      {/* Upload Progress Overlay */}
+      {uploading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center">
+            <p className="mb-4 font-medium">Uploading image...</p>
+            <Progress value={uploadProgress} className="w-64 mb-2" />
+            <span className="text-sm text-gray-500">{uploadProgress}%</span>
+          </div>
+        </div>
+      )}
       {/* Back Button */}
       <Link 
         href="/manage/venues/myvenues" 
@@ -165,42 +286,7 @@ export default function VenueDetailsPage() {
         </div>
       </div>
 
-       {/* Stats Grid */}
-                {/* <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                  <div className="bg-white border rounded-lg p-6 flex items-center gap-4 shadow-sm">
-                    <DollarSign className="h-8 w-8 text-primary" />
-                    <div>
-                      <p className="text-sm text-gray-500">Total Revenue</p>
-                      <p className="text-2xl font-bold">${totalRevenue.toLocaleString()}</p>
-                    </div>
-                  </div>
-      
-                  <div className="bg-white border rounded-lg p-6 flex items-center gap-4 shadow-sm">
-                    <Calendar className="h-8 w-8 text-primary" />
-                    <div>
-                      <p className="text-sm text-gray-500">Confirmed Bookings</p>
-                      <p className="text-2xl font-bold">{bookings.filter((b) => b.status === "confirmed").length}</p>
-                    </div>
-                  </div>
-      
-                  <div className="bg-white border rounded-lg p-6 flex items-center gap-4 shadow-sm">
-                    <Clock className="h-8 w-8 text-yellow-500" />
-                    <div>
-                      <p className="text-sm text-gray-500">Pending Requests</p>
-                      <p className="text-2xl font-bold">{pendingBookings}</p>
-                    </div>
-                  </div>
-      
-                  <div className="bg-white border rounded-lg p-6 flex items-center gap-4 shadow-sm">
-                    <Users className="h-8 w-8 text-primary" />
-                    <div>
-                      <p className="text-sm text-gray-500">Avg. Guests</p>
-                      <p className="text-2xl font-bold">
-                        {Math.round(bookings.reduce((sum, b) => sum + b.guests, 0) / bookings.length)}
-                      </p>
-                    </div>
-                  </div>
-                </div> */}
+    
 
       <Card>
         <CardHeader>
@@ -229,157 +315,197 @@ export default function VenueDetailsPage() {
         <CardContent>
           <div className="space-y-6">
             {/* Main Image */}
-            <div className="rounded-lg overflow-hidden h-[400px]">
+            <div className="relative rounded-lg overflow-hidden h-[400px] group">
               <img 
                 src={venue.mainPhotoUrl} 
                 alt={venue.venueName}
                 className="w-full h-full object-cover"
               />
-            </div>
-
-            {/* Sub Images */}
-            {venue.subPhotoUrls && venue.subPhotoUrls.length > 0 && (
-              <div className="grid grid-cols-4 gap-4">
-                {venue.subPhotoUrls.map((url, index) => (
-                  <div key={index} className="relative rounded-lg overflow-hidden h-24 group">
-                    <img 
-                      src={url} 
-                      alt={`${venue.venueName} ${index + 1}`}
-                      className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-gray-500" />
-                <span>Capacity: {venue.capacity} people</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4 text-gray-500" />
-                <span>Booking Type: {venue.bookingType}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4 text-gray-500" />
-                <span>{venue.contactEmail}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4 text-gray-500" />
-                <span>{venue.contactPhone}</span>
-              </div>
-            </div>
-
-            {venue.description && (
-              <div>
-                <h3 className="font-medium mb-2">Description</h3>
-                <p className="text-gray-600">{venue.description}</p>
-              </div>
-            )}
-
-            <div>
-              <h3 className="font-medium mb-2">Amenities</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {venue.amenities.map((amenity) => (
-                  <div key={amenity.id} className="p-4 border rounded-lg">
-                    <h4 className="font-medium">{amenity.resourceName}</h4>
-                    <p className="text-sm text-gray-600">{amenity.amenitiesDescription}</p>
-                    <div className="mt-2 flex justify-between text-sm">
-                      <span>Quantity: {amenity.quantity}</span>
-                      <span>Cost: ${amenity.costPerUnit}/unit</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-medium mb-2">Booking Conditions</h3>
-              {venue.bookingConditions.map((condition) => (
-                <div key={condition.id} className="mb-4 p-4 border rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <Info className="w-4 h-4 text-blue-500 mt-1" />
-                    <div>
-                      <p className="font-medium">{condition.descriptionCondition}</p>
-                      <p className="text-sm text-gray-600 mt-1">{condition.notaBene}</p>
-                      <div className="mt-2 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          <span>Transition Time: {condition.transitionTime} minutes</span>
-                        </div>
-                        <p>Deposit Required: {condition.depositRequiredPercent}%</p>
-                        <p>Payment Due: {condition.paymentComplementTimeBeforeEvent} days before event</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Contact Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Venue Manager */}
-              <div className="border rounded-lg p-4">
-                <h3 className="font-medium mb-4">Venue Manager</h3>
-                {venue.venueVariables[0]?.manager && (
-                  <div className="space-y-2">
-                    <p className="font-medium">
-                      {venue.venueVariables[0].manager.firstName} {venue.venueVariables[0].manager.lastName}
-                    </p>
-                    <p className="flex items-center gap-2 text-gray-600">
-                      <Mail className="w-4 h-4" />
-                      {venue.venueVariables[0].manager.email}
-                    </p>
-                    <p className="flex items-center gap-2 text-gray-600">
-                      <Phone className="w-4 h-4" />
-                      {venue.venueVariables[0].manager.phoneNumber}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Organization */}
-              <div className="border rounded-lg p-4">
-                <h3 className="font-medium mb-4">Organization</h3>
-                <div className="space-y-2">
-                  <p className="font-medium">{venue.organization.organizationName}</p>
-                  <p className="flex items-center gap-2 text-gray-600">
-                    <Mail className="w-4 h-4" />
-                    {venue.organization.contactEmail}
-                  </p>
-                  <p className="flex items-center gap-2 text-gray-600">
-                    <Phone className="w-4 h-4" />
-                    {venue.organization.contactPhone}
-                  </p>
-                  <p className="flex items-center gap-2 text-gray-600">
-                    <MapPin className="w-4 h-4" />
-                    {venue.organization.address}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-medium mb-2">Location</h3>
-              <div className="h-[300px] rounded-lg overflow-hidden">
-                <MapPicker
-                  value={{ lat: venue.latitude, lng: venue.longitude }}
-                  onChange={() => {}} // Read-only mode
-                  height="300px"
-                  width="100%"
-                />
-              </div>
-              <a 
-                href={venue.googleMapsLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-4 inline-flex items-center text-blue-600 hover:text-blue-800"
+              {/* Edit icon overlay */}
+              <button
+                onClick={handleEditMainPhoto}
+                className="absolute top-4 right-4 bg-white bg-opacity-80 rounded-full p-2 shadow transition-opacity opacity-0 group-hover:opacity-100 hover:bg-opacity-100"
+                title="Edit main photo"
               >
-                <MapPin className="w-4 h-4 mr-2" />
-                View on Google Maps
-              </a>
+                <Pencil className="w-5 h-5 text-gray-700" />
+              </button>
+              {/* Hidden file input for main photo */}
+              <input
+                type="file"
+                accept="image/*"
+                ref={mainPhotoInputRef}
+                onChange={handleMainPhotoFileChange}
+                style={{ display: "none" }}
+              />
             </div>
+
+            {/* Sub Images Carousel */}
+            <div className="w-full max-w-2xl mx-auto">
+              <Carousel opts={{ align: "start" }}>
+                <CarouselContent>
+                  {/* Add icon for new sub image */}
+                  <CarouselItem className="basis-1/3">
+                    <button
+                      onClick={handleAddSubPhoto}
+                      className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg h-24 w-full bg-gray-50 hover:bg-gray-100 transition-colors"
+                      title="Add sub image"
+                    >
+                      <Plus className="w-8 h-8 text-gray-400" />
+                    </button>
+                    {/* Hidden file input for sub photo */}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={subPhotoInputRef}
+                      onChange={handleSubPhotoFileChange}
+                      style={{ display: "none" }}
+                    />
+                  </CarouselItem>
+                  {/* Sub images, always show at least 2 after add button */}
+                  {Array.from({ length: Math.max(2, (venue.subPhotoUrls?.length || 0)) }).map((_, i) => {
+                    const url = venue.subPhotoUrls?.[i];
+                    return url ? (
+                      <CarouselItem key={i} className="basis-1/3">
+                        <div className="relative rounded-lg overflow-hidden h-24 group">
+                          <img
+                            src={url}
+                            alt={`${venue.venueName} ${i + 1}`}
+                            className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                          />
+                          {/* Delete icon overlay */}
+                          <AlertDialog open={deleteDialogOpen && deleteIndex === i} onOpenChange={setDeleteDialogOpen}>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                onClick={() => handleDeleteSubPhoto(i)}
+                                className="absolute top-2 right-2 bg-white bg-opacity-80 rounded-full p-1 shadow transition-opacity opacity-0 group-hover:opacity-100 hover:bg-opacity-100"
+                                title="Delete sub image"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Sub Image</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this sub image? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={confirmDeleteSubPhoto} disabled={deleting} className="bg-destructive text-white">
+                                  {deleting ? "Deleting..." : "Delete"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </CarouselItem>
+                    ) : (
+                      <CarouselItem key={`empty-${i}`} className="basis-1/3">
+                        <div className="h-24 w-full bg-gray-100 rounded-lg flex items-center justify-center text-gray-300">
+                          No Image
+                        </div>
+                      </CarouselItem>
+                    );
+                  })}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
+            </div>
+
+            {/* Venue Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Description</h3>
+                <p className="text-gray-800">{venue.description || 'No description available.'}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Capacity</h3>
+                <p className="text-gray-800">{venue.capacity} people</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Amount</h3>
+                <p className="text-gray-800">${venue.amount.toFixed(2)}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Location</h3>
+                <p className="text-gray-800">{venue.location}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Contact Email</h3>
+                <p className="text-gray-800">{venue.contactEmail}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Contact Phone</h3>
+                <p className="text-gray-800">{venue.contactPhone}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Status</h3>
+                <Badge variant={venue.status === 'APPROVED' ? 'default' : 'secondary'}>
+                  {venue.status}
+                </Badge>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Google Maps Link</h3>
+                <a href={venue.googleMapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  View on Google Maps
+                </a>
+              </div>
+            </div>
+
+            {/* Amenities */}
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Amenities</h3>
+              <ul className="list-disc list-inside text-gray-800">
+                {venue.amenities.map(amenity => (
+                  <li key={amenity.id}>
+                    {amenity.resourceName} ({amenity.quantity}) - ${amenity.costPerUnit}/unit
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Booking Conditions */}
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Booking Conditions</h3>
+              <ul className="list-disc list-inside text-gray-800">
+                {venue.bookingConditions.map(condition => (
+                  <li key={condition.id}>
+                    {condition.descriptionCondition}
+                    <br />
+                    Nota Bene: {condition.notaBene}
+                    <br />
+                    Transition Time: {condition.transitionTime} minutes
+                    <br />
+                    Deposit Required: {condition.depositRequiredPercent}%
+                    <br />
+                    Payment Complement Time: {condition.paymentComplementTimeBeforeEvent} minutes
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Availability Slots */}
+            {/* (Removed as per request) */}
+
+            {/* Virtual Tour */}
+            {venue.virtualTourUrl && (
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Virtual Tour</h3>
+                <a href={venue.virtualTourUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  View Virtual Tour
+                </a>
+              </div>
+            )}
+
+            {/* Documents */}
+            {venue.venueDocuments && (
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Documents</h3>
+                <p className="text-gray-800">Documents available for this venue.</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

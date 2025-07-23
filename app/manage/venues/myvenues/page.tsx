@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import ApiService from "@/api/apiConfig";
 import type { Venue as VenueBase } from '@/data/venues';
+import { Loading } from "@/components/loading";
 
 // Use the imported VenueBase type for the venues state, and extend inline if needed:
 type Venue = VenueBase & {
@@ -134,7 +135,14 @@ export default function ManageVenuesPage() {
     return status === "Active" ? "default" : "secondary"
   }
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="min-h-screen flex">
+      <Sidebar />
+      <main className="flex-1 flex items-center justify-center">
+        <Loading message="Loading venues..." size="large" />
+      </main>
+    </div>
+  );
 
   if (venues.length === 0) {
     return (
