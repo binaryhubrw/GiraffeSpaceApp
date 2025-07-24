@@ -156,15 +156,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     return slots
   }
 
-  // Generate time slots for hourly bookings (8 AM to 10 PM)
-  const generateTimeSlots = (): string[] => {
-    const slots: string[] = []
-    for (let hour = 8; hour < 22; hour++) {
-      slots.push(`${String(hour).padStart(2, '0')}:00`)
-    }
-    return slots
-  }
-
   // Comment form state
   const [newComment, setNewComment] = useState({
     userName: "",
