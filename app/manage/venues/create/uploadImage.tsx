@@ -26,7 +26,6 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ multiple = false, accept = 'i
       // If multiple is true, append new files to existing ones
       const newFiles = multiple ? [...selectedFiles, ...fileArray] : fileArray;
       setSelectedFiles(newFiles);
-      
       // Convert FileList to new FileList for onChange
       const dataTransfer = new DataTransfer();
       newFiles.forEach(file => dataTransfer.items.add(file));
@@ -37,7 +36,6 @@ const MediaUpload: React.FC<MediaUploadProps> = ({ multiple = false, accept = 'i
   const handleRemoveFile = (indexToRemove: number) => {
     const newFiles = selectedFiles.filter((_, index) => index !== indexToRemove);
     setSelectedFiles(newFiles);
-
     // Convert remaining files to new FileList
     const dataTransfer = new DataTransfer();
     newFiles.forEach(file => dataTransfer.items.add(file));
