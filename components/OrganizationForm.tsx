@@ -60,7 +60,7 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
 
       if (supportingDocuments) {
         Array.from(supportingDocuments).forEach((file) => {
-          formData.append("supportingDocuments", file)
+          formData.append("supportingDocument", file)
         })
       }
 
@@ -68,25 +68,24 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
         formData.append("logo", logo)
       }
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
+      // Real API call
+      const token = localStorage.getItem("token");
+      const response = await fetch("https://giraffespacev2.onrender.com/api/v1/organizations", {
+        method: "POST",
+        headers: {
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      })
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Failed to add organization. Please try again.")
+      }
       setIsLoading(false)
-      if (onSuccess) onSuccess({
-        organizationName,
-        organizationType,
-        description,
-        contactEmail,
-        contactPhone,
-        address,
-        city,
-        country,
-        postalCode,
-        stateProvince,
-      });
+      if (onSuccess) onSuccess(data.data)
     } catch (err: any) {
       setIsLoading(false)
-      setError(err?.response?.data?.message || "Failed to add organization. Please try again.")
+      setError(err?.message || "Failed to add organization. Please try again.")
     }
   }
 

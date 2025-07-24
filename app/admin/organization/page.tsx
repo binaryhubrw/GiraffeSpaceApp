@@ -256,6 +256,7 @@ export default function AdminOrganization() {
                   </DialogTrigger>
                   <DialogContent className="max-w-4xl no-dialog-close">
                     <DialogHeader>
+                      <DialogTitle className="sr-only">Add Organization</DialogTitle>
                     </DialogHeader>
                     <OrganizationForm onSuccess={handleAdd} onCancel={() => setAddOpen(false)} />
                   </DialogContent>
