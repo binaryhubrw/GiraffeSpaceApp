@@ -1,288 +1,596 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Building2, Eye, Users } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
+import { 
+  Eye, Edit, Trash2, Users, Building2, MapPin, Link2, Search, Plus,
+  Mail, Phone, Calendar, User, MapPin as MapPinIcon
+} from "lucide-react"
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
+import ApiService from "@/api/apiConfig"
 import OrganizationForm from "@/components/OrganizationForm";
 
-interface OrgForm {
+interface Organization {
+  id: string;
+  organizationId?: string;
   organizationName: string;
   description: string;
   contactEmail: string;
   contactPhone: string;
   address: string;
   organizationType: string;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-export default function OrganizationsSection() {
-  const { isLoggedIn, user, logout } = useAuth()
+export default function AdminOrganization() {
   const router = useRouter()
-  const [addOrgOpen, setAddOrgOpen] = useState(false)
-  const [addOrgLoading, setAddOrgLoading] = useState(false)
-  const [addOrgError, setAddOrgError] = useState("")
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [orgForm, setOrgForm] = useState({
-    organizationName: "",
-    description: "",
-    contactEmail: "",
-    contactPhone: "",
-    address: "",
-    organizationType: "",
-  })
-  const [selectedOrg, setSelectedOrg] = useState<any | null>(null);
-  const [showDetail, setShowDetail] = useState(false);
-  const [editOrg, setEditOrg] = useState<any | null>(null);
-  const [showEdit, setShowEdit] = useState(false);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-
-  // Store organizations in state so new ones can be added
-  const [organizations, setOrganizations] = useState([
-    {
-      organizationId: "ORG-001",
-      organizationName: "Tech Association of Rwanda",
-      description: "A professional association for technology enthusiasts and professionals in Rwanda.",
-      organizationType: "Professional Association",
-      contactEmail: "info@techrw.org",
-      contactPhone: "+250 788 123 456",
-      address: "Kigali, Rwanda"
-    },
-    {
-      organizationId: "ORG-002",
-      organizationName: "Corporate Events Rwanda",
-      description: "Specializing in corporate event planning and management services.",
-      organizationType: "Event Management",
-      contactEmail: "contact@corporateevents.rw",
-      contactPhone: "+250 788 234 567",
-      address: "Kigali, Rwanda"
-    }
-  ]);
+  const [currentPage, setCurrentPage] = useState(1)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterType, setFilterType] = useState("all")
+  const [filterStatus, setFilterStatus] = useState("all")
+  const [addOpen, setAddOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState<string | null>(null)
+  const [viewOrg, setViewOrg] = useState<Organization | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [editOrg, setEditOrg] = useState<Organization | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [deleteOrgId, setDeleteOrgId] = useState<string | null>(null)
+  const itemsPerPage = 5
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoaded(true)
-    }, 100)
-    return () => clearTimeout(timer)
+    const fetchOrganizations = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await ApiService.getAllOrganization()
+        if (response && response.success) {
+          setOrganizations(response.data || [])
+        } else {
+          setOrganizations([])
+          setError(response?.error || 'Failed to fetch organizations')
+        }
+      } catch (error) {
+        setOrganizations([])
+        setError('Failed to fetch organizations')
+        console.error('Error fetching organizations:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchOrganizations()
   }, [])
 
-  // Redirect if not logged in
-  useEffect(() => {
-    if (!isLoggedIn) {
-      router.push("/login")
-    }
-  }, [isLoggedIn, router])
-
-  if (!isLoggedIn || !user) {
-    return <div>Loading...</div>
-  }
-
-  const onAddOrganization = async (
-    orgForm: OrgForm,
-    setAddOrgOpen: React.Dispatch<React.SetStateAction<boolean>>,
-    setOrgForm: React.Dispatch<React.SetStateAction<OrgForm>>,
-    setAddOrgError: React.Dispatch<React.SetStateAction<string>>
-  ) => {
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setAddOrgOpen(false)
-    setOrgForm({
-      organizationName: "",
-      description: "",
-      contactEmail: "",
-      contactPhone: "",
-      address: "",
-      organizationType: "",
-    })
-  }
-
-  // Filter organizations based on search and type
-  const filteredOrganizations = organizations.filter(org => {
-    const matchesSearch =
-      org.organizationName.toLowerCase().includes(search.toLowerCase()) ||
-      org.description.toLowerCase().includes(search.toLowerCase());
-    const matchesType = typeFilter ? org.organizationType === typeFilter : true;
-    return matchesSearch && matchesType;
-  });
-
-  return (
-    <div className="">
-      <div className={`transform transition-all duration-1000 ease-out ${isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">My Organizations</h2>
-            <div className="flex w-500 items-center space-x-4">
-              <Dialog open={addOrgOpen} onOpenChange={setAddOrgOpen}>
-                <DialogTrigger asChild>
-                  <Button>Add Organization</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Organization</DialogTitle>
-                  </DialogHeader>
-                  <OrganizationForm
-                    onSuccess={(newOrg) => {
-                      setAddOrgOpen(false);
-                      setOrganizations(prev => [
-                        ...prev,
-                        { ...newOrg, organizationId: `ORG-${prev.length + 1}` }
-                      ]);
-                    }}
-                    onCancel={() => setAddOrgOpen(false)}
-                  />
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-          <Card>
-            <CardContent className="p-0">
-              <div className="flex flex-col md:flex-row gap-4 mb-4 w-full items-center justify-between px-4 pt-4">
-                <input
-                  type="text"
-                  placeholder="Search organizations..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="input input-bordered w-full md:w-64"
-                />
-                <select
-                  value={typeFilter}
-                  onChange={e => setTypeFilter(e.target.value)}
-                  className="input input-bordered w-full md:w-48"
-                >
-                  <option value="">All Types</option>
-                  <option value="Public">Public</option>
-                  <option value="Private">Private</option>
-                </select>
-                <div className="text-sm text-gray-600">Total: {filteredOrganizations.length} organizations</div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b bg-gray-50">
-                      <th className="text-left py-4 px-6 font-medium text-gray-900">Organizations</th>
-                      <th className="text-left py-4 px-6 font-medium text-gray-900">Description</th>
-                      <th className="text-left py-4 px-6 font-medium text-gray-900">Type</th>
-                      <th className="text-left py-4 px-6 font-medium text-gray-900">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredOrganizations.map((org) => (
-                      <tr key={org.organizationId} className="border-b hover:bg-gray-50">
-                        <td className="py-4 px-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <Building2 className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <h4 className="font-medium">{org.organizationName}</h4>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-6 text-sm text-gray-600">{org.description}</td>
-                        <td className="py-4 px-6 text-sm text-gray-600">{org.organizationType}</td>
-                        <td className="py-4 px-6">
-                          <div className="flex space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedOrg(org);
-                                setShowDetail(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setEditOrg(org);
-                                setShowEdit(true);
-                              }}
-                            >
-                              <Users className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-          {showDetail && selectedOrg && (
-            <Dialog open={showDetail} onOpenChange={setShowDetail}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Organization Details</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-2">
-                  <div><strong>Name:</strong> {selectedOrg.organizationName}</div>
-                  <div><strong>Type:</strong> {selectedOrg.organizationType}</div>
-                  <div><strong>Description:</strong> {selectedOrg.description}</div>
-                  <div><strong>Email:</strong> {selectedOrg.contactEmail}</div>
-                  <div><strong>Phone:</strong> {selectedOrg.contactPhone}</div>
-                  <div><strong>Address:</strong> {selectedOrg.address}</div>
-                  {/* Logo */}
-                  {selectedOrg.logo && (
-                    <div>
-                      <strong>Logo:</strong>
-                      <img src={typeof selectedOrg.logo === 'string' ? selectedOrg.logo : URL.createObjectURL(selectedOrg.logo)} alt="Organization Logo" className="w-24 h-24 object-contain mt-2 border rounded" />
-                    </div>
-                  )}
-                  {/* Supporting Documents */}
-                  {selectedOrg.supportingDocuments && selectedOrg.supportingDocuments.length > 0 && (
-                    <div>
-                      <strong>Supporting Documents:</strong>
-                      <ul className="list-disc ml-6">
-                        {selectedOrg.supportingDocuments.map((doc: any, idx: number) => (
-                          <li key={idx}>
-                            {doc.url ? (
-                              <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                                {doc.name || doc.url}
-                              </a>
-                            ) : (
-                              <span>{doc.name || (doc instanceof File ? doc.name : String(doc))}</span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-                <DialogFooter>
-                  <Button onClick={() => setShowDetail(false)}>Close</Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
-          {showEdit && editOrg && (
-            <Dialog open={showEdit} onOpenChange={setShowEdit}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Edit Organization</DialogTitle>
-                </DialogHeader>
-                <OrganizationForm
-                  onSuccess={(updatedOrg) => {
-                    setShowEdit(false);
-                    setOrganizations(prev => prev.map(org =>
-                      org.organizationId === editOrg.organizationId ? { ...org, ...updatedOrg } : org
-                    ));
-                  }}
-                  onCancel={() => setShowEdit(false)}
-                  initialData={editOrg}
-                />
-              </DialogContent>
-            </Dialog>
-          )}
+  const LoadingSpinner = () => (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
+      <div className="text-center space-y-4">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+          <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-r-blue-400 rounded-full animate-spin mx-auto" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-lg font-medium text-gray-900">Loading organization details</p>
+          <p className="text-sm text-gray-500">Please wait while we fetch the information...</p>
         </div>
       </div>
+    </div>
+  )
+
+  if (loading) {
+    return <LoadingSpinner />
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-lg text-red-600 mb-4">{error}</div>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    )
+  }
+
+  const safeOrganizations: Organization[] = organizations.map((org, index) => ({
+    id: org.organizationId || org.id || '',
+    organizationName: org.organizationName || '',
+    description: org.description || '',
+    contactEmail: org.contactEmail || '',
+    contactPhone: org.contactPhone || '',
+    address: org.address || '',
+    organizationType: org.organizationType || 'Event Management',
+    status: org.status || 'Active',
+    createdAt: org.createdAt || new Date().toISOString(),
+    updatedAt: org.updatedAt || new Date().toISOString()
+  }))
+
+  const stats = {
+    totalOrganizations: safeOrganizations.length,
+    active: safeOrganizations.filter(o => o.status === "Active").length,
+    inactive: safeOrganizations.filter(o => o.status === "Inactive").length,
+    eventAssigned: safeOrganizations.filter(o => o.organizationType === "Event Management").length,
+    venueAssigned: safeOrganizations.filter(o => o.organizationType === "Venue Management").length,
+  }
+
+  const uniqueTypes = Array.from(new Set(safeOrganizations.map(org => org.organizationType)))
+
+  // Exclude independent organizations
+  const filteredOrganizations = safeOrganizations.filter(org => {
+    const searchString = searchQuery.toLowerCase()
+    const matchesSearch = 
+      (org.organizationName?.toLowerCase() || '').includes(searchString) ||
+      (org.description?.toLowerCase() || '').includes(searchString) ||
+      (org.contactEmail?.toLowerCase() || '').includes(searchString) ||
+      (org.contactPhone?.toLowerCase() || '').includes(searchString) ||
+      (org.address?.toLowerCase() || '').includes(searchString)
+    
+    const matchesType = filterType === "all" || org.organizationType === filterType
+    // Exclude independent organizations by type or name
+    const isIndependent = !org.organizationType || org.organizationType.toLowerCase() === 'independent' || (org.organizationName && org.organizationName.toLowerCase() === 'independent')
+    // Status filter (case-insensitive)
+    const matchesStatus = filterStatus === "all" || (org.status && org.status.toLowerCase() === filterStatus)
+
+    return matchesSearch && matchesType && matchesStatus && !isIndependent
+  })
+
+  const totalPages = Math.max(1, Math.ceil(filteredOrganizations.length / itemsPerPage))
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage
+  const paginatedOrganizations = filteredOrganizations.slice(startIndex, startIndex + itemsPerPage)
+
+  const handleAdd = async (data: any) => {
+    setAddOpen(false);
+    setOrganizations(prev => [
+      ...prev,
+      { ...data, id: `ORG-${prev.length + 1}` }
+    ]);
+    toast.success("Organization created successfully!");
+  };
+
+  const handleEdit = async (data: any) => {
+    try {
+      setLoading(true)
+      if (!editOrg?.id) {
+        setError('Organization ID is required for update')
+        return
+      }
+      const response = await ApiService.updateOrganizationById(editOrg.id, data)
+      if (response && response.success) {
+        const updatedResponse = await ApiService.getAllOrganization()
+        if (updatedResponse && updatedResponse.success) {
+          setOrganizations(updatedResponse.data || [])
+        }
+        setEditOpen(null)
+        setEditOrg(null)
+      } else {
+        setError(response?.error || 'Failed to update organization')
+      }
+    } catch (error) {
+      setError('Failed to update organization')
+      console.error('Error updating organization:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async (orgId: string) => {
+    try {
+      if (!orgId || orgId === 'undefined' || orgId === 'null') {
+        toast.error("Invalid organization ID");
+        return;
+      }
+      
+      setLoading(true)
+      const response = await ApiService.deleteOrganization(orgId)
+      if (response && response.success) {
+        const updatedResponse = await ApiService.getAllOrganization()
+        if (updatedResponse && updatedResponse.success) {
+          setOrganizations(updatedResponse.data || [])
+        }
+        setDeleteOrgId(null)
+        toast.success("Organization deleted successfully!")
+      } else {
+        const errorMessage = response?.error || 'Failed to delete organization'
+        toast.error(errorMessage)
+        setError(errorMessage)
+      }
+    } catch (error: any) {
+      if (error.response?.data) {
+        const errorData = error.response.data
+        const errorMessage = errorData.message || "Failed to delete organization"
+        toast.error(errorMessage)
+        setError(errorMessage)
+      } else {
+        const genericError = "Failed to delete organization. Please try again."
+        toast.error(genericError)
+        setError(genericError)
+      }
+      console.error('Error deleting organization:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <div className="flex flex-1">
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 p-8">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="mr-10"><Plus className="h-4 w-4" /> Add Organization</Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl bg-white rounded-2xl shadow-2xl p-0 overflow-visible no-dialog-close">
+                    <DialogHeader>
+                      <DialogTitle className="sr-only">Add Organization</DialogTitle>
+                    </DialogHeader>
+                    <div className="m-6">
+                      <OrganizationForm onSuccess={handleAdd} onCancel={() => setAddOpen(false)} />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Statistics Cards */}
+              {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Total Organizations</p>
+                        <p className="text-2xl font-bold">{stats.totalOrganizations}</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {stats.active} Active • {stats.inactive} Inactive
+                        </p>
+                      </div>
+                      <Building2 className="h-8 w-8 text-blue-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Event Organizations</p>
+                        <p className="text-2xl font-bold">{stats.eventAssigned}</p>
+                        <p className="text-sm text-gray-500 mt-1">Assigned to events</p>
+                      </div>
+                      <Link2 className="h-8 w-8 text-green-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Venue Organizations</p>
+                        <p className="text-2xl font-bold">{stats.venueAssigned}</p>
+                        <p className="text-sm text-gray-500 mt-1">Assigned to venues</p>
+                      </div>
+                      <MapPin className="h-8 w-8 text-purple-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-gray-600">Inactive Organizations</p>
+                        <p className="text-2xl font-bold">{stats.inactive}</p>
+                        <p className="text-sm text-gray-500 mt-1">Currently inactive</p>
+                      </div>
+                      <Users className="h-8 w-8 text-orange-600" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div> */}
+
+              {/* Organizations Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Organizations</CardTitle>
+                  {/* <CardDescription>Manage organization accounts and assignments</CardDescription> */}
+                </CardHeader>
+                <CardContent>
+                  {/* Filters */}
+                  <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                        <Input
+                          placeholder="Search organizations..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-8"
+                        />
+                      </div>
+                    </div>
+                    <Select value={filterType} onValueChange={setFilterType}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Types</SelectItem>
+                        {uniqueTypes.map(type => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Table */}
+                  <div className="border rounded-md">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Contact</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedOrganizations.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                              No organizations found
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          paginatedOrganizations.map(org => (
+                            <TableRow key={org.id}>
+                              <TableCell className="font-medium">{org.organizationName}</TableCell>
+                              <TableCell>
+                                <Badge variant={org.organizationType === "Event Management" ? "default" : "secondary"}>
+                                  {org.organizationType}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{org.contactEmail}</TableCell>
+                              <TableCell>
+                                <Badge variant={org.status && org.status.toLowerCase() === "approved" ? "default" : org.status && org.status.toLowerCase() === "pending" ? "secondary" : org.status && org.status.toLowerCase() === "rejected" ? "destructive" : "outline"}>
+                                  {org.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end space-x-2">
+                                  <Button 
+                                    size="icon" 
+                                    variant="outline" 
+                                    onClick={() => router.push(`/admin/organization/${org.id}`)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  {/* <Button 
+                                    size="icon" 
+                                    variant="outline" 
+                                    onClick={() => { setEditOrg(org); setEditOpen(org.id); }}
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </Button> */}
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button 
+                                        size="icon" 
+                                        variant="destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Organization</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete "{org.organizationName}"? This action cannot be undone and will permanently remove the organization from the system.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => handleDelete(org.id)}
+                                          className="bg-red-600 hover:bg-red-700"
+                                        >
+                                          Delete Organization
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Pagination */}
+                  <div className="flex justify-between items-center mt-4">
+                    <p className="text-sm text-gray-600">
+                      Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredOrganizations.length)} of {filteredOrganizations.length} organizations
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Edit Dialog */}
+      {editOrg && (
+        <Dialog open={!!editOpen} onOpenChange={open => { if (!open) setEditOpen(null); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Organization</DialogTitle>
+            </DialogHeader>
+            <OrganizationForm 
+              initialData={editOrg}
+              onSuccess={handleEdit} 
+              onCancel={() => setEditOpen(null)} 
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* View Organization Details Dialog */}
+      {viewOrg && (
+        <Dialog open={!!viewOrg} onOpenChange={open => { if (!open) setViewOrg(null); }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                {viewOrg.organizationName}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <User className="h-5 w-5 text-gray-600" />
+                  Basic Information
+                </h4>
+                <div className="grid gap-3">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div>
+                      <p className="text-sm text-gray-500">Organization Type</p>
+                      <p className="font-medium">{viewOrg.organizationType || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Status</p>
+                      <Badge variant={viewOrg.status === 'Active' ? 'default' : 'secondary'}>
+                        {viewOrg.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Description</p>
+                    <p className="text-sm mt-1">{viewOrg.description || 'No description available'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-gray-600" />
+                  Contact Information
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500">Email</p>
+                      <p className="font-medium">{viewOrg.contactEmail}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500">Phone</p>
+                      <p className="font-medium">{viewOrg.contactPhone || 'Not provided'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPinIcon className="h-4 w-4 text-gray-400 mt-1" />
+                    <div>
+                      <p className="text-sm text-gray-500">Address</p>
+                      <p className="font-medium">
+                        {viewOrg.address || 'No address provided'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold mb-3">Dates</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Created On</p>
+                    <p className="font-medium">
+                      {viewOrg.createdAt ? new Date(viewOrg.createdAt).toLocaleDateString() : 'Unknown'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Last Updated</p>
+                    <p className="font-medium">
+                      {viewOrg.updatedAt ? new Date(viewOrg.updatedAt).toLocaleDateString() : 'Unknown'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

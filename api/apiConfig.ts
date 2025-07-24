@@ -255,20 +255,49 @@ class ApiService {
       throw error;
     }
   }
-    static async getOrganizationById(orgId:string): Promise<any> {
+    static async getOrganizationById(orgId: string): Promise<any> {
     try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        return {
+          success: false,
+          error: 'Authentication token not found'
+        };
+      }
+
+      console.log('Fetching organization with ID:', orgId);
+      
+      // Make direct request to the single organization endpoint
       const response = await axios.get(
         `${this.BASE_URL}/organizations/${orgId}`,
-
         {
-          headers: this.getHeader(),
-          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          withCredentials: true
         }
       );
-      return response.data;
-    } catch (error) {
-      console.error("Error adding organization:", error);
-      throw error;
+      
+      console.log('API Response:', response.data);
+      
+      if (response.data) {
+        return {
+          success: true,
+          data: response.data
+        };
+      }
+      
+      return {
+        success: false,
+        error: 'Organization not found'
+      };
+    } catch (error: any) {
+      console.error("Error fetching organization:", error.response || error);
+      return {
+        success: false,
+        error: error.response?.data?.message || error.message || 'Failed to fetch organization'
+      };
     }
   }
   static async updateOrganizationById(orgId:string,orgData: any): Promise<any> {

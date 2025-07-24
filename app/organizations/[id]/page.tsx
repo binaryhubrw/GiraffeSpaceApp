@@ -16,12 +16,24 @@ export default function OrganizationDetailsPage() {
     const fetchOrganization = async () => {
       setLoading(true)
       try {
+        // Validate UUID format
+        const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!id || typeof id !== 'string' || !uuidPattern.test(id)) {
+          setOrganization(null);
+          return;
+        }
+
         const response = await fetch("https://giraffespacev2.onrender.com/api/v1/organizations/public")
         const data = await response.json()
-        const org = data.data.find((org: any) => org.organizationId === id)
-        setOrganization(org || null)
+        if (data && data.data) {
+          const org = data.data.find((org: any) => org.organizationId === id)
+          setOrganization(org || null)
+        } else {
+          setOrganization(null)
+        }
       } catch (error) {
         console.error("Error fetching organization:", error)
+        setOrganization(null)
       }
       setLoading(false)
     }

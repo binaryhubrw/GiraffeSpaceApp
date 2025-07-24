@@ -15,23 +15,20 @@ import {
   ChevronRight,
   ExternalLink,
   Star,
-  CalendarIcon,
-  Projector,
+  Calendar as CalendarIcon,
   Volume2,
   Wifi,
   Wind,
-  Shield,
-  AlertCircle,
   CheckCircle,
   Navigation,
   Info,
+  X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { Header } from "@/components/header"
 
@@ -74,6 +71,14 @@ interface BookingCondition {
   paymentComplementTimeBeforeEvent: number
 }
 
+interface AvailabilitySlot {
+  id: string
+  date: string
+  bookedHours: string[] | null
+  isAvailable: boolean
+  availableHours?: string[]
+}
+
 interface VenueData {
   venueId: string
   venueName: string
@@ -88,6 +93,7 @@ interface VenueData {
   virtualTourUrl: string | null
   status: string
   bookingType: string
+  availabilitySlots: AvailabilitySlot[]
   organization: {
     organizationId: string
     organizationName: string
@@ -128,10 +134,26 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
   const router = useRouter()
   // Start with Availability tab as default
   const [activeTab, setActiveTab] = useState("Availability")
-  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>(undefined)
+  const [selectedDates, setSelectedDates] = useState<Date[]>([])
+  const [selectedTimes, setSelectedTimes] = useState<{ [key: string]: string[] }>({})
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
+  const [bookedDates, setBookedDates] = useState<Date[]>([])
+  const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([])
+  const [showTimePopup, setShowTimePopup] = useState<{ isOpen: boolean; date: Date | null }>({
+    isOpen: false,
+    date: null
+  })
   // Mock authentication state - you can replace this with real auth
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  // Generate time slots for hourly bookings (8 AM to 10 PM)
+  const generateTimeSlots = (): string[] => {
+    const slots: string[] = []
+    for (let hour = 8; hour < 22; hour++) {
+      slots.push(`${String(hour).padStart(2, '0')}:00`)
+    }
+    return slots
+  }
 
   // Comment form state
   const [newComment, setNewComment] = useState({
@@ -178,7 +200,19 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
         const data = await response.json()
 
         if (data.success) {
-          setVenue(data.data)
+          const venueData = data.data
+          setVenue(venueData)
+          
+          // Set availability slots
+          if (venueData.availabilitySlots && venueData.availabilitySlots.length > 0) {
+            setAvailabilitySlots(venueData.availabilitySlots.map((slot: AvailabilitySlot) => ({
+              ...slot,
+              // Generate available hours by filtering out booked hours
+              availableHours: generateTimeSlots().filter(time => 
+                !slot.bookedHours?.includes(time)
+              )
+            })))
+          }
         } else {
           setError("Failed to fetch venue details")
         }
@@ -233,11 +267,24 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
       // Redirect to login page
       router.push("/login")
     } else {
-      // Navigate directly to booking form with venue ID and selected dates
+      // Check if times are selected for hourly bookings
+      if (venue?.bookingType === "HOURLY") {
+        const hasAllTimes = selectedDates.every(date => {
+          const times = selectedTimes[date.toISOString()]
+          return times && times.length > 0
+        })
+
+        if (!hasAllTimes) {
+          alert("Please select times for all selected dates")
+          return
+        }
+      }
+
+      // Navigate directly to booking form with venue ID, selected dates, and times
       const searchParams = new URLSearchParams({
         venueId: venue?.venueId || "",
-        ...(selectedRange?.from && { checkIn: selectedRange.from.toISOString() }),
-        ...(selectedRange?.to && { checkOut: selectedRange.to.toISOString() }),
+        dates: selectedDates.map(date => date.toISOString()).join(','),
+        times: JSON.stringify(selectedTimes)
       })
       router.push(`/booking?${searchParams.toString()}`)
     }
@@ -249,7 +296,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
   // Get amenity icon
   const getAmenityIcon = (name: string) => {
     const iconName = name.toLowerCase()
-    if (iconName.includes("projector")) return <Projector className="h-5 w-5 text-blue-600" />
     if (iconName.includes("sound") || iconName.includes("audio")) return <Volume2 className="h-5 w-5 text-green-600" />
     if (iconName.includes("wifi") || iconName.includes("internet")) return <Wifi className="h-5 w-5 text-purple-600" />
     if (iconName.includes("air") || iconName.includes("conditioning")) return <Wind className="h-5 w-5 text-cyan-600" />
@@ -546,6 +592,33 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                       ))}
                     </div>
 
+                    {/* Virtual Tour */}
+                    {venue?.virtualTourUrl && (
+                      <div className="mb-8">
+                        <h2 className="text-xl font-semibold mb-4 text-gray-900">Virtual Tour</h2>
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                          <div className="relative h-[400px] rounded-lg overflow-hidden bg-black">
+                            <video
+                              src={venue.virtualTourUrl}
+                              controls
+                              className="w-full h-full"
+                              preload="metadata"
+                              poster="/placeholder.svg"
+                              playsInline
+                            >
+                              <source src={venue.virtualTourUrl} type="video/mp4" />
+                              Your browser does not support the video tag.
+                            </video>
+                          </div>
+                          <div className="mt-4">
+                            <p className="text-sm text-gray-600">
+                              Take a virtual tour of {venue.venueName}. This video provides a comprehensive view of the venue's layout and facilities.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Organization Information */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Organization Information</h2>
@@ -596,26 +669,33 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                   <div>
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold mb-2 text-gray-900">Venue Availability</h3>
-                      <p className="text-gray-600">Choose your check-in and check-out dates to book this venue</p>
+                      <p className="text-gray-600">Select a date to book this venue</p>
                     </div>
 
                     {/* Custom Calendar with enhanced styling */}
                     <div className="mb-6">
                       <Calendar
-                        mode="range"
-                        selected={selectedRange}
-                        onSelect={setSelectedRange}
+                        mode="multiple"
+                        selected={selectedDates}
+                        onSelect={(dates) => dates ? setSelectedDates(dates) : setSelectedDates([])}
                         numberOfMonths={2}
-                        disabled={(date) => date < new Date()}
+                        disabled={(date) => {
+                          // Disable past dates
+                          const isPastDate = date < new Date()
+                          
+                          // Check if date is in availability slots and not available
+                          const dateString = date.toISOString().split('T')[0]
+                          const slotForDate = availabilitySlots.find(slot => slot.date === dateString)
+                          const isNotAvailable = slotForDate ? !slotForDate.isAvailable : false
+
+                          return isPastDate || isNotAvailable
+                        }}
                         className="rounded-lg border"
                         classNames={{
                           day_today: "bg-blue-500 text-white rounded-full font-bold",
                           day_selected: "bg-black text-white rounded-full font-bold hover:bg-black hover:text-white",
-                          day_range_middle: "bg-gray-100 text-black rounded-full hover:bg-gray-200 hover:text-black",
-                          day_range_start: "bg-black text-white rounded-full font-bold hover:bg-black hover:text-white",
-                          day_range_end: "bg-black text-white rounded-full font-bold hover:bg-black hover:text-white",
-                          day: "h-9 w-9 p-0 font-normal rounded-full aria-selected:opacity-100 hover:bg-gray-100 hover:rounded-full",
-                          day_disabled: "text-gray-400 hover:bg-transparent hover:text-gray-400 rounded-full",
+                          day: "h-9 w-9 p-0 font-normal rounded-full aria-selected:opacity-100 hover:bg-gray-100 hover:rounded-full relative",
+                          day_disabled: "text-gray-400 hover:bg-transparent hover:text-gray-400 rounded-full [&:has([aria-label*='booked'])]:after:content-[''] [&:has([aria-label*='booked'])]:after:absolute [&:has([aria-label*='booked'])]:after:left-1/2 [&:has([aria-label*='booked'])]:after:top-1/2 [&:has([aria-label*='booked'])]:after:w-4 [&:has([aria-label*='booked'])]:after:h-0.5 [&:has([aria-label*='booked'])]:after:bg-red-400 [&:has([aria-label*='booked'])]:after:-translate-x-1/2 [&:has([aria-label*='booked'])]:after:-translate-y-1/2 [&:has([aria-label*='booked'])]:after:rotate-45",
                           cell: "h-9 w-9 text-center text-sm relative p-0 hover:bg-gray-100 hover:rounded-full focus-within:relative focus-within:z-20",
                         }}
                       />
@@ -657,19 +737,59 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                 <CardContent className="space-y-4">
                   <div>
                     <p className="text-sm text-gray-500 mb-3 font-medium">Selected Dates</p>
-                    <div className="space-y-2">
-                      <div>
-                        <p className="text-sm text-gray-500">Check-in</p>
-                        <p className="font-medium">
-                          {selectedRange?.from ? selectedRange.from.toLocaleDateString() : "Not selected"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-500">Check-out</p>
-                        <p className="font-medium">
-                          {selectedRange?.to ? selectedRange.to.toLocaleDateString() : "Not selected"}
-                        </p>
-                      </div>
+                    <div>
+                      <p className="text-sm text-gray-500 mb-2">Booking Dates & Times</p>
+                      {selectedDates.length > 0 ? (
+                        <div className="space-y-4">
+                          {selectedDates.map((date) => (
+                            <div key={date.toISOString()} className="bg-gray-50 p-3 rounded-md">
+                              <p className="font-medium text-sm text-gray-900 mb-2">
+                                {date.toLocaleDateString()}
+                              </p>
+                              {venue?.bookingType === "HOURLY" && (
+                                <div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowTimePopup({ isOpen: true, date })}
+                                    className="w-full px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+                                  >
+                                    Select Hours
+                                  </button>
+                                  {selectedTimes[date.toISOString()]?.length > 0 && (
+                                    <div className="mt-2">
+                                      <p className="text-xs text-gray-500 mb-1">Selected Hours:</p>
+                                      <div className="flex flex-wrap gap-1">
+                                        {selectedTimes[date.toISOString()].map((time) => (
+                                          <span
+                                            key={time}
+                                            className="inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs"
+                                          >
+                                            {time}
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedTimes(prev => ({
+                                                  ...prev,
+                                                  [date.toISOString()]: prev[date.toISOString()].filter(t => t !== time)
+                                                }))
+                                              }}
+                                              className="ml-1 text-blue-600 hover:text-blue-800"
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </button>
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="font-medium text-gray-500">No dates selected</p>
+                      )}
                     </div>
                   </div>
 
@@ -801,6 +921,79 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
 
       {/* Add padding-bottom to account for fixed button */}
       <div className="pb-20"></div>
+
+      {/* Time Selection Popup */}
+      {showTimePopup.isOpen && showTimePopup.date && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">
+                Select Hours for {showTimePopup.date.toLocaleDateString()}
+              </h3>
+              <button
+                onClick={() => setShowTimePopup({ isOpen: false, date: null })}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
+              {generateTimeSlots().map((timeSlot) => {
+                const date = showTimePopup.date
+                if (!date) return null
+                
+                const dateStr = date.toISOString()
+                const dateOnlyStr = dateStr.split('T')[0]
+                const slotForDate = availabilitySlots.find(slot => slot.date === dateOnlyStr)
+                const isBooked = slotForDate?.bookedHours?.includes(timeSlot)
+                const isSelected = selectedTimes[dateStr]?.includes(timeSlot)
+
+                return (
+                  <button
+                    key={timeSlot}
+                    onClick={() => {
+                      if (!isBooked && date) {
+                        const dateStr = date.toISOString()
+                        setSelectedTimes(prev => {
+                          const currentTimes = prev[dateStr] || []
+                          const newTimes = currentTimes.includes(timeSlot)
+                            ? currentTimes.filter(t => t !== timeSlot)
+                            : [...currentTimes, timeSlot].sort()
+                          
+                          return {
+                            ...prev,
+                            [dateStr]: newTimes
+                          }
+                        })
+                      }
+                    }}
+                    disabled={isBooked}
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isSelected
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : isBooked
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        : "bg-gray-50 text-gray-900 hover:bg-gray-100"
+                    }`}
+                  >
+                    {timeSlot}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-2">
+              <button
+                onClick={() => setShowTimePopup({ isOpen: false, date: null })}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
