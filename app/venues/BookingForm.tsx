@@ -1,13 +1,11 @@
 
 "use client"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type React from "react"
+import { useAuth } from "@/contexts/auth-context"
 
-import { CalendarIcon, User } from "lucide-react"
+import { CalendarIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { Calendar } from "@/components/ui/calendar"
-import { Input } from "@/components/ui/input"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 
 interface BookingFormProps {
   venue: any
@@ -18,33 +16,9 @@ interface BookingFormProps {
 export default function BookingForm({ venue, checkIn, checkOut }: BookingFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
+  const { isLoggedIn } = useAuth();
 
-  // Mock venues data
-  const mockVenues = [
-    { id: '1', name: 'Main Hall' },
-    { id: '2', name: 'Conference Room A' },
-    { id: '3', name: 'Outdoor Stage' },
-    { id: '4', name: 'Banquet Hall' },
-    { id: '5', name: 'Auditorium' },
-  ];
-  const [venueSearch, setVenueSearch] = useState('');
-  const [selectedVenue, setSelectedVenue] = useState<string | undefined>(undefined);
-
-  const filteredVenues = mockVenues.filter(v => v.name.toLowerCase().includes(venueSearch.toLowerCase()));
-
-  const handleBookingSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    // Use selectedVenue in booking logic
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    router.push("/login")
-  }
-
-  // Check login status
-  let isLoggedIn = false;
-  if (typeof window !== 'undefined') {
-    isLoggedIn = !!localStorage.getItem('token');
-  }
+  // No mock data or unused state
 
   return (
     <div className="bg-white border rounded-xl p-6 shadow-lg">
@@ -62,17 +36,11 @@ export default function BookingForm({ venue, checkIn, checkOut }: BookingFormPro
           Check-out: {checkOut ? checkOut.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }) : <span className="text-gray-400">Not selected</span>}
         </p>
       </div>
-      <form onSubmit={handleBookingSubmit} className="space-y-6">
+      <form className="space-y-6">
         {/* Submit Button */}
         <button
           type="button"
-          onClick={() => {
-            if (!isLoggedIn) {
-              router.push("/login")
-            } else {
-              router.push("/venues/book")
-            }
-          }}
+          onClick={() => router.push(isLoggedIn ? "/venues/book" : "/login")}
           disabled={isSubmitting}
           className={`w-full py-2 px-4 rounded-md font-semibold text-base transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2
            ${!isSubmitting
@@ -86,11 +54,11 @@ export default function BookingForm({ venue, checkIn, checkOut }: BookingFormPro
               Processing...
             </span>
           ) : (
-            isLoggedIn ? "Book Now" : "Book Now - Continue to Login"
+            "Book Now kkkkkkk"
           )}
         </button>
         <p className="text-xs text-gray-500 text-center">
-          By clicking above button, you'll be redirected to login or create an account if you didn't have an account or your are not logged in,,,if you have an account or you are logged in it will redirect you to the booking form
+          By clicking above button, you'll be redirected to the booking form. If you are not logged in, you will be redirected to login first.
         </p>
       </form>
      

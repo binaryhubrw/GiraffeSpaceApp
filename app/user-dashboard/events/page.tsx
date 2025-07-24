@@ -229,7 +229,7 @@ export default function EventSection() {
                 <div className="flex flex-col md:flex-row gap-4 mt-4 md:mt-0">
                   <button
                     className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    onClick={() => router.push("/manage/events/create")}
+                    onClick={() => router.push("/user-dashboard/events/create")}
                   >
                     <Plus className="h-4 w-4" />
                     Create Event

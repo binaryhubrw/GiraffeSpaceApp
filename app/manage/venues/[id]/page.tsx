@@ -32,6 +32,8 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/auth-context";
+import { useRouter } from "next/navigation";
 
 interface TimeSlot {
   startTime: string;
@@ -198,7 +200,12 @@ export default function VenueDetailsPage() {
     }
   };
 
+  const { isLoggedIn } = useAuth();
+  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
+    setMounted(true);
     const fetchVenueDetails = async () => {
       try {
         const response = await ApiService.getVenueById(params.id as string);
@@ -230,6 +237,12 @@ export default function VenueDetailsPage() {
       setSelectedDate(date);
       updateTimeSlots(venue, date);
     }
+  };
+
+  // Add a handler for Book Now button
+  const handleBookNow = () => {
+    if (!mounted) return;
+    router.push(isLoggedIn ? "/venues/book" : "/login");
   };
 
   if (loading) {
@@ -286,7 +299,17 @@ export default function VenueDetailsPage() {
         </div>
       </div>
 
-    
+      {/* Book Now Button (auth-aware) */}
+      <div className="mb-6">
+        <button
+          type="button"
+          onClick={handleBookNow}
+          disabled={!mounted}
+          className="bg-blue-600 text-white px-6 py-2 rounded-md font-semibold text-base hover:bg-blue-700 transition-all disabled:bg-gray-300 disabled:text-gray-500"
+        >
+          Book Now
+        </button>
+      </div>
 
       <Card>
         <CardHeader>

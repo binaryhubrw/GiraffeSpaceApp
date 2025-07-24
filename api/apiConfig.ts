@@ -891,99 +891,22 @@ class ApiService {
   }
   }
 
-  /**************************************** */
 
-  /** EVENT ******* */
+/********************************************** */
 
-  static async createEvent(eventData: any): Promise<any> {
-    try {
-      const response = await axios.post(`${this.BASE_URL}/event`, eventData, {
-        headers: this.getHeader(eventData),
-        withCredentials: true,
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error creating event:", error);
-      throw error;
-    }
-  }
 
-  /** Get all events */
-  static async getAllEvents(): Promise<any> {
-    try {
-      const response = await axios.get(`${this.BASE_URL}/event`, {
-        headers: this.getHeader(),
-        withCredentials: true,
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching all events:", error);
-      throw error;
-    }
-  }
-
-  /** Update event by ID */
-  static async updateEventById(eventId: string, data: any): Promise<any> {
-    try {
-      const response = await axios.put(
-        `${this.BASE_URL}/event/${eventId}`,
-        data,
-        {
-          headers: this.getHeader(),
-          withCredentials: true,
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating event with ID ${eventId}:`, error);
-      throw error;
-    }
-  }
-
-  /** Get event by ID */
-  static async getEventById(eventId: string): Promise<any> {
-    try {
-      const response = await axios.get(`${this.BASE_URL}/event/${eventId}`, {
-        headers: this.getHeader(),
-        withCredentials: true,
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching event with ID ${eventId}:`, error);
-      throw error;
-    }
-  }
-
-  /*** aprove event booking** */
-  static async approveEventBooking(eventId: string, data: any): Promise<any> {
-    try {
-      const response = await axios.put(
-        `${this.BASE_URL}/event/approve/${eventId}`,
-        data,
-        {
-          headers: this.getHeader(),
-          withCredentials: true,
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Error approving event booking with ID ${eventId}:`, error);
-      throw error;
-    }
-  }
-
-  /** vENUE BOOKING   */
+     /******************8 VENUE BOOKING   **************/
 
   /** get all booking */
-  static async getAllBookings(): Promise<any> {
+  static async getAllBookingsByManager(managerId: string): Promise<any> {
     try {
-      const response = await axios.get(`${this.BASE_URL}/venue-bookings`, {
+      const response = await axios.get(`${this.BASE_URL}/venue-bookings/manager/${managerId}`, {
         headers: this.getHeader(),
         withCredentials: true,
       });
       return response.data;
     } catch (error) {
-      console.error("Error fetching all bookings:", error);
+      console.error("Error fetching all bookings by manager:", error);
       throw error;
     }
   }
@@ -1079,6 +1002,126 @@ class ApiService {
         `Error fetching bookings for event with ID ${eventId}:`,
         error
       );
+      throw error;
+    }
+  }
+
+
+
+  /***** getAllBooking**** */
+  static async getAllBookings(): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/venue-bookings`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching all bookings:", error);
+      throw error;
+    }
+  }
+
+
+
+  /**************************************** */
+
+  /** EVENT ******* */
+
+  static async createEvent(eventData: any): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/event`, eventData, {
+        headers: this.getHeader(eventData),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error creating event:", error);
+      throw error;
+    }
+  }
+
+  /** Get all events */
+  static async getAllEvents(): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/event`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching all events:", error);
+      throw error;
+    }
+  }
+
+  /** Update event by ID */
+  static async updateEventById(eventId: string, data: any): Promise<any> {
+    try {
+      const response = await axios.put(
+        `${this.BASE_URL}/event/${eventId}`,
+        data,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+  /** Get event by ID */
+  static async getEventById(eventId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/event/${eventId}`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+
+
+
+  /*** aprove event booking** */
+  static async approveEventBooking(eventId: string, data: any): Promise<any> {
+    try {
+      const response = await axios.put(
+        `${this.BASE_URL}/event/approve/${eventId}`,
+        data,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error approving event booking with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+  /*** cancel event booking** */
+  static async cancelEventBooking(eventId: string, data: any): Promise<any> {
+    try {
+      const response = await axios.put(
+        `${this.BASE_URL}/event/cancel/${eventId}`,
+        data,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error canceling event booking with ID ${eventId}:`, error);
       throw error;
     }
   }
