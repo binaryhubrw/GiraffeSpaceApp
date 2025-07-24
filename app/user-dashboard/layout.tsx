@@ -9,9 +9,9 @@ export default function UserDashboardLayout({
   return (
     <>
       <UserHeader />
-      <div className="flex p-8 mt-16 min-h-screen">
+      <div className="pl-60 flex p-8 mt-16 min-h-screen bg-[#eff6ff]">
         <UserDashboardSidebar />
-        <main className="flex-1 ml-44 bg-gray-50">{children}</main>
+        <main className="flex-1 ">{children}</main>
       </div>
     </>
   )

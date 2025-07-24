@@ -15,7 +15,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {/* Fixed Sidebar */}
         <SideBar />
         {/* Main Content */}
-        <div className="flex-1 flex flex-col ml-64">
+        <div className="flex-1 flex flex-col ml-64 bg-[#eff6ff]">
           <div className="flex-1 p-8">
             {children}
           </div>

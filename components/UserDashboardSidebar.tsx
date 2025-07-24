@@ -12,7 +12,7 @@ export function UserDashboardSidebar() {
   }
 
   return (
-    <div className="fixed top-16 left-0 w-48 h-[calc(100vh-64px)] bg-white border-r border-gray-200  z-20">
+    <div className="fixed top-16 left-0 h-[calc(100vh-64px)] bg-white border-r border-gray-200 flex-shrink-0 z-20">
       <div className="p-6">
         <nav className="space-y-2">
           <Link 

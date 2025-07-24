@@ -1,4 +1,4 @@
-import axios, { AxiosRequestHeaders } from "axios";
+import axios, { AxiosRequestHeaders, AxiosProgressEvent } from "axios";
 import { jwtDecode, JwtPayload } from "jwt-decode";
 import type { User, UserResult, UserApiResponse } from "@/data/users";
 
@@ -25,13 +25,11 @@ interface Organization {
 }
 
 class ApiService {
-  static BASE_URL: string ="https://giraffespacev2.onrender.com/api/v1"
+  static BASE_URL: string = "https://giraffespacev2.onrender.com/api/v1";
   // https://giraffespacev2.onrender.com/api/v1
-    // process.env.NODE_ENV === "production"
-    // ? "https://giraffeeventsystem.onrender.com/api/v1"
-    // : "http://localhost:3000/api/v1";
-
-  
+  // process.env.NODE_ENV === "production"
+  // ? "https://giraffeeventsystem.onrender.com/api/v1"
+  // : "http://localhost:3000/api/v1";
 
   static getHeader(data?: any): Record<string, string> {
     const token = localStorage.getItem("token");
@@ -95,7 +93,7 @@ class ApiService {
         formData,
         {
           headers: this.getHeader(formData),
-           withCredentials: true // Enable credentials
+          withCredentials: true, // Enable credentials
         }
       );
       return response.data;
@@ -121,7 +119,11 @@ class ApiService {
         }
       );
       console.log("response", response.data);
-      return { success: response.data.success, token: response.data.token, resetToken: response.data.resetToken };
+      return {
+        success: response.data.success,
+        token: response.data.token,
+        resetToken: response.data.resetToken,
+      };
     } catch (error) {
       console.error("Error logging in with default password:", error);
       return { success: false };
@@ -143,7 +145,6 @@ class ApiService {
     }
   }
 
-  
   /** Reset defaultPassword user */
   static async forgetPassword(
     formData: UserFormData
@@ -203,13 +204,10 @@ class ApiService {
   /** Delete user */
   static async deleteUser(userId: string): Promise<UserApiResponse> {
     try {
-      const response = await axios.delete(
-        `${this.BASE_URL}/users/${userId}`,
-        {
-          headers: this.getHeader(),
-          withCredentials: true, // Enable credentials
-        }
-      );
+      const response = await axios.delete(`${this.BASE_URL}/users/${userId}`, {
+        headers: this.getHeader(),
+        withCredentials: true, // Enable credentials
+      });
       return response.data;
     } catch (error) {
       console.error(`Error deleting user with ID ${userId}:`, error);
@@ -217,14 +215,13 @@ class ApiService {
     }
   }
 
- //**** ORGANIZATION ROUTE *** */
+  //**** ORGANIZATION ROUTE *** */
 
   /** Add a new organization */
   static async addOrganization(orgData: any): Promise<any> {
     try {
       const requestData = { organizations: [orgData] }; // Try with organizations field
-      
-      
+
       const response = await axios.post(
         `${this.BASE_URL}/organizations/bulk`,
         requestData,
@@ -239,7 +236,7 @@ class ApiService {
       throw error;
     }
   }
-   static async getAllOrganization(): Promise<any> {
+  static async getAllOrganization(): Promise<any> {
     try {
       const response = await axios.get(
         `${this.BASE_URL}/organizations/all`,
@@ -300,7 +297,10 @@ class ApiService {
       };
     }
   }
-  static async updateOrganizationById(orgId:string,orgData: any): Promise<any> {
+  static async updateOrganizationById(
+    orgId: string,
+    orgData: any
+  ): Promise<any> {
     try {
       const response = await axios.put(
         `${this.BASE_URL}/organizations/${orgId}`,
@@ -329,7 +329,10 @@ class ApiService {
       );
       return response.data;
     } catch (error) {
-      console.error(`Error fetching venues for organization with ID ${orgId}:`, error);
+      console.error(
+        `Error fetching venues for organization with ID ${orgId}:`,
+        error
+      );
       throw error;
     }
   }
@@ -356,13 +359,10 @@ class ApiService {
   /** Get all resources */
   static async getAllResource(): Promise<any> {
     try {
-      const response = await axios.get(
-        `${this.BASE_URL}/resources/find-all`,
-        {
-          headers: this.getHeader(),
-          withCredentials: true,
-        }
-      );
+      const response = await axios.get(`${this.BASE_URL}/resources/find-all`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
       return response.data;
     } catch (error) {
       console.error("Error fetching resources:", error);
@@ -371,7 +371,7 @@ class ApiService {
   }
 
   /** Add a new resource */
-  static async addResource(resourceData: { 
+  static async addResource(resourceData: {
     resourceName: string;
     description: string;
     costPerUnit: number;
@@ -411,7 +411,10 @@ class ApiService {
   }
 
   /** Update resource by ID */
-  static async updateResourceById(resourceId: string, resourceData: any): Promise<any> {
+  static async updateResourceById(
+    resourceId: string,
+    resourceData: any
+  ): Promise<any> {
     try {
       const response = await axios.put(
         `${this.BASE_URL}/resources/update-resource/${resourceId}`,
@@ -445,10 +448,13 @@ class ApiService {
     }
   }
 
-  //**** AMENITIES ROUTE *** */
+  
 
   /** Add user to organization */
-  static async addUserToOrganization(userId: string, orgId: string): Promise<any> {
+  static async addUserToOrganization(
+    userId: string,
+    orgId: string
+  ): Promise<any> {
     try {
       const response = await axios.post(
         `${this.BASE_URL}/organizations/${orgId}/users`,
@@ -460,94 +466,99 @@ class ApiService {
       );
       return response.data;
     } catch (error) {
-      console.error(`Error adding user with ID ${userId} to organization with ID ${orgId}:`, error);
+      console.error(
+        `Error adding user with ID ${userId} to organization with ID ${orgId}:`,
+        error
+      );
       throw error;
     }
   }
 
 
-/**** VENUES**** */
 
 
+
+  /**** VENUES   **** */
 
   /** add venue to organization */
 
+  static async addVenueToOrganization(
+    orgId: string,
+    venueIds: string | string[]
+  ): Promise<any> {
+    try {
+      // Normalize to array
+      const idsArray = Array.isArray(venueIds) ? venueIds : [venueIds];
 
-
-static async addVenueToOrganization(
-  orgId: string,
-  venueIds: string | string[]
-): Promise<any> {
-  try {
-    // Normalize to array
-    const idsArray = Array.isArray(venueIds) ? venueIds : [venueIds];
-
-    const response = await axios.post(
-      `${this.BASE_URL}/organizations/${orgId}/venues`,
-      { venueIds: idsArray },
-      {
-        headers: this.getHeader(),
-        withCredentials: true,
-      }
-    );
-    return response.data;
-  } catch (error) {
-    console.error(`Error adding venue(s) to organization with ID ${orgId}:`, error);
-    throw error;
+      const response = await axios.post(
+        `${this.BASE_URL}/organizations/${orgId}/venues`,
+        { venueIds: idsArray },
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error adding venue(s) to organization with ID ${orgId}:`,
+        error
+      );
+      throw error;
+    }
   }
-}
 
-
-
-/** Get all venues by organizationId */
-static async getVenuesByOrganizationId(orgId: string): Promise<any> {
-  try {
-    const response = await axios.get(
-      `${this.BASE_URL}/organizations/${orgId}/venues`,
-      {
-        headers: this.getHeader(),
-        withCredentials: true,
-      }
-    );
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching venues for organization with ID ${orgId}:`, error);
-    throw error;
+  /** Get all venues by organizationId */
+  static async getVenuesByOrganizationId(orgId: string): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${this.BASE_URL}/organizations/${orgId}/venues`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching venues for organization with ID ${orgId}:`,
+        error
+      );
+      throw error;
+    }
   }
-}
 
-/** remove venue from organization */
-static async removeVenueFromOrganization(
-  orgId: string,
- venueIds: string | string[]
-): Promise<any> {
-  try {
-    // Normalize to array
-    const idsArray = Array.isArray(venueIds) ? venueIds : [venueIds];
-    const response = await axios.post(
-      `${this.BASE_URL}/organizations/${orgId}/venues`,
-      { venueIds: idsArray },
-      {
-        headers: this.getHeader(),
-        withCredentials: true,
-      }
-    );
-    return response.data;
-  } catch (error) {
-    console.error(`Error removing venue(s) from organization with ID ${orgId}:`, error);
-    throw error;
+  /** remove venue from organization */
+  static async removeVenueFromOrganization(
+    orgId: string,
+    venueIds: string | string[]
+  ): Promise<any> {
+    try {
+      // Normalize to array
+      const idsArray = Array.isArray(venueIds) ? venueIds : [venueIds];
+      const response = await axios.post(
+        `${this.BASE_URL}/organizations/${orgId}/venues`,
+        { venueIds: idsArray },
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error removing venue(s) from organization with ID ${orgId}:`,
+        error
+      );
+      throw error;
+    }
   }
-}
 
-
-
-
-
-/** Create a new venue */
+  /** Create a new venue */
   static async createVenue(venueData: any): Promise<any> {
     try {
       const response = await axios.post(
-        `${this.BASE_URL}/venue/add-with-resources`,
+        `${this.BASE_URL}/venue/add`,
         venueData,
         {
           headers: this.getHeader(venueData),
@@ -563,10 +574,13 @@ static async removeVenueFromOrganization(
   /** Get all venues */
   static async getAllVenues(): Promise<any> {
     try {
-      const response = await axios.get(`${this.BASE_URL}/venue/public-venues/list`, {
-        headers: this.getHeader(),
-        withCredentials: true,
-      });
+      const response = await axios.get(
+        `${this.BASE_URL}/venue/public-venues/list`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
       return response.data;
     } catch (error) {
       console.error("Error fetching all venues:", error);
@@ -574,16 +588,28 @@ static async removeVenueFromOrganization(
     }
   }
 
+  /**** getAllVenueAdminOnly **** */
+  static async getAllVenueAdminOnly(): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/venue/all`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching all admin-only venues:", error);
+      throw error;
+    }
+  }
+
+
   /** Get venue by ID */
   static async getVenueById(id: string): Promise<any> {
     try {
-      const response = await axios.get(
-        `${this.BASE_URL}/venue/public/${id}`,
-        {
-          headers: this.getHeader(), // Use your standard headers
-          withCredentials: true      // Include credentials if needed
-        }
-      );
+      const response = await axios.get(`${this.BASE_URL}/venue/${id}`, {
+        headers: this.getHeader(), // Use your standard headers
+        withCredentials: true, // Include credentials if needed
+      });
       return response.data;
     } catch (error) {
       console.error(`Error fetching venue with ID ${id}:`, error);
@@ -591,26 +617,111 @@ static async removeVenueFromOrganization(
     }
   }
 
+
+ 
+
   /** get venue by managerId*/
   static async getVenueByManagerId(managerId: string): Promise<any> {
     try {
-      const response = await axios.get(`${this.BASE_URL}/venue/manager-venues/${managerId}`, {
-        headers: this.getHeader(),
-        withCredentials: true,
-      });
+      const response = await axios.get(
+        `${this.BASE_URL}/venue/managers/${managerId}/venues`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
       return response.data;
     } catch (error) {
-      console.error(`Error fetching venue with manager ID ${managerId}:`, error);
+      console.error(
+        `Error fetching venue with manager ID ${managerId}:`,
+        error
+      );
       throw error;
     }
-  } 
+  }
+
+   /***** update main phote *****  */
+  static async updateVenueMainPhoto(
+    venueId: string,
+    photoData: FormData,
+    onUploadProgress?: (progressEvent: AxiosProgressEvent) => void
+  ): Promise<any> {
+    try {
+      const response = await axios.patch(
+        `${this.BASE_URL}/venue/${venueId}/main-photo`,
+        photoData,
+        {
+          headers: this.getHeader(photoData),
+          withCredentials: true,
+          ...(onUploadProgress ? { onUploadProgress } : {}),
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating main photo for venue with ID ${venueId}:`, error);    
+      throw error;
+    } 
+  }
+
+
+
+
+
+  /*****Add image in garelyy *****  */
+  static async addVenueGalleryImage(
+    venueId: string,
+    imageData: FormData,
+    onUploadProgress?: (progressEvent: AxiosProgressEvent) => void
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${this.BASE_URL}/venue/${venueId}/photo-gallery`,
+        imageData,
+        {
+          headers: this.getHeader(imageData),
+          withCredentials: true,
+          ...(onUploadProgress ? { onUploadProgress } : {}),
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error adding gallery image for venue with ID ${venueId}:`, error);
+      throw error;
+    }
+  }
+
+
+
+ /***** Remove image in garelly ***** */
+ static async removeVenueGalleryImage(
+  venueId: string,
+  photoUrl: string
+): Promise<any> {
+  try {
+    const response = await axios.delete(
+      `${this.BASE_URL}/venue/${venueId}/photo-gallery`,
+      {
+        data: { photoUrl },
+        headers: this.getHeader(photoUrl),
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error(`Error removing gallery image for venue with ID ${venueId}:`, error);
+    throw error;
+  }
+}
+
+
+
+
 
   /** Update venue by ID */
-  static async updateVenueById(
-venueId: string, data: any): Promise<any> {  
+  static async updateVenueDetailsById(venueId: string, data: any): Promise<any> {
     try {
-      const response = await axios.put(
-        `${this.BASE_URL}/venue/update/${venueId}`,
+      const response = await axios.patch(
+        `${this.BASE_URL}/venue/${venueId}`,
         {},
         {
           headers: this.getHeader(),
@@ -622,9 +733,9 @@ venueId: string, data: any): Promise<any> {
       console.error(`Error updating venue with ID ${venueId}:`, error);
       throw error;
     }
-}
+  }
 
-/** update venue manager */
+  /** update venue manager */
   static async updateVenueManager(
     venueId: string,
     managerId: string
@@ -640,7 +751,10 @@ venueId: string, data: any): Promise<any> {
       );
       return response.data;
     } catch (error) {
-      console.error(`Error updating manager for venue with ID ${venueId}:`, error);
+      console.error(
+        `Error updating manager for venue with ID ${venueId}:`,
+        error
+      );
       throw error;
     }
   }
@@ -648,10 +762,13 @@ venueId: string, data: any): Promise<any> {
   /** Delete venue */
   static async deleteVenue(venueId: string): Promise<any> {
     try {
-      const response = await axios.delete(`${this.BASE_URL}/venue/remove/${venueId}`, {
-        headers: this.getHeader(),
-        withCredentials: true,
-      });
+      const response = await axios.delete(
+        `${this.BASE_URL}/venue/remove/${venueId}`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
       return response.data;
     } catch (error) {
       console.error(`Error deleting venue with ID ${venueId}:`, error);
@@ -660,7 +777,9 @@ venueId: string, data: any): Promise<any> {
   }
 
   /*add-venue-require-admin-but-manager-available */
-  static async addVenueRequireAdminButManagerAvailable( venueData: any): Promise<any> {
+  static async addVenueRequireAdminButManagerAvailable(
+    venueData: any
+  ): Promise<any> {
     try {
       const response = await axios.post(
         `${this.BASE_URL}/venue/add`,
@@ -694,7 +813,7 @@ venueId: string, data: any): Promise<any> {
             endDate,
             startTime,
             endTime,
-            ...(organizationId ? { organizationId } : {})
+            ...(organizationId ? { organizationId } : {}),
           },
           headers: this.getHeader(),
           withCredentials: true,
@@ -707,58 +826,81 @@ venueId: string, data: any): Promise<any> {
     }
   }
 
-
-
   /** Aprove venue */
-  static async approveVenue(venueId: string): Promise<any> {
-    try {
-      const response = await axios.post(
-        `${this.BASE_URL}/venue/approve/${venueId}`,
-        
-        {
-          headers: this.getHeader(),
-          withCredentials: true,
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Error approving venue with ID ${venueId}:`, error);
-      throw error;
-    }
-  }
-
-  /*** cancel venue */
-static async cancelVenue(venueId: string, data: any): Promise<any> {
+  static async approveVenueAdmin(venueId: string): Promise<any> {
+   
   try {
-    const response = await axios.put(
-      `${this.BASE_URL}/venue/cancel/${venueId}`,
-      data,
+    
+    const token = localStorage.getItem("token");
+    
+    
+    if (!token) {
+      throw new Error("No token found. Please login again.");
+    }
+
+    const response = await axios.patch(
+      `${this.BASE_URL}/venue/${venueId}/approve`,
+      {}, // no request body needed
       {
-        headers: this.getHeader(),
-        withCredentials: true,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true, // optional, use only if your backend needs cookies
       }
     );
+
     return response.data;
   } catch (error) {
-    console.error(`Error canceling venue with ID ${venueId}:`, error);
+    console.error(`Error approving venue with ID ${venueId}:`, error);
     throw error;
-  }   
-}
+  }
+  }
+
+
+ 
+
+
+  /*** cancel venue */
+  static async cancelVenueAproveAdmin(venueId: string, data: any): Promise<any> {
+    try {
+    
+    const token = localStorage.getItem("token");
+    
+    
+    if (!token) {
+      throw new Error("No token found. Please login again.");
+    }
+
+    const response = await axios.patch(
+      `${this.BASE_URL}/venue/${venueId}/reject`,
+      data, //  request body needed
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true, // optional, use only if your backend needs cookies
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(`Error canceling venue approval with ID ${venueId}:`, error);
+    throw error;
+  }
+  }
 
   /**************************************** */
 
-            /** EVENT ******* */
+  /** EVENT ******* */
 
   static async createEvent(eventData: any): Promise<any> {
     try {
-      const response = await axios.post(
-        `${this.BASE_URL}/event`,
-        eventData,
-        {
-          headers: this.getHeader(eventData),
-          withCredentials: true,
-        }
-      );
+      const response = await axios.post(`${this.BASE_URL}/event`, eventData, {
+        headers: this.getHeader(eventData),
+        withCredentials: true,
+      });
       return response.data;
     } catch (error) {
       console.error("Error creating event:", error);
@@ -771,7 +913,7 @@ static async cancelVenue(venueId: string, data: any): Promise<any> {
     try {
       const response = await axios.get(`${this.BASE_URL}/event`, {
         headers: this.getHeader(),
-         withCredentials: true,
+        withCredentials: true,
       });
       return response.data;
     } catch (error) {
@@ -799,7 +941,7 @@ static async cancelVenue(venueId: string, data: any): Promise<any> {
   }
 
   /** Get event by ID */
-  static async getEventById(eventId: string): Promise<any> {  
+  static async getEventById(eventId: string): Promise<any> {
     try {
       const response = await axios.get(`${this.BASE_URL}/event/${eventId}`, {
         headers: this.getHeader(),
@@ -811,118 +953,134 @@ static async cancelVenue(venueId: string, data: any): Promise<any> {
       throw error;
     }
   }
-  
-/*** aprove event booking** */
-static async approveEventBooking(eventId: string, data: any): Promise<any> {
-  try {
-    const response = await axios.put(
-      `${this.BASE_URL}/event/approve/${eventId}`,
-      data,
-      {
+
+  /*** aprove event booking** */
+  static async approveEventBooking(eventId: string, data: any): Promise<any> {
+    try {
+      const response = await axios.put(
+        `${this.BASE_URL}/event/approve/${eventId}`,
+        data,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error approving event booking with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+  /** vENUE BOOKING   */
+
+  /** get all booking */
+  static async getAllBookings(): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/venue-bookings`, {
         headers: this.getHeader(),
         withCredentials: true,
-      }
-    );
-    return response.data;
-  } catch (error) {
-    console.error(`Error approving event booking with ID ${eventId}:`, error);
-    throw error;
-  }
-}
-
-
-
-/** vENUE BOOKING   */
-
-/** get all booking */
-static async getAllBookings(): Promise<any> {
-  try {
-    const response = await axios.get(`${this.BASE_URL}/venue-bookings`, {
-      headers: this.getHeader(),
-      withCredentials: true,
-    });
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching all bookings:", error);
-    throw error;
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching all bookings:", error);
+      throw error;
+    }
   }
 
-
-}
-
-/*** get booking by bookingId**/
-static async getBookingById(bookingId: string): Promise<any> {
-  try {
-    const response = await axios.get(`${this.BASE_URL}/venue-bookings/${bookingId}`, {
-      headers: this.getHeader(),
-      withCredentials: true,
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching booking with ID ${bookingId}:`, error);
-    throw error;
-  } 
-}
-
-/** get booking by status**/
-static async getBookingByStatus(): Promise<any> {
-  try {
-    const response = await axios.get(`${this.BASE_URL}/event-bookings/status/pending`, {
-      headers: this.getHeader(),
-      withCredentials: true,
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching bookings with status :`, error);
-    throw error;
-  }
-}
-
-/*****  get booking by organizationId */
-static async getBookingByOrganizationId(orgId: string): Promise<any> {
-  try {
-    const response = await axios.get(`${this.BASE_URL}/venue-bookings/organization/${orgId}`, {
-      headers: this.getHeader(),
-      withCredentials: true,
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching bookings for organization with ID ${orgId}:`, error);
-    throw error;
+  /*** get booking by bookingId**/
+  static async getBookingById(bookingId: string): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${this.BASE_URL}/venue-bookings/${bookingId}`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching booking with ID ${bookingId}:`, error);
+      throw error;
+    }
   }
 
-}
-
-
-/*** get booking by venueID*/
-
-static async getBookingByVenueId(venueId: string): Promise<any> {
-  try {
-    const response = await axios.get(`${this.BASE_URL}/venue-bookings/venue/${venueId}`, {
-      headers: this.getHeader(),
-      withCredentials: true,
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching bookings for venue with ID ${venueId}:`, error);
-    throw error;
+  /** get booking by status**/
+  static async getBookingByStatus(): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${this.BASE_URL}/event-bookings/status/pending`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching bookings with status :`, error);
+      throw error;
+    }
   }
-}
 
-/*** get booking by eventId*/
-static async getBookingByEventId(eventId: string): Promise<any> {
-  try {
-    const response = await axios.get(`${this.BASE_URL}/venue-bookings/event/${eventId}`, {
-      headers: this.getHeader(),
-      withCredentials: true,
-    });
-    return response.data;
-  } catch (error) {
-    console.error(`Error fetching bookings for event with ID ${eventId}:`, error);
-    throw error;
+  /*****  get booking by organizationId */
+  static async getBookingByOrganizationId(orgId: string): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${this.BASE_URL}/venue-bookings/organization/${orgId}`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching bookings for organization with ID ${orgId}:`,
+        error
+      );
+      throw error;
+    }
   }
-}
 
+  /*** get booking by venueID*/
 
+  static async getBookingByVenueId(venueId: string): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${this.BASE_URL}/venue-bookings/venue/${venueId}`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching bookings for venue with ID ${venueId}:`,
+        error
+      );
+      throw error;
+    }
+  }
+
+  /*** get booking by eventId*/
+  static async getBookingByEventId(eventId: string): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${this.BASE_URL}/venue-bookings/event/${eventId}`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        `Error fetching bookings for event with ID ${eventId}:`,
+        error
+      );
+      throw error;
+    }
+  }
 }
 export default ApiService;
