@@ -25,6 +25,8 @@ interface Organization {
 }
 
 class ApiService {
+
+  /***** base url** */
   static BASE_URL: string = "https://giraffespacev2.onrender.com/api/v1";
 
 
