@@ -9,7 +9,8 @@ import { Separator } from "@/components/ui/separator"
 import { 
   Building2, Users, Calendar, Mail, Phone, MapPin, User, 
   ArrowLeft, Edit, Link2, CheckCircle2, XCircle, 
-  MapPinIcon, Eye
+  MapPinIcon, Eye, Clock, Shield, FileText, Loader2,
+  ExternalLink, ChevronRight, Home
 } from "lucide-react"
 import {
   Table,
@@ -22,6 +23,9 @@ import {
 import { toast } from "sonner"
 import ApiService from "@/api/apiConfig"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { cn } from "@/lib/utils"
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
 
 interface User {
   userId: string
@@ -79,7 +83,109 @@ interface Organization {
   users: User[]
   venues?: Venue[]
   events?: Event[]
+  cancellationReason?: string | null
 }
+
+const StatusBadge = ({ status, className }: { status: string, className?: string }) => {
+  const getStatusConfig = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'active':
+      case 'approved':
+        return { variant: 'default' as const, className: 'bg-green-100 text-green-800 hover:bg-green-200', icon: CheckCircle2 }
+      case 'pending':
+        return { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200', icon: Clock }
+      case 'rejected':
+      case 'inactive':
+        return { variant: 'destructive' as const, className: 'bg-red-100 text-red-800 hover:bg-red-200', icon: XCircle }
+      case 'upcoming':
+        return { variant: 'outline' as const, className: 'bg-blue-100 text-blue-800 hover:bg-blue-200', icon: Calendar }
+      default:
+        return { variant: 'secondary' as const, className: 'bg-gray-100 text-gray-800 hover:bg-gray-200', icon: Shield }
+    }
+  }
+
+  const config = getStatusConfig(status)
+  const Icon = config.icon
+
+  return (
+    <Badge 
+      variant={config.variant} 
+      className={cn("transition-colors duration-200 font-medium", config.className, className)}
+    >
+      <Icon className="w-3 h-3 mr-1" />
+      {status}
+    </Badge>
+  )
+}
+
+const InfoCard = ({ icon: Icon, label, value, className }: { 
+  icon: any, 
+  label: string, 
+  value: string | React.ReactNode, 
+  className?: string 
+}) => (
+  <div className={cn("flex items-start space-x-3 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors duration-200", className)}>
+    <div className="flex-shrink-0 w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
+      <Icon className="w-5 h-5 text-gray-600" />
+    </div>
+    <div className="min-w-0 flex-1">
+      <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
+      <div className="text-sm text-gray-900 break-words">{value}</div>
+    </div>
+  </div>
+)
+
+const LoadingSpinner = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
+    <div className="text-center space-y-4">
+      <div className="relative">
+        <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+        <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-r-blue-400 rounded-full animate-spin mx-auto" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
+      </div>
+      <div className="space-y-2">
+        <p className="text-lg font-medium text-gray-900">Loading organization details</p>
+        <p className="text-sm text-gray-500">Please wait while we fetch the information...</p>
+      </div>
+    </div>
+  </div>
+)
+
+const ErrorState = ({ error, onRetry, onBack }: { error: string, onRetry: () => void, onBack: () => void }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-white">
+    <div className="text-center space-y-6 max-w-md mx-auto px-6">
+      <div className="relative">
+        <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+          <XCircle className="w-10 h-10 text-red-600" />
+        </div>
+        <div className="absolute -top-1 -right-1 w-6 h-6 bg-red-600 rounded-full flex items-center justify-center">
+          <span className="text-white text-xs font-bold">!</span>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <h2 className="text-xl font-semibold text-gray-900">Oops! Something went wrong</h2>
+        <p className="text-red-600 font-medium">{error}</p>
+        <p className="text-sm text-gray-500">Please check the organization ID and try again</p>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <Button 
+          variant="outline" 
+          onClick={onRetry}
+          className="hover:bg-gray-50 transition-colors duration-200"
+        >
+          <Loader2 className="w-4 h-4 mr-2" />
+          Try Again
+        </Button>
+        <Button 
+          onClick={onBack}
+          className="bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Organizations
+        </Button>
+      </div>
+    </div>
+  </div>
+)
 
 export default function OrganizationDetailPage() {
   const router = useRouter()
@@ -88,29 +194,33 @@ export default function OrganizationDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
-  const [docOpen, setDocOpen] = useState(false);
+  const [docOpen, setDocOpen] = useState(false)
+  const [rejectModalOpen, setRejectModalOpen] = useState(false)
+  const [rejectionReason, setRejectionReason] = useState("")
+  const [rejectLoading, setRejectLoading] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>("all")
 
   // Clean and validate the ID
   const validateId = (rawId: string | string[] | undefined): string | null => {
     try {
       // Basic validation
-      if (!rawId) return null;
-      if (Array.isArray(rawId)) return null;
+      if (!rawId) return null
+      if (Array.isArray(rawId)) return null
       
       // Clean and decode the ID
-      const cleaned = decodeURIComponent(rawId).trim();
+      const cleaned = decodeURIComponent(rawId).trim()
       
       // Check for invalid values
       if (!cleaned || 
           cleaned === 'undefined' || 
           cleaned === 'null' || 
           cleaned === '[object Object]') {
-        return null;
+        return null
       }
 
-      return cleaned;
+      return cleaned
     } catch {
-      return null;
+      return null
     }
   }
 
@@ -119,61 +229,61 @@ export default function OrganizationDetailPage() {
   useEffect(() => {
     const fetchOrganization = async () => {
       try {
-        setLoading(true);
-        setError(null);
+        setLoading(true)
+        setError(null)
 
         if (!id) {
-          setError('Organization ID is required');
-          toast.error('Organization ID is required');
-          router.replace('/admin/organization');
-          return;
+          setError('Organization ID is required')
+          toast.error('Organization ID is required')
+          router.replace('/admin/organization')
+          return
         }
 
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem("token")
         if (!token) {
-          setError('Please login to view organization details');
-          toast.error('Please login to view organization details');
-          router.push('/login');
-          return;
+          setError('Please login to view organization details')
+          toast.error('Please login to view organization details')
+          router.push('/login')
+          return
         }
 
         // Fetch all organizations (API returns an array)
-        const response = await ApiService.getAllOrganization();
+        const response = await ApiService.getAllOrganization()
         if (response.success && Array.isArray(response.data)) {
           // Find the organization by ID
-          const org = response.data.find((o: any) => o.organizationId === id);
+          const org = response.data.find((o: any) => o.organizationId === id)
           if (org) {
-            setOrganization(org);
+            setOrganization(org)
           } else {
-            setError('Organization not found');
-            toast.error('Organization not found');
-            router.replace('/admin/organization');
+            setError('Organization not found')
+            toast.error('Organization not found')
+            router.replace('/admin/organization')
           }
         } else {
-          const errorMsg = response.error || 'Failed to fetch organization details';
-          setError(errorMsg);
-          toast.error(errorMsg);
-          router.replace('/admin/organization');
+          const errorMsg = response.error || 'Failed to fetch organization details'
+          setError(errorMsg)
+          toast.error(errorMsg)
+          router.replace('/admin/organization')
         }
       } catch (error: any) {
-        const errorMessage = error.message || 'Failed to fetch organization details';
-        setError(errorMessage);
-        toast.error(errorMessage);
-        console.error('Error fetching organization:', error);
+        const errorMessage = error.message || 'Failed to fetch organization details'
+        setError(errorMessage)
+        toast.error(errorMessage)
+        console.error('Error fetching organization:', error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchOrganization();
-  }, [id, router]);
+    fetchOrganization()
+  }, [id, router])
 
   // Approve handler
   const handleApprove = async () => {
-    if (!organization?.organizationId) return;
-    setActionLoading(true);
+    if (!organization?.organizationId) return
+    setActionLoading(true)
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token")
       const response = await fetch(
         `https://giraffespacev2.onrender.com/api/v1/organizations/${organization.organizationId}/approve`,
         {
@@ -183,26 +293,26 @@ export default function OrganizationDetailPage() {
             ...(token ? { "Authorization": `Bearer ${token}` } : {}),
           },
         }
-      );
-      const data = await response.json();
+      )
+      const data = await response.json()
       if (data.success) {
-        toast.success(data.message || "Organization approved.");
-        setOrganization((prev) => prev ? { ...prev, status: "APPROVED" } : prev);
+        toast.success(data.message || "Organization approved.")
+        setOrganization((prev) => prev ? { ...prev, status: "APPROVED" } : prev)
       } else {
-        toast.error(data.message || "Failed to approve organization.");
+        toast.error(data.message || "Failed to approve organization.")
       }
     } catch (err) {
-      toast.error("Failed to approve organization.");
+      toast.error("Failed to approve organization.")
     } finally {
-      setActionLoading(false);
+      setActionLoading(false)
     }
-  };
-  // Reject handler
-  const handleReject = async () => {
-    if (!organization?.organizationId) return;
-    setActionLoading(true);
+  }
+  // Modified reject handler to accept a reason
+  const handleReject = async (reason?: string) => {
+    if (!organization?.organizationId) return
+    setRejectLoading(true)
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token")
       const response = await fetch(
         `https://giraffespacev2.onrender.com/api/v1/organizations/${organization.organizationId}/reject`,
         {
@@ -211,375 +321,504 @@ export default function OrganizationDetailPage() {
             "Content-Type": "application/json",
             ...(token ? { "Authorization": `Bearer ${token}` } : {}),
           },
+          body: JSON.stringify(reason ? { cancellationReason: reason } : {})
         }
-      );
-      const data = await response.json();
+      )
+      const data = await response.json()
       if (data.success) {
-        toast.success(data.message || "Organization rejected.");
-        setOrganization((prev) => prev ? { ...prev, status: "REJECTED" } : prev);
+        toast.success(data.message || "Organization rejected.")
+        setOrganization((prev) => prev ? { ...prev, status: "REJECTED", cancellationReason: reason || null } : prev)
+        setRejectModalOpen(false)
+        setRejectionReason("")
       } else {
-        toast.error(data.message || "Failed to reject organization.");
+        toast.error(data.message || "Failed to reject organization.")
       }
     } catch (err) {
-      toast.error("Failed to reject organization.");
+      toast.error("Failed to reject organization.")
     } finally {
-      setActionLoading(false);
+      setRejectLoading(false)
     }
-  };
+  }
+
+  // Filter logic for organizations (if displaying a list, but here for detail page, we can use this for conditional rendering)
+  const isIndependent = !organization?.organizationType || organization.organizationType.toLowerCase() === 'independent'
+  const matchesStatus = statusFilter === 'all' || (organization?.status && organization.status.toLowerCase() === statusFilter)
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-gray-600">Loading organization details...</div>
-      </div>
-    )
+    return <LoadingSpinner />
   }
 
   if (error || !organization) {
     return (
+      <ErrorState 
+        error={error || 'Organization not found'} 
+        onRetry={() => window.location.reload()}
+        onBack={() => router.push("/admin/organization")}
+      />
+    )
+  }
+
+  if (isIndependent) {
+    return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="flex flex-col items-center gap-2">
-            <XCircle className="h-12 w-12 text-red-500" />
-            <div className="text-lg font-semibold text-red-600">{error || 'Organization not found'}</div>
-            <p className="text-gray-500">Please check the organization ID and try again</p>
-          </div>
-          <div className="flex justify-center gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => window.location.reload()}
-            >
-              Try Again
-            </Button>
-            <Button 
-              onClick={() => router.push("/admin/organization")}
-            >
-              Back to Organizations
-            </Button>
-          </div>
+          <XCircle className="h-12 w-12 text-red-500 mx-auto" />
+          <div className="text-lg font-semibold text-red-600">Independent organizations are not displayed.</div>
+          <Button onClick={() => router.push("/admin/organization")}>Back to Organizations</Button>
+        </div>
+      </div>
+    )
+  }
+  if (!matchesStatus) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <XCircle className="h-12 w-12 text-yellow-500 mx-auto" />
+          <div className="text-lg font-semibold text-yellow-600">This organization does not match the selected status filter.</div>
+          <Button onClick={() => setStatusFilter('all')}>Show All</Button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="flex flex-1">
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 p-8">
-            <div className="space-y-6">
-              {/* Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => router.push("/admin/organization")}
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                  </Button>
-                  <div>
-                    <h1 className="text-3xl font-bold">{organization.organizationName}</h1>
-                    <p className="text-gray-600">Organization Details</p>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <div className="flex gap-2">
-                    {/* <Button 
-                      variant="outline"
-                      onClick={() => {
-                        const targetId = organization?.organizationId || id;
-                        if (targetId) {
-                          router.push(`/admin/organization/${targetId}/edit`);
-                        } else {
-                          toast.error('Organization ID not found');
-                        }
-                      }}
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button> */}
-                    <Button
-                      variant="default"
-                      disabled={organization.status === "APPROVED" || actionLoading}
-                      onClick={handleApprove}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      disabled={organization.status === "REJECTED" || actionLoading}
-                      onClick={handleReject}
-                    >
-                      Reject
-                    </Button>
-                  </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50">
+      {/* Header with Breadcrumb */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-40 backdrop-blur-sm bg-white/95">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center space-x-2 text-sm text-gray-500 mb-3">
+            <Home className="w-4 h-4" />
+            <ChevronRight className="w-4 h-4" />
+            <span className="hover:text-gray-700 cursor-pointer" onClick={() => router.push("/admin")}>Admin</span>
+            <ChevronRight className="w-4 h-4" />
+            <span className="hover:text-gray-700 cursor-pointer" onClick={() => router.push("/admin/organization")}>Organizations</span>
+            <ChevronRight className="w-4 h-4" />
+            <span className="text-gray-900 font-medium">{organization.organizationName}</span>
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button 
+                variant="outline" 
+                size="icon"
+                onClick={() => router.push("/admin/organization")}
+                className="hover:bg-gray-100 transition-colors duration-200"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center space-x-4">
+                {organization.logo && (
+                  <img
+                    src={organization.logo}
+                    alt="Organization Logo"
+                    className="w-12 h-12 rounded-lg object-cover border shadow-sm"
+                  />
+                )}
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">{organization.organizationName}</h1>
+                  <p className="text-gray-600">Organization Management</p>
                 </div>
               </div>
-
-              {/* Basic Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Building2 className="h-5 w-5" />
-                    <span>Basic Information</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-4">
-                    <div>
-                        <label className="text-sm font-medium text-gray-500">Logo</label>
-                        {organization.logo ? (
-                          <div className="mt-1 flex items-center gap-2">
-                            <img
-                              src={organization.logo}
-                              alt="Organization Logo"
-                              className="h-16 w-16 rounded object-contain border"
-                            />
-                            {/* <a
-                              href={organization.logo}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
-                            >
-                              <Link2 className="h-4 w-4" />
-                              View Logo
-                            </a> */}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-gray-500">No logo available</p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Name</label>
-                        <p className="font-medium">{organization.organizationName}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Description</label>
-                        <p className="text-sm">{organization.description || 'No description available'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Type</label>
-                        <p className="text-sm">{organization.organizationType || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Status</label>
-                        <div className="mt-1">
-                          <Badge variant={organization.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                            {organization.status}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Supporting Document</label>
-                        {organization.supportingDocument ? (
-                          <Dialog open={docOpen} onOpenChange={setDocOpen}>
-                            <DialogTrigger asChild>
-                              <button
-                                className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 mt-1"
-                                type="button"
-                              >
-                                <Link2 className="h-4 w-4" />
-                                View Document
-                              </button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-3xl">
-                              <DialogHeader>
-                                <DialogTitle>Supporting Document</DialogTitle>
-                              </DialogHeader>
-                              <div className="w-full h-[70vh] flex items-center justify-center">
-                                {organization.supportingDocument.endsWith('.pdf') ? (
-                                  <iframe
-                                    src={organization.supportingDocument}
-                                    title="Supporting Document"
-                                    className="w-full h-full border-none"
-                                  />
-                                ) : (
-                                  <img
-                                    src={organization.supportingDocument}
-                                    alt="Supporting Document"
-                                    className="max-h-[60vh] max-w-full object-contain mx-auto"
-                                  />
-                                )}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        ) : (
-                          <p className="text-sm text-gray-500">No document available</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Contact Email</label>
-                        <div className="flex items-center space-x-2">
-                          <Mail className="h-4 w-4 text-gray-400" />
-                          <p className="text-sm">{organization.contactEmail}</p>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Contact Phone</label>
-                        <div className="flex items-center space-x-2">
-                          <Phone className="h-4 w-4 text-gray-400" />
-                          <p className="text-sm">{organization.contactPhone || 'Not provided'}</p>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Address</label>
-                        <div className="flex items-center space-x-2">
-                          <MapPinIcon className="h-4 w-4 text-gray-400" />
-                          <p className="text-sm">
-                            {organization.address || 'Address not provided'}
-                            {organization.city && `, ${organization.city}`}
-                            {organization.stateProvince && `, ${organization.stateProvince}`}
-                            {organization.postalCode && ` ${organization.postalCode}`}
-                            {organization.country && `, ${organization.country}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Created</label>
-                        <p className="text-sm">{new Date(organization.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Last Updated</label>
-                        <p className="text-sm">{new Date(organization.updatedAt).toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-gray-500">Enabled Status</label>
-                        <div className="mt-1">
-                          <Badge variant={organization.isEnabled ? 'default' : 'secondary'}>
-                            {organization.isEnabled ? 'Enabled' : 'Disabled'}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Users Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Users className="h-5 w-5" />
-                    <span>Users ({organization.users?.length || 0})</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {organization.users && organization.users.length > 0 ? (
-                    <div className="space-y-4">
-                      {organization.users.map((user) => (
-                        <div key={user.userId} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                              <User className="h-5 w-5 text-gray-600" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{user.firstName} {user.lastName}</p>
-                              <p className="text-sm text-gray-600">@{user.username}</p>
-                              <p className="text-sm text-gray-500">{user.email}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge variant="outline">{user.role.roleName}</Badge>
-                           
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-center py-8">No users found for this organization</p>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <StatusBadge status={organization.status} />
+              <div className="flex space-x-2">
+                <Button
+                  variant="default"
+                  disabled={organization.status === "APPROVED" || actionLoading}
+                  onClick={handleApprove}
+                  className={cn(
+                    "bg-green-600 hover:bg-green-700 text-white transition-all duration-200",
+                    actionLoading && "opacity-50 cursor-not-allowed"
                   )}
-                </CardContent>
-              </Card>
-
-              {/* Venues Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <MapPin className="h-5 w-5" />
-                    <span>Venues ({organization.venues?.length || 0})</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {organization.venues && organization.venues.length > 0 ? (
-                    <div className="space-y-4">
-                      {organization.venues.map((venue) => (
-                        <div key={venue.venueId} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <MapPin className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{venue.venueName}</p>
-                              <p className="text-sm text-gray-600">{venue.location}</p>
-                              <p className="text-sm text-gray-500">Capacity: {venue.capacity} people</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge 
-                              variant={venue.status === 'ACTIVE' ? 'default' : 'secondary'}
-                            >
-                              {venue.status}
-                            </Badge>
-                           
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-center py-8">No venues found for this organization</p>
+                >
+                  {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                  Approve
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={organization.status === "REJECTED" || actionLoading}
+                  onClick={() => setRejectModalOpen(true)}
+                  className={cn(
+                    "transition-all duration-200",
+                    actionLoading && "opacity-50 cursor-not-allowed"
                   )}
-                </CardContent>
-              </Card>
-
-              {/* Events Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Calendar className="h-5 w-5" />
-                    <span>Events ({organization.events?.length || 0})</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {organization.events && organization.events.length > 0 ? (
-                    <div className="space-y-4">
-                      {organization.events.map((event) => (
-                        <div key={event.eventId} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                              <Calendar className="h-5 w-5 text-green-600" />
-                            </div>
-                            <div>
-                              <p className="font-medium">{event.eventTitle}</p>
-                              <p className="text-sm text-gray-600">{event.description}</p>
-                              <p className="text-sm text-gray-500">
-                                {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge 
-                              variant={event.status === 'ACTIVE' ? 'default' : 'secondary'}
-                            >
-                              {event.status}
-                            </Badge>
-                           
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-gray-500 text-center py-8">No events found for this organization</p>
-                  )}
-                </CardContent>
-              </Card>
+                >
+                  {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 w-4 mr-2" />}
+                  Reject
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Add this filter UI above the main content, e.g. after breadcrumbs or header */}
+      <div className="flex items-center gap-4 mb-6">
+        <label className="text-sm font-medium text-gray-700">Filter by Status:</label>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="rejected">Rejected</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="space-y-8">
+          {/* Overview Stats */}
+
+          {/* Basic Information */}
+          <Card className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-md">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center space-x-3 text-xl">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Building2 className="h-5 w-5 text-blue-600" />
+                </div>
+                <span>Basic Information</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <InfoCard 
+                    icon={Building2}
+                    label="Organization Name"
+                    value={organization.organizationName}
+                  />
+                  <InfoCard 
+                    icon={FileText}
+                    label="Description"
+                    value={organization.description || 'No description available'}
+                  />
+                  <InfoCard 
+                    icon={Shield}
+                    label="Type"
+                    value={organization.organizationType || 'Not specified'}
+                  />
+                  <div className="p-4 rounded-lg bg-gray-50">
+                    <p className="text-sm font-medium text-gray-500 mb-3">Supporting Document</p>
+                    {organization.supportingDocument ? (
+                      <Dialog open={docOpen} onOpenChange={setDocOpen}>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            View Document
+                            <ExternalLink className="h-3 w-3 ml-2" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[80vh]">
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center space-x-2">
+                              <FileText className="w-5 h-5" />
+                              <span>Supporting Document</span>
+                            </DialogTitle>
+                          </DialogHeader>
+                          <div className="w-full h-[60vh] flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden">
+                            {organization.supportingDocument.endsWith('.pdf') ? (
+                              <iframe
+                                src={organization.supportingDocument}
+                                title="Supporting Document"
+                                className="w-full h-full border-none"
+                              />
+                            ) : (
+                              <img
+                                src={organization.supportingDocument}
+                                alt="Supporting Document"
+                                className="max-h-full max-w-full object-contain"
+                              />
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    ) : (
+                      <p className="text-sm text-gray-500">No document available</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <InfoCard 
+                    icon={Mail}
+                    label="Contact Email"
+                    value={
+                      <a 
+                        href={`mailto:${organization.contactEmail}`}
+                        className="text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200"
+                      >
+                        {organization.contactEmail}
+                      </a>
+                    }
+                  />
+                  <InfoCard 
+                    icon={Phone}
+                    label="Contact Phone"
+                    value={organization.contactPhone || 'Not provided'}
+                  />
+                  <InfoCard 
+                    icon={MapPinIcon}
+                    label="Address"
+                    value={
+                      <div className="space-y-1">
+                        <p>{organization.address || 'Address not provided'}</p>
+                        {(organization.city || organization.stateProvince || organization.postalCode || organization.country) && (
+                          <p className="text-sm text-gray-600">
+                            {[organization.city, organization.stateProvince, organization.postalCode, organization.country].filter(Boolean).join(', ')}
+                          </p>
+                        )}
+                      </div>
+                    }
+                  />
+                  <div className="grid grid-cols-2 gap-4">
+                    <InfoCard 
+                      icon={Calendar}
+                      label="Created"
+                      value={new Date(organization.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long', 
+                        day: 'numeric'
+                      })}
+                    />
+                    <InfoCard 
+                      icon={Clock}
+                      label="Last Updated"
+                      value={new Date(organization.updatedAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Users Section */}
+          <Card className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-md">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 text-xl">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Users className="h-5 w-5 text-green-600" />
+                  </div>
+                  <span>Team Members</span>
+                  <Badge variant="secondary" className="ml-2">{organization.users?.length || 0}</Badge>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {organization.users && organization.users.length > 0 ? (
+                <div className="grid gap-4">
+                  {organization.users.map((user) => (
+                    <div 
+                      key={user.userId} 
+                      className="flex items-center justify-between p-6 border border-gray-200 rounded-xl hover:shadow-md hover:border-gray-300 transition-all duration-200 bg-white"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center shadow-sm">
+                          <User className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{user.firstName} {user.lastName}</p>
+                          <p className="text-sm text-gray-600">@{user.username}</p>
+                          <div className="flex items-center space-x-4 mt-1">
+                            <p className="text-sm text-gray-500 flex items-center">
+                              <Mail className="w-3 h-3 mr-1" />
+                              {user.email}
+                            </p>
+                            {user.phoneNumber && (
+                              <p className="text-sm text-gray-500 flex items-center">
+                                <Phone className="w-3 h-3 mr-1" />
+                                {user.phoneNumber}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <StatusBadge status={"Manager"} />
+                        <p className="text-xs text-gray-500">
+                          Joined {new Date(user.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium">No team members found</p>
+                  <p className="text-sm text-gray-400">Users will appear here when they join the organization</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Venues Section */}
+          {/* <Card className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-md">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 text-xl">
+                  <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <MapPin className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <span>Venues</span>
+                  <Badge variant="secondary" className="ml-2">{organization.venues?.length || 0}</Badge>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {organization.venues && organization.venues.length > 0 ? (
+                <div className="grid gap-4">
+                  {organization.venues.map((venue) => (
+                    <div 
+                      key={venue.venueId} 
+                      className="flex items-center justify-between p-6 border border-gray-200 rounded-xl hover:shadow-md hover:border-gray-300 transition-all duration-200 bg-white"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-full flex items-center justify-center shadow-sm">
+                          <MapPin className="h-6 w-6 text-purple-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{venue.venueName}</p>
+                          <p className="text-sm text-gray-600 flex items-center mt-1">
+                            <MapPinIcon className="w-3 h-3 mr-1" />
+                            {venue.location}
+                          </p>
+                          <div className="flex items-center space-x-4 mt-2">
+                            <p className="text-sm text-gray-500 flex items-center">
+                              <Users className="w-3 h-3 mr-1" />
+                              {venue.capacity} capacity
+                            </p>
+                            <p className="text-sm font-semibold text-green-600">
+                              {venue.amount}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <StatusBadge status={venue.status} />
+                        <p className="text-xs text-gray-500">
+                          Added {new Date(venue.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium">No venues found</p>
+                  <p className="text-sm text-gray-400">Venues will appear here when they are added to the organization</p>
+                </div>
+              )}
+            </CardContent>
+          </Card> */}
+
+          {/* Events Section */}
+          {/* <Card className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-md">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 text-xl">
+                  <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <Calendar className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <span>Events</span>
+                  <Badge variant="secondary" className="ml-2">{organization.events?.length || 0}</Badge>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {organization.events && organization.events.length > 0 ? (
+                <div className="grid gap-4">
+                  {organization.events.map((event) => (
+                    <div 
+                      key={event.eventId} 
+                      className="flex items-center justify-between p-6 border border-gray-200 rounded-xl hover:shadow-md hover:border-gray-300 transition-all duration-200 bg-white"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-200 rounded-full flex items-center justify-center shadow-sm">
+                          <Calendar className="h-6 w-6 text-orange-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{event.eventTitle}</p>
+                          <p className="text-sm text-gray-600 mt-1">{event.description}</p>
+                          <div className="flex items-center space-x-4 mt-2">
+                            <p className="text-sm text-gray-500 flex items-center">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              {new Date(event.startDate).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                            <span className="text-gray-400">→</span>
+                            <p className="text-sm text-gray-500">
+                              {new Date(event.endDate).toLocaleDateString('en-US', {
+                                month: 'short', 
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <StatusBadge status={event.status} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-gray-50 rounded-lg">
+                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium">No events found</p>
+                  <p className="text-sm text-gray-400">Events will appear here when they are created by the organization</p>
+                </div>
+              )}
+            </CardContent>
+          </Card> */}
+        </div>
+      </div>
+      <Dialog open={rejectModalOpen} onOpenChange={setRejectModalOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Reject Organization</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-gray-700">Please provide a reason for rejection:</p>
+            <Textarea
+              value={rejectionReason}
+              onChange={e => setRejectionReason(e.target.value)}
+              placeholder="Enter rejection reason..."
+              rows={4}
+              className="resize-none"
+              disabled={rejectLoading}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setRejectModalOpen(false)} disabled={rejectLoading}>Cancel</Button>
+              <Button
+                variant="destructive"
+                onClick={() => handleReject(rejectionReason)}
+                disabled={rejectLoading || !rejectionReason.trim()}
+              >
+                {rejectLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+                Confirm Reject
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
-} 
+}

@@ -2,15 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Building2, AlertCircle, X, FileText, ImageIcon, Upload } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-// import ApiService from "@/api/apiConfig"
+import { Building2, AlertCircle, X, FileText, ImageIcon, Upload, Mail, Phone, MapPin, Globe } from "lucide-react"
 
 interface Organization {
   organizationName: string;
@@ -91,7 +83,6 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
         country,
         postalCode,
         stateProvince,
-        // Optionally add id, logo, supportingDocuments if needed
       });
     } catch (err: any) {
       setIsLoading(false)
@@ -122,347 +113,399 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
   }
 
   return (
-    <div className="fixed w-full inset-0 bg-white/5 backdrop-blur-sm flex items-center justify-center p-4 z-20">
-      <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden relative">
-        {/* Close Button */}
-        {onCancel && (
-          <button
-            onClick={onCancel}
-            className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-white/80 hover:bg-white flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
+    <div className="bg-white/90 py-8 px-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header Section */}
+        {/* <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mb-6 shadow-lg">
+            <Building2 className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-3">Create New Organization</h1>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Join our platform by creating your organization profile. Fill in the details below to get started.
+          </p>
+        </div> */}
 
-        {/* Header */}
-        <div className="px-8 pt-8 pb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Create New Organization</h1>
-          <p className="text-gray-600">Fill in the details to create a new organization account</p>
-        </div>
+        {/* Main Form Container */}
+        <div className="bg-white/90 rounded-3xl shadow-2xl border border-gray-100 overflow-hidden overflow-y-auto max-h-[70vh]">
+          {/* {onCancel && (
+            // <button
+            //   onClick={onCancel}
+            //   className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-all duration-200 shadow-md"
+            // >
+            // </button>
+          )} */}
 
-        {/* Form Content */}
-        <div className="px-8 pb-8 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {error && (
-            <Alert variant="destructive" className="mb-6 bg-red-50 border-red-200">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="text-red-700">{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Basic Information Section */}
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-cyan-600 mb-4">Basic Information</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="organizationName" className="text-sm font-medium text-gray-700">
-                    Organization Name
-                  </Label>
-                  <Input
-                    id="organizationName"
-                    value={organizationName}
-                    onChange={(e) => setOrganizationName(e.target.value)}
-                    placeholder="Enter organization name"
-                    className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-blue-500 rounded-lg"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="organizationType" className="text-sm font-medium text-gray-700">
-                    Organization Type
-                  </Label>
-                  <select
-                    id="organizationType"
-                    value={organizationType}
-                    onChange={e => setOrganizationType(e.target.value)}
-                    className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-blue-500 rounded-lg w-full px-3"
-                    required
-                  >
-                    <option value="" disabled>Select type</option>
-                    <option value="Public">Public</option>
-                    <option value="Private">Private</option>
-                  </select>
-                </div>
+          <div className="p-10">
+            {error && (
+              <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <p className="text-red-700 text-sm font-medium">{error}</p>
               </div>
+            )}
 
-              <div className="space-y-2">
-                <Label htmlFor="description" className="text-sm font-medium text-gray-700">
-                  Description
-                </Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe your organization's mission and activities"
-                  className="min-h-24 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-blue-500 rounded-lg resize-none"
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            {/* Contact Information Section */}
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-cyan-600 mb-4">Contact Information</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="contactEmail" className="text-sm font-medium text-gray-700">
-                    Email Address
-                  </Label>
-                  <Input
-                    id="contactEmail"
-                    type="email"
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    placeholder="organization@example.com"
-                    className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-blue-500 rounded-lg"
-                    required
-                  />
+            <form onSubmit={handleSubmit} className="space-y-10">
+              {/* Organization Details Section */}
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center">
+                    <Building2 className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Organization Details</h2>
+                    <p className="text-gray-600">Basic information about your organization</p>
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="contactPhone" className="text-sm font-medium text-gray-700">
-                    Phone Number
-                  </Label>
-                  <Input
-                    id="contactPhone"
-                    type="tel"
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(e.target.value)}
-                    placeholder="Enter phone number"
-                    className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-blue-500 rounded-lg"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Address Information Section */}
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-cyan-600 mb-4">Address Information</h2>
-              
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="address" className="text-sm font-medium text-gray-700">
-                    Street Address
-                  </Label>
-                  <Input
-                    id="address"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Enter street address"
-                    className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-blue-500 rounded-lg"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   <div className="space-y-2">
-                    <Label htmlFor="city" className="text-sm font-medium text-gray-700">
-                      City
-                    </Label>
-                    <Input
-                      id="city"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      placeholder="Enter city"
-                      className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-blue-500 rounded-lg"
+                    <label htmlFor="organizationName" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Organization Name *
+                    </label>
+                    <input
+                      id="organizationName"
+                      type="text"
+                      value={organizationName}
+                      onChange={(e) => setOrganizationName(e.target.value)}
+                      placeholder="Enter your organization name"
+                      className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                      required
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="stateProvince" className="text-sm font-medium text-gray-700">
-                      State/Province
-                    </Label>
-                    <Input
-                      id="stateProvince"
-                      value={stateProvince}
-                      onChange={(e) => setStateProvince(e.target.value)}
-                      placeholder="Enter state or province"
-                      className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-blue-500 rounded-lg"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="country" className="text-sm font-medium text-gray-700">
-                      Country
-                    </Label>
-                    <Input
-                      id="country"
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      placeholder="Enter country"
-                      className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-blue-500 rounded-lg"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="postalCode" className="text-sm font-medium text-gray-700">
-                      Postal Code
-                    </Label>
-                    <Input
-                      id="postalCode"
-                      value={postalCode}
-                      onChange={(e) => setPostalCode(e.target.value)}
-                      placeholder="Enter postal code"
-                      className="h-12 bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500 hover:border-blue-500 rounded-lg"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Documents Section */}
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-cyan-600 mb-4">Documents & Logo</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Supporting Documents */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Supporting Documents
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      type="file"
-                      multiple
-                      onChange={handleDocumentChange}
-                      className="hidden"
-                      id="documents-upload"
-                    />
-                    <Label
-                      htmlFor="documents-upload"
-                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-cyan-300 rounded-lg cursor-pointer bg-white hover:bg-cyan-50 hover:border-cyan-400 transition-colors"
+                    <label htmlFor="organizationType" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Organization Type *
+                    </label>
+                    <select
+                      id="organizationType"
+                      value={organizationType}
+                      onChange={e => setOrganizationType(e.target.value)}
+                      className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 appearance-none"
+                      required
                     >
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        {supportingDocuments && supportingDocuments.length > 0 ? (
-                          <div className="flex items-center gap-2 text-cyan-600">
-                            <FileText className="h-6 w-6" />
-                            <span className="text-sm font-medium">
-                              {supportingDocuments.length} file(s) selected
-                            </span>
-                          </div>
-                        ) : (
-                          <>
-                            <Upload className="h-8 w-8 text-cyan-400 mb-2" />
-                            <p className="text-sm text-gray-600">
-                              <span className="font-medium">Click to upload</span> or drag and drop
-                            </p>
-                            <p className="text-xs text-gray-400">PDF, DOC, DOCX (MAX. 10MB each)</p>
-                          </>
-                        )}
-                      </div>
-                    </Label>
+                      <option value="" disabled>Select organization type</option>
+                      <option value="Public">Public Organization</option>
+                      <option value="Private">Private Organization</option>
+                    </select>
                   </div>
-                  
-                  {supportingDocuments && supportingDocuments.length > 0 && (
-                    <div className="space-y-2 mt-3">
-                      {Array.from(supportingDocuments).map((file, index) => (
-                        <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
-                          <div className="flex items-center gap-3">
-                            <FileText className="h-4 w-4 text-cyan-600" />
-                            <span className="text-sm font-medium text-gray-700">{file.name}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {(file.size / 1024 / 1024).toFixed(1)} MB
-                            </Badge>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeDocument(index)}
-                            className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))}
+                </div>
+
+                <div className="mt-8">
+                  <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Describe your organization's mission, vision, and key activities..."
+                    className="w-full h-32 px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500 resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Contact Information Section */}
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center">
+                    <Mail className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Contact Information</h2>
+                    <p className="text-gray-600">How can people reach your organization</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label htmlFor="contactEmail" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Email Address *
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        id="contactEmail"
+                        type="email"
+                        value={contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
+                        placeholder="organization@example.com"
+                        className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                        required
+                      />
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                {/* Logo Upload */}
-                <div className="space-y-3">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Organization Logo
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoChange}
-                      className="hidden"
-                      id="logo-upload"
+                  <div className="space-y-2">
+                    <label htmlFor="contactPhone" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Phone Number
+                    </label>
+                    <div className="relative">
+                      <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        id="contactPhone"
+                        type="tel"
+                        value={contactPhone}
+                        onChange={(e) => setContactPhone(e.target.value)}
+                        placeholder="+1 (555) 123-4567"
+                        className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Information Section */}
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Address Information</h2>
+                    <p className="text-gray-600">Where is your organization located</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-6">
+                  <div>
+                    <label htmlFor="address" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Street Address
+                    </label>
+                    <input
+                      id="address"
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="123 Main Street, Suite 100"
+                      className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                     />
-                    <Label
-                      htmlFor="logo-upload"
-                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-cyan-300 rounded-lg cursor-pointer bg-white hover:bg-cyan-50 hover:border-cyan-400 transition-colors"
-                    >
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        {logo ? (
-                          <div className="flex items-center gap-2 text-cyan-600">
-                            <ImageIcon className="h-6 w-6" />
-                            <span className="text-sm font-medium">{logo.name}</span>
-                          </div>
-                        ) : (
-                          <>
-                            <ImageIcon className="h-8 w-8 text-cyan-400 mb-2" />
-                            <p className="text-sm text-gray-600">
-                              <span className="font-medium">Click to upload</span> or drag and drop
-                            </p>
-                            <p className="text-xs text-gray-400">PNG, JPG, SVG (MAX. 5MB)</p>
-                          </>
-                        )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="space-y-2">
+                      <label htmlFor="city" className="block text-sm font-semibold text-gray-700 mb-2">
+                        City
+                      </label>
+                      <input
+                        id="city"
+                        type="text"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="New York"
+                        className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="stateProvince" className="block text-sm font-semibold text-gray-700 mb-2">
+                        State/Province
+                      </label>
+                      <input
+                        id="stateProvince"
+                        type="text"
+                        value={stateProvince}
+                        onChange={(e) => setStateProvince(e.target.value)}
+                        placeholder="NY"
+                        className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="country" className="block text-sm font-semibold text-gray-700 mb-2">
+                        Country
+                      </label>
+                      <div className="relative">
+                        <Globe className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                        <input
+                          id="country"
+                          type="text"
+                          value={country}
+                          onChange={(e) => setCountry(e.target.value)}
+                          placeholder="United States"
+                          className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                        />
                       </div>
-                    </Label>
-                    {logo && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={removeLogo}
-                        className="absolute -top-2 -right-2 h-8 w-8 p-0 rounded-full bg-white shadow-md hover:bg-red-50 hover:border-red-200"
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="postalCode" className="block text-sm font-semibold text-gray-700 mb-2">
+                        Postal Code
+                      </label>
+                      <input
+                        id="postalCode"
+                        type="text"
+                        value={postalCode}
+                        onChange={(e) => setPostalCode(e.target.value)}
+                        placeholder="10001"
+                        className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Documents & Logo Section */}
+              <div className="relative">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Documents & Branding</h2>
+                    <p className="text-gray-600">Upload supporting documents and your organization logo</p>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Supporting Documents */}
+                  <div className="space-y-4">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      Supporting Documents
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        multiple
+                        onChange={handleDocumentChange}
+                        className="hidden"
+                        id="documents-upload"
+                      />
+                      <label
+                        htmlFor="documents-upload"
+                        className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition-all duration-300 group"
                       >
-                        <X className="h-4 w-4 text-red-500" />
-                      </Button>
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          {supportingDocuments && supportingDocuments.length > 0 ? (
+                            <div className="flex items-center gap-3 text-blue-600">
+                              <FileText className="h-8 w-8" />
+                              <span className="text-lg font-semibold">
+                                {supportingDocuments.length} file(s) selected
+                              </span>
+                            </div>
+                          ) : (
+                            <>
+                              <Upload className="h-12 w-12 text-gray-400 mb-3 group-hover:text-blue-500 transition-colors" />
+                              <p className="text-lg font-medium text-gray-700 group-hover:text-blue-600">
+                                Click to upload documents
+                              </p>
+                              <p className="text-sm text-gray-500 mt-1">
+                                PDF, DOC, DOCX up to 10MB each
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                    
+                    {supportingDocuments && supportingDocuments.length > 0 && (
+                      <div className="space-y-3 mt-4">
+                        {Array.from(supportingDocuments).map((file, index) => (
+                          <div key={index} className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-200">
+                            <div className="flex items-center gap-3">
+                              <FileText className="h-5 w-5 text-blue-600" />
+                              <div>
+                                <span className="text-sm font-medium text-gray-900">{file.name}</span>
+                                <p className="text-xs text-gray-500">
+                                  {(file.size / 1024 / 1024).toFixed(1)} MB
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeDocument(index)}
+                              className="p-2 hover:bg-red-100 rounded-lg transition-colors group"
+                            >
+                              <X className="h-4 w-4 text-gray-400 group-hover:text-red-500" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
+
+                  {/* Organization Logo */}
+                  <div className="space-y-4">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      Organization Logo
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoChange}
+                        className="hidden"
+                        id="logo-upload"
+                      />
+                      <label
+                        htmlFor="logo-upload"
+                        className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-2xl cursor-pointer bg-gray-50 hover:bg-green-50 hover:border-green-400 transition-all duration-300 group"
+                      >
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          {logo ? (
+                            <div className="flex items-center gap-3 text-green-600">
+                              <ImageIcon className="h-8 w-8" />
+                              <span className="text-lg font-semibold">{logo.name}</span>
+                            </div>
+                          ) : (
+                            <>
+                              <ImageIcon className="h-12 w-12 text-gray-400 mb-3 group-hover:text-green-500 transition-colors" />
+                              <p className="text-lg font-medium text-gray-700 group-hover:text-green-600">
+                                Click to upload logo
+                              </p>
+                              <p className="text-sm text-gray-500 mt-1">
+                                PNG, JPG, SVG up to 5MB
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      </label>
+                      {logo && (
+                        <button
+                          type="button"
+                          onClick={removeLogo}
+                          className="absolute -top-3 -right-3 w-8 h-8 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white shadow-lg transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Form Actions */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
-              {onCancel && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onCancel}
-                  className="flex-1 h-12 bg-white border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg"
-                  disabled={isLoading}
-                >
-                  Cancel
-                </Button>
-              )}
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 h-12 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium shadow-lg rounded-lg"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
-                    Creating Organization...
-                  </>
-                ) : (
-                  <>
-                    <Building2 className="h-5 w-5 mr-2" />
-                    Create Organization
-                  </>
+              {/* Form Actions */}
+              <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-gray-200">
+                {onCancel && (
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className="flex-1 h-14 px-8 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all duration-200 border-2 border-gray-200 hover:border-gray-300"
+                    disabled={isLoading}
+                  >
+                    Cancel
+                  </button>
                 )}
-              </Button>
-            </div>
-          </form>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 h-14 px-8 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                >
+                  {isLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+                      Creating Organization...
+                    </>
+                  ) : (
+                    <>
+                      <Building2 className="h-5 w-5" />
+                      Create Organization
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>

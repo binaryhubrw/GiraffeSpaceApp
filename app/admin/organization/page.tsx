@@ -92,12 +92,23 @@ export default function AdminOrganization() {
     fetchOrganizations()
   }, [])
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-gray-600">Loading organizations...</div>
+  const LoadingSpinner = () => (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
+      <div className="text-center space-y-4">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+          <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-r-blue-400 rounded-full animate-spin mx-auto" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
+        </div>
+        <div className="space-y-2">
+          <p className="text-lg font-medium text-gray-900">Loading organization details</p>
+          <p className="text-sm text-gray-500">Please wait while we fetch the information...</p>
+        </div>
       </div>
-    )
+    </div>
+  )
+
+  if (loading) {
+    return <LoadingSpinner />
   }
 
   if (error) {
@@ -134,6 +145,7 @@ export default function AdminOrganization() {
 
   const uniqueTypes = Array.from(new Set(safeOrganizations.map(org => org.organizationType)))
 
+  // Exclude independent organizations
   const filteredOrganizations = safeOrganizations.filter(org => {
     const searchString = searchQuery.toLowerCase()
     const matchesSearch = 
@@ -144,9 +156,12 @@ export default function AdminOrganization() {
       (org.address?.toLowerCase() || '').includes(searchString)
     
     const matchesType = filterType === "all" || org.organizationType === filterType
-    const matchesStatus = filterStatus === "all" || org.status === filterStatus
-    
-    return matchesSearch && matchesType && matchesStatus
+    // Exclude independent organizations by type or name
+    const isIndependent = !org.organizationType || org.organizationType.toLowerCase() === 'independent' || (org.organizationName && org.organizationName.toLowerCase() === 'independent')
+    // Status filter (case-insensitive)
+    const matchesStatus = filterStatus === "all" || (org.status && org.status.toLowerCase() === filterStatus)
+
+    return matchesSearch && matchesType && matchesStatus && !isIndependent
   })
 
   const totalPages = Math.max(1, Math.ceil(filteredOrganizations.length / itemsPerPage))
@@ -239,10 +254,8 @@ export default function AdminOrganization() {
                   <DialogTrigger asChild>
                     <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> Add Organization</Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
+                  <DialogContent className="max-w-4xl no-dialog-close">
                     <DialogHeader>
-                      <DialogTitle>Add Organization</DialogTitle>
-                      <DialogDescription>Fill in the details to create a new organization.</DialogDescription>
                     </DialogHeader>
                     <OrganizationForm onSuccess={handleAdd} onCancel={() => setAddOpen(false)} />
                   </DialogContent>
@@ -343,8 +356,9 @@ export default function AdminOrganization() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="Inactive">Inactive</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -379,7 +393,7 @@ export default function AdminOrganization() {
                               </TableCell>
                               <TableCell>{org.contactEmail}</TableCell>
                               <TableCell>
-                                <Badge variant={org.status === "Active" ? "default" : "outline"}>
+                                <Badge variant={org.status && org.status.toLowerCase() === "approved" ? "default" : org.status && org.status.toLowerCase() === "pending" ? "secondary" : org.status && org.status.toLowerCase() === "rejected" ? "destructive" : "outline"}>
                                   {org.status}
                                 </Badge>
                               </TableCell>
