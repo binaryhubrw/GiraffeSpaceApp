@@ -8,7 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
-import { Eye, Edit, Trash2, Users, Building2, MapPin, Link2, Search, Plus } from "lucide-react"
+import { 
+  Eye, Edit, Trash2, Users, Building2, MapPin, Link2, Search, Plus,
+  Mail, Phone, Calendar, User, MapPin as MapPinIcon
+} from "lucide-react"
 import {
   Dialog,
   DialogTrigger,
@@ -35,7 +38,6 @@ import { toast } from "sonner"
 import ApiService from "@/api/apiConfig"
 import OrganizationForm from "@/components/OrganizationForm";
 
-// Define TypeScript interfaces for better type safety
 interface Organization {
   id: string;
   organizationId?: string;
@@ -50,45 +52,29 @@ interface Organization {
   updatedAt?: string;
 }
 
-interface RawOrganization {
-  id?: string;
-  organizationName?: string;
-  description?: string;
-  contactEmail?: string;
-  contactPhone?: string;
-  address?: string;
-  organizationType?: string;
-  status?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export default function AdminOrganization() {
   const router = useRouter()
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState("all")
   const [filterStatus, setFilterStatus] = useState("all")
-  const itemsPerPage = 5
   const [addOpen, setAddOpen] = useState(false)
   const [editOpen, setEditOpen] = useState<string | null>(null)
+  const [viewOrg, setViewOrg] = useState<Organization | null>(null)
   const [loading, setLoading] = useState(true)
   const [editOrg, setEditOrg] = useState<Organization | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [deleteOrgId, setDeleteOrgId] = useState<string | null>(null)
+  const itemsPerPage = 5
 
-  // Fetch organizations from database
   useEffect(() => {
     const fetchOrganizations = async () => {
       try {
         setLoading(true)
         setError(null)
         const response = await ApiService.getAllOrganization()
-        console.log("API Response for getAllOrganization:", response)
-        console.log("Organizations data:", response?.data)
         if (response && response.success) {
-          console.log("First organization structure:", response.data?.[0])
           setOrganizations(response.data || [])
         } else {
           setOrganizations([])
@@ -106,7 +92,6 @@ export default function AdminOrganization() {
     fetchOrganizations()
   }, [])
 
-  // If organizations are not loaded, show loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -115,7 +100,6 @@ export default function AdminOrganization() {
     )
   }
 
-  // Show error state if there's an error
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -127,7 +111,6 @@ export default function AdminOrganization() {
     )
   }
 
-  // Ensure organizations data is properly typed and has default values
   const safeOrganizations: Organization[] = organizations.map((org, index) => ({
     id: org.organizationId || org.id || '',
     organizationName: org.organizationName || '',
@@ -141,7 +124,6 @@ export default function AdminOrganization() {
     updatedAt: org.updatedAt || new Date().toISOString()
   }))
 
-  // Calculate organization statistics with safe values
   const stats = {
     totalOrganizations: safeOrganizations.length,
     active: safeOrganizations.filter(o => o.status === "Active").length,
@@ -150,10 +132,8 @@ export default function AdminOrganization() {
     venueAssigned: safeOrganizations.filter(o => o.organizationType === "Venue Management").length,
   }
 
-  // Get unique types with safe handling
   const uniqueTypes = Array.from(new Set(safeOrganizations.map(org => org.organizationType)))
 
-  // Filter organizations with safe string comparisons
   const filteredOrganizations = safeOrganizations.filter(org => {
     const searchString = searchQuery.toLowerCase()
     const matchesSearch = 
@@ -169,7 +149,6 @@ export default function AdminOrganization() {
     return matchesSearch && matchesType && matchesStatus
   })
 
-  // Pagination with safe calculations
   const totalPages = Math.max(1, Math.ceil(filteredOrganizations.length / itemsPerPage))
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
   const startIndex = (safeCurrentPage - 1) * itemsPerPage
@@ -193,7 +172,6 @@ export default function AdminOrganization() {
       }
       const response = await ApiService.updateOrganizationById(editOrg.id, data)
       if (response && response.success) {
-        // Refresh the organizations list
         const updatedResponse = await ApiService.getAllOrganization()
         if (updatedResponse && updatedResponse.success) {
           setOrganizations(updatedResponse.data || [])
@@ -221,7 +199,6 @@ export default function AdminOrganization() {
       setLoading(true)
       const response = await ApiService.deleteOrganization(orgId)
       if (response && response.success) {
-        // Refresh the organizations list
         const updatedResponse = await ApiService.getAllOrganization()
         if (updatedResponse && updatedResponse.success) {
           setOrganizations(updatedResponse.data || [])
@@ -234,7 +211,6 @@ export default function AdminOrganization() {
         setError(errorMessage)
       }
     } catch (error: any) {
-      // Handle axios error response
       if (error.response?.data) {
         const errorData = error.response.data
         const errorMessage = errorData.message || "Failed to delete organization"
@@ -416,13 +392,13 @@ export default function AdminOrganization() {
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Button>
-                                  <Button 
+                                  {/* <Button 
                                     size="icon" 
                                     variant="outline" 
                                     onClick={() => { setEditOrg(org); setEditOpen(org.id); }}
                                   >
                                     <Edit className="h-4 w-4" />
-                                  </Button>
+                                  </Button> */}
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
                                       <Button 
@@ -490,16 +466,115 @@ export default function AdminOrganization() {
         </div>
       </div>
 
+      {/* Edit Dialog */}
       {editOrg && (
         <Dialog open={!!editOpen} onOpenChange={open => { if (!open) setEditOpen(null); }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Organization</DialogTitle>
             </DialogHeader>
-            <OrganizationForm onSuccess={handleEdit} onCancel={() => setEditOpen(null)} />
+            <OrganizationForm 
+              initialData={editOrg}
+              onSuccess={handleEdit} 
+              onCancel={() => setEditOpen(null)} 
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* View Organization Details Dialog */}
+      {viewOrg && (
+        <Dialog open={!!viewOrg} onOpenChange={open => { if (!open) setViewOrg(null); }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                {viewOrg.organizationName}
+              </DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <User className="h-5 w-5 text-gray-600" />
+                  Basic Information
+                </h4>
+                <div className="grid gap-3">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                    <div>
+                      <p className="text-sm text-gray-500">Organization Type</p>
+                      <p className="font-medium">{viewOrg.organizationType || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Status</p>
+                      <Badge variant={viewOrg.status === 'Active' ? 'default' : 'secondary'}>
+                        {viewOrg.status}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Description</p>
+                    <p className="text-sm mt-1">{viewOrg.description || 'No description available'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                  <Mail className="h-5 w-5 text-gray-600" />
+                  Contact Information
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500">Email</p>
+                      <p className="font-medium">{viewOrg.contactEmail}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500">Phone</p>
+                      <p className="font-medium">{viewOrg.contactPhone || 'Not provided'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPinIcon className="h-4 w-4 text-gray-400 mt-1" />
+                    <div>
+                      <p className="text-sm text-gray-500">Address</p>
+                      <p className="font-medium">
+                        {viewOrg.address || 'No address provided'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dates */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-semibold mb-3">Dates</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500">Created On</p>
+                    <p className="font-medium">
+                      {viewOrg.createdAt ? new Date(viewOrg.createdAt).toLocaleDateString() : 'Unknown'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Last Updated</p>
+                    <p className="font-medium">
+                      {viewOrg.updatedAt ? new Date(viewOrg.updatedAt).toLocaleDateString() : 'Unknown'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       )}
     </div>
   )
-} 
+}

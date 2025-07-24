@@ -7,7 +7,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/contexts/auth-context" // ✅ Use your AuthContext
+import { useAuth } from "@/contexts/auth-context" 
 
 export default function LoginPage() {
   const router = useRouter()
@@ -33,7 +33,7 @@ export default function LoginPage() {
       if (role === "admin") {
         router.push("/admin/overview")
       } else {
-        router.push("/user-dashboard")
+        router.push("/")
       }
     }
   }, [user, router])

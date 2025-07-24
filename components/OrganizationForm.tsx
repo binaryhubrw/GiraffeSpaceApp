@@ -12,10 +12,24 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 // import ApiService from "@/api/apiConfig"
 
+interface Organization {
+  organizationName: string;
+  organizationType: string;
+  description: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  city: string;
+  country: string;
+  postalCode: string;
+  stateProvince: string;
+  _id?: string;
+}
+
 interface OrganizationFormProps {
-  onSuccess?: (newOrganization: any) => void;
+  onSuccess?: (newOrganization: Organization) => void;
   onCancel?: () => void;
-  initialData?: any;
+  initialData?: Partial<Organization>;
 }
 
 export default function OrganizationForm({ onSuccess, onCancel, initialData }: OrganizationFormProps) {
