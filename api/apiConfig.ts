@@ -21,7 +21,7 @@ interface Organization {
   country: string;
   postalCode: string;
   stateProvince: string;
-  // add other fields if needed
+
 }
 
 class ApiService {
