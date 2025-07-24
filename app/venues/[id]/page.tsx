@@ -31,6 +31,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Header } from "@/components/header"
+import { useAuth } from "@/contexts/auth-context";
 
 // Inline Badge component
 const Badge = ({
@@ -143,8 +144,17 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     isOpen: false,
     date: null
   })
-  // Mock authentication state - you can replace this with real auth
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const { isLoggedIn } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  // Generate time slots for hourly bookings (8 AM to 10 PM)
+  const generateTimeSlots = (): string[] => {
+    const slots: string[] = []
+    for (let hour = 8; hour < 22; hour++) {
+      slots.push(`${String(hour).padStart(2, '0')}:00`)
+    }
+    return slots
+  }
 
   // Generate time slots for hourly bookings (8 AM to 10 PM)
   const generateTimeSlots = (): string[] => {
@@ -192,6 +202,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
   ])
 
   useEffect(() => {
+    setMounted(true);
     const fetchVenue = async () => {
       try {
         setLoading(true)
@@ -262,31 +273,13 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     })
   }
 
+  // Replace handleBookingClick with new redirect logic
   const handleBookingClick = () => {
-    if (!isLoggedIn) {
-      // Redirect to login page
-      router.push("/login")
+    if (!mounted) return;
+    if (isLoggedIn) {
+      router.push("/venues/book");
     } else {
-      // Check if times are selected for hourly bookings
-      if (venue?.bookingType === "HOURLY") {
-        const hasAllTimes = selectedDates.every(date => {
-          const times = selectedTimes[date.toISOString()]
-          return times && times.length > 0
-        })
-
-        if (!hasAllTimes) {
-          alert("Please select times for all selected dates")
-          return
-        }
-      }
-
-      // Navigate directly to booking form with venue ID, selected dates, and times
-      const searchParams = new URLSearchParams({
-        venueId: venue?.venueId || "",
-        dates: selectedDates.map(date => date.toISOString()).join(','),
-        times: JSON.stringify(selectedTimes)
-      })
-      router.push(`/booking?${searchParams.toString()}`)
+      router.push("/login");
     }
   }
 
@@ -793,7 +786,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     </div>
                   </div>
 
-                  <Button onClick={handleBookingClick} className="w-full">
+                  <Button onClick={handleBookingClick} className="w-full" disabled={!mounted}>
                     {isLoggedIn ? "Book Now" : "Book Now - Continue to Login"}
                   </Button>
 
@@ -914,6 +907,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
         <Button
           onClick={handleBookingClick}
           className="px-8 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-lg text-base font-medium"
+          disabled={!mounted}
         >
           {isLoggedIn ? "Book Now" : "Book Now"}
         </Button>

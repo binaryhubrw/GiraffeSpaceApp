@@ -1,0 +1,8 @@
+You'll need to manually copy the marker icon files from the leaflet distribution to your public folder:
+
+1. marker-icon.png
+2. marker-icon-2x.png
+3. marker-shadow.png
+
+You can find these files in the leaflet package in node_modules/leaflet/dist/images/ or download them from:
+https://github.com/Leaflet/Leaflet/tree/main/dist/images 

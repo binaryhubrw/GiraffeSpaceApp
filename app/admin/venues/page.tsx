@@ -595,7 +595,9 @@ function VenueForm({ initialData, onSubmit, loading, mode }: {
             <h2 className="text-lg font-semibold mb-4">Image & Availability</h2>
             <div>
               <Label>Venue Image</Label>
-              <ImageUpload />
+              <ImageUpload onChange={function (files: FileList | null): void {
+                throw new Error("Function not implemented.")
+              } } />
               <p className="text-xs text-gray-500 mt-1">
                 Upload a high-quality image of your venue. Recommended size: 1200x600px.
               </p>

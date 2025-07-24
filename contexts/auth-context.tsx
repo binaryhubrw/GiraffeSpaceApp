@@ -103,6 +103,7 @@ const updateUser = async (
     setUser(null)
     localStorage.removeItem("isLoggedIn")
     localStorage.removeItem("currentUser")
+    localStorage.removeItem("token")
     // Remove auth-token cookie on logout
     Cookies.remove('auth-token')
     router.push("/");

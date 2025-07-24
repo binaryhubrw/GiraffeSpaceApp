@@ -1,465 +1,577 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter, useParams } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { 
-  MapPin, 
-  Users, 
-  Building2, 
-  Phone, 
-  Mail, 
-  Globe, 
-  Calendar, 
-  Clock, 
-  DollarSign,
-  Navigation,
-  Wifi,
-  Car,
-  Star,
-  Edit,
-  Trash2,
-  ArrowLeft,
-  ExternalLink,
-  CheckCircle,
-  XCircle
-} from "lucide-react"
-import ApiService from "@/api/apiConfig"
-import { toast } from "sonner"
+import { useEffect, useState, useRef } from "react";
+import { useParams } from "next/navigation";
+import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MapPin, Mail, Phone, Users, Calendar as CalendarIcon, Clock, Info, Pencil, Trash2, CalendarPlus, ArrowLeft, Plus, CheckCircle, XCircle } from "lucide-react";
+import ApiService from "@/api/apiConfig";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Progress } from "@/components/ui/progress";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from "@/components/ui/carousel";
+import type { AxiosProgressEvent } from "axios";
 import {
   AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
   AlertDialogAction,
   AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
-interface Venue {
+interface TimeSlot {
+  startTime: string;
+  endTime: string;
+  isAvailable: boolean;
+}
+
+interface AvailabilitySlot {
+  date: string;
+  timeSlots: TimeSlot[];
+}
+
+interface VenueDetails {
   venueId: string;
   venueName: string;
-  description: string;
+  description: string | null;
+  capacity: number;
+  amount: number;
   location: string;
   latitude: number;
   longitude: number;
-  venueType: string;
-  capacity: number;
-  amount: number;
-  isAvailable: boolean;
-  contactPerson: string;
+  googleMapsLink: string;
+  managerId: string;
+  organizationId: string;
+  amenities: Array<{
+    id: string;
+    resourceName: string;
+    quantity: number;
+    amenitiesDescription: string;
+    costPerUnit: string;
+  }>;
   contactEmail: string;
   contactPhone: string;
-  websiteURL?: string;
-  imageSrc?: string;
-  googleMapsLink?: string;
-  amenities?: string;
-  status?: string;
-  organizationId?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  resources?: Array<{
-    resourceName: string;
-    description: string;
-    costPerUnit: number;
-    quantity: number;
+  status: string;
+  mainPhotoUrl: string;
+  subPhotoUrls: string[];
+  organization: {
+    organizationId: string;
+    organizationName: string;
+    contactEmail: string;
+    contactPhone: string;
+    address: string;
+    status: string;
+  };
+  bookingConditions: Array<{
+    id: string;
+    descriptionCondition: string;
+    notaBene: string;
+    transitionTime: number;
+    depositRequiredPercent: number;
+    paymentComplementTimeBeforeEvent: number;
   }>;
+  availabilitySlots: AvailabilitySlot[];
+  venueVariables: Array<{
+    id: string;
+    venueAmount: number;
+    manager: {
+      userId: string;
+      firstName: string;
+      lastName: string;
+      email: string;
+      phoneNumber: string;
+    };
+  }>;
+  bookingType: string;
+  virtualTourUrl: string | null;
+  venueDocuments: string;
 }
 
-export default function VenueDetailPage() {
-  const router = useRouter()
-  const params = useParams()
-  const { id } = params
-  const [venue, setVenue] = useState<Venue | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export default function VenueDetailsPage() {
+  const params = useParams();
+  const [venue, setVenue] = useState<VenueDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDateSlots, setSelectedDateSlots] = useState<TimeSlot[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  // File input refs
+  const mainPhotoInputRef = useRef<HTMLInputElement>(null);
+  const subPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  // Add handlers for image actions
+  const handleEditMainPhoto = () => {
+    mainPhotoInputRef.current?.click();
+  };
+  const handleMainPhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && venue) {
+      const formData = new FormData();
+      formData.append("mainPhoto", file);
+      try {
+        setUploading(true);
+        setUploadProgress(0);
+        await ApiService.updateVenueMainPhoto(venue.venueId, formData, (progressEvent) => {
+          if (progressEvent.total) {
+            setUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+          }
+        });
+        // Refresh venue details
+        const response = await ApiService.getVenueById(venue.venueId);
+        if (response.success) setVenue(response.data);
+        toast.success("Main photo updated successfully.");
+      } catch (err) {
+        toast.error("Failed to update main photo.");
+      } finally {
+        setUploading(false);
+        setUploadProgress(0);
+      }
+    }
+  };
+  const handleAddSubPhoto = () => {
+    subPhotoInputRef.current?.click();
+  };
+  const handleSubPhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && venue) {
+      const formData = new FormData();
+      formData.append("photo", file);
+      try {
+        setUploading(true);
+        setUploadProgress(0);
+        await ApiService.addVenueGalleryImage(venue.venueId, formData, (progressEvent) => {
+          if (progressEvent.total) {
+            setUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+          }
+        });
+        // Refresh venue details
+        const response = await ApiService.getVenueById(venue.venueId);
+        if (response.success) setVenue(response.data);
+        toast.success("Sub image added successfully.");
+      } catch (err) {
+        toast.error("Failed to add sub image.");
+      } finally {
+        setUploading(false);
+        setUploadProgress(0);
+      }
+    }
+  };
+  const handleDeleteSubPhoto = (index: number) => {
+    setDeleteIndex(index);
+    setDeleteDialogOpen(true);
+  };
+  const confirmDeleteSubPhoto = async () => {
+    if (venue && deleteIndex !== null && venue.subPhotoUrls[deleteIndex]) {
+      setDeleting(true);
+      try {
+        await ApiService.removeVenueGalleryImage(venue.venueId, venue.subPhotoUrls[deleteIndex]);
+        // Refresh venue details
+        const response = await ApiService.getVenueById(venue.venueId);
+        if (response.success) setVenue(response.data);
+        setDeleteDialogOpen(false);
+        setDeleteIndex(null);
+        toast.success("Sub image deleted successfully.");
+        window.location.reload(); // Reload the page to ensure the update is visible
+      } catch (err) {
+        toast.error("Failed to delete sub image.");
+      } finally {
+        setDeleting(false);
+      }
+    }
+  };
+
+  const handleApproveVenue = async () => {
+    if (!venue) return;
+    setApproving(true);
+    try {
+      await ApiService.approveVenueAdmin(venue.venueId);
+      toast.success("Venue approved successfully.");
+      // Refresh venue details
+      const response = await ApiService.getVenueById(venue.venueId);
+      if (response.success) setVenue(response.data);
+    } catch (err) {
+      toast.error("Failed to approve venue.");
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleRejectVenue = async () => {
+    if (!venue) return;
+    setRejecting(true);
+    try {
+      await ApiService.cancelVenueAproveAdmin(venue.venueId, { cancellationReason: rejectReason });
+      toast.success("Venue rejected successfully.");
+      setRejectDialogOpen(false);
+      setRejectReason("");
+      // Refresh venue details
+      const response = await ApiService.getVenueById(venue.venueId);
+      if (response.success) setVenue(response.data);
+    } catch (err) {
+      toast.error("Failed to reject venue.");
+    } finally {
+      setRejecting(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchVenue = async () => {
-      if (!id) return
-      
+    const fetchVenueDetails = async () => {
       try {
-        setLoading(true)
-        const response = await ApiService.getVenueById(id as string)
+        const response = await ApiService.getVenueById(params.id as string);
         if (response.success) {
-          setVenue(response.data)
-          toast.success('Venue details loaded successfully')
-        } else {
-          const errorMessage = response?.message || 'Failed to load venue details'
-          setError(errorMessage)
-          toast.error(errorMessage)
+          setVenue(response.data);
+          // Initialize time slots for the current date
+          updateTimeSlots(response.data, new Date());
         }
-      } catch (error: any) {
-        const errorMessage = error?.response?.data?.message || 'Failed to load venue details'
-        setError(errorMessage)
-        toast.error(errorMessage)
-        console.error('Error fetching venue:', error)
+      } catch (error) {
+        console.error("Error fetching venue details:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchVenue()
-  }, [id])
-
-  const handleDelete = async () => {
-    if (!venue?.venueId) return
-    
-    try {
-      setLoading(true)
-      const response = await ApiService.deleteVenue(venue.venueId)
-      if (response.success) {
-        toast.success('Venue deleted successfully')
-        router.push('/admin/venues')
-      } else {
-        const errorMessage = response?.message || 'Failed to delete venue'
-        toast.error(errorMessage)
-      }
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || 'Failed to delete venue'
-      toast.error(errorMessage)
-      console.error('Error deleting venue:', error)
-    } finally {
-      setLoading(false)
+    if (params.id) {
+      fetchVenueDetails();
     }
-  }
+  }, [params.id]);
+
+  const updateTimeSlots = (venueData: VenueDetails, date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    const slots = venueData.availabilitySlots.find(slot => slot.date === dateStr);
+    setSelectedDateSlots(slots?.timeSlots || []);
+  };
+
+ 
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading venue details...</p>
-        </div>
-      </div>
-    )
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
 
-  if (error || !venue) {
+  if (!venue) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Venue</h2>
-          <p className="text-gray-600 mb-4">{error || 'Venue not found'}</p>
-          <Button onClick={() => router.push('/admin/venues')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Venues
-          </Button>
+      <div className="min-h-screen p-8">
+        <Link href="/admin/venues" className="flex items-center text-gray-600 hover:text-gray-900 mb-6">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Venues
+        </Link>
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <h1 className="text-2xl font-bold mb-2">Venue Not Found</h1>
+          <p className="text-gray-600 mb-6">The venue you're looking for doesn't exist or has been removed.</p>
+          <Link href="/admin/venues" className="bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800">
+            Return to Venues
+          </Link>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <Button 
-            variant="ghost" 
-            onClick={() => router.push('/admin/venues')}
-            className="mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Venues
-          </Button>
-          
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{venue.venueName}</h1>
-              <p className="text-gray-600 mt-2 flex items-center">
-                <MapPin className="h-4 w-4 mr-2" />
-                {venue.location}
-              </p>
-            </div>
-            
-            <div className="flex space-x-3">
-              <Button onClick={() => router.push(`/admin/venues/${venue.venueId}/edit`)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Venue
+    <div className="container mx-auto px-4 py-8 relative">
+      {/* Upload Progress Overlay */}
+      {uploading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center">
+            <p className="mb-4 font-medium">Uploading image...</p>
+            <Progress value={uploadProgress} className="w-64 mb-2" />
+            <span className="text-sm text-gray-500">{uploadProgress}%</span>
+          </div>
+        </div>
+      )}
+      {/* Back Button */}
+      <Link 
+        href="/admin/venues" 
+        className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
+      >
+        <ArrowLeft className="h-5 w-5 mr-2" />
+        Back to Venues
+      </Link>
+
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">{venue.venueName}</h1>
+        <div className="flex items-center gap-2 text-gray-600">
+          <MapPin className="w-4 h-4" />
+          <span>{venue.location}</span>
+          <Badge variant={venue.status === 'APPROVED' ? 'default' : 'secondary'}>
+            {venue.status}
+          </Badge>
+        </div>
+      </div>
+
+    
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex justify-between items-center">
+            <span>Venue Details</span>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={handleApproveVenue} disabled={approving || venue.status === 'APPROVED'}>
+                {approving ? (
+                  <span className="animate-spin mr-2"><CheckCircle className="h-4 w-4 text-green-600" /></span>
+                ) : (
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                )}
+                {approving ? "Approving..." : "Approve"}
               </Button>
               
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                </AlertDialogTrigger>
+              <Button size="sm" variant="outline" className="flex items-center gap-2" onClick={() => setRejectDialogOpen(true)} disabled={venue.status === 'REJECTED'}>
+                <XCircle className="h-4 w-4 text-red-600" />
+                Reject
+              </Button>
+              <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Venue</AlertDialogTitle>
+                    <AlertDialogTitle>Reject Venue Approval</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to delete "{venue.venueName}"? This action cannot be undone.
+                      Please provide a reason for rejecting this venue approval:
                     </AlertDialogDescription>
                   </AlertDialogHeader>
+                  <textarea
+                    className="w-full border rounded p-2 mt-2"
+                    rows={4}
+                    placeholder="Enter reason for rejection..."
+                    value={rejectReason}
+                    onChange={e => setRejectReason(e.target.value)}
+                    disabled={rejecting}
+                  />
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                      Delete Venue
+                    <AlertDialogCancel disabled={rejecting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleRejectVenue} disabled={rejecting || !rejectReason.trim()} className="bg-destructive text-white">
+                      {rejecting ? "Rejecting..." : "Reject Venue"}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+              <Link href={`/manage/venues/${venue.venueId}/edit`}>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Pencil className="w-4 h-4" />
+                  Edit
+                </Button>
+              </Link>
+              <Button variant="destructive" className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </Button>
             </div>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6">
+            {/* Main Image */}
+            <div className="relative rounded-lg overflow-hidden h-[400px] group">
+              <img 
+                src={venue.mainPhotoUrl} 
+                alt={venue.venueName}
+                className="w-full h-full object-cover"
+              />
+              {/* Edit icon overlay */}
+              <button
+                onClick={handleEditMainPhoto}
+                className="absolute top-4 right-4 bg-white bg-opacity-80 rounded-full p-2 shadow transition-opacity opacity-0 group-hover:opacity-100 hover:bg-opacity-100"
+                title="Edit main photo"
+              >
+                <Pencil className="w-5 h-5 text-gray-700" />
+              </button>
+              {/* Hidden file input for main photo */}
+              <input
+                type="file"
+                accept="image/*"
+                ref={mainPhotoInputRef}
+                onChange={handleMainPhotoFileChange}
+                style={{ display: "none" }}
+              />
+            </div>
+
+            {/* Sub Images Carousel */}
+            <div className="w-full max-w-2xl mx-auto">
+              <Carousel opts={{ align: "start" }}>
+                <CarouselContent>
+                  {/* Add icon for new sub image */}
+                  <CarouselItem className="basis-1/3">
+                    <button
+                      onClick={handleAddSubPhoto}
+                      className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg h-24 w-full bg-gray-50 hover:bg-gray-100 transition-colors"
+                      title="Add sub image"
+                    >
+                      <Plus className="w-8 h-8 text-gray-400" />
+                    </button>
+                    {/* Hidden file input for sub photo */}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={subPhotoInputRef}
+                      onChange={handleSubPhotoFileChange}
+                      style={{ display: "none" }}
+                    />
+                  </CarouselItem>
+                  {/* Sub images, always show at least 2 after add button */}
+                  {Array.from({ length: Math.max(2, (venue.subPhotoUrls?.length || 0)) }).map((_, i) => {
+                    const url = venue.subPhotoUrls?.[i];
+                    return url ? (
+                      <CarouselItem key={i} className="basis-1/3">
+                        <div className="relative rounded-lg overflow-hidden h-24 group">
+                          <img
+                            src={url}
+                            alt={`${venue.venueName} ${i + 1}`}
+                            className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                          />
+                          {/* Delete icon overlay */}
+                          <AlertDialog open={deleteDialogOpen && deleteIndex === i} onOpenChange={setDeleteDialogOpen}>
+                            <AlertDialogTrigger asChild>
+                              <button
+                                onClick={() => handleDeleteSubPhoto(i)}
+                                className="absolute top-2 right-2 bg-white bg-opacity-80 rounded-full p-1 shadow transition-opacity opacity-0 group-hover:opacity-100 hover:bg-opacity-100"
+                                title="Delete sub image"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-500" />
+                              </button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Sub Image</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete this sub image? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={confirmDeleteSubPhoto} disabled={deleting} className="bg-destructive text-white">
+                                  {deleting ? "Deleting..." : "Delete"}
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </CarouselItem>
+                    ) : (
+                      <CarouselItem key={`empty-${i}`} className="basis-1/3">
+                        <div className="h-24 w-full bg-gray-100 rounded-lg flex items-center justify-center text-gray-300">
+                          No Image
+                        </div>
+                      </CarouselItem>
+                    );
+                  })}
+                </CarouselContent>
+                <CarouselPrevious />
+                <CarouselNext />
+              </Carousel>
+            </div>
+
+            {/* Venue Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Description</h3>
+                <p className="text-gray-800">{venue.description || 'No description available.'}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Capacity</h3>
+                <p className="text-gray-800">{venue.capacity} people</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Amount</h3>
+                <p className="text-gray-800">${venue.amount.toFixed(2)}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Location</h3>
+                <p className="text-gray-800">{venue.location}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Contact Email</h3>
+                <p className="text-gray-800">{venue.contactEmail}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Contact Phone</h3>
+                <p className="text-gray-800">{venue.contactPhone}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Status</h3>
+                <Badge variant={venue.status === 'APPROVED' ? 'default' : 'secondary'}>
+                  {venue.status}
+                </Badge>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Google Maps Link</h3>
+                <a href={venue.googleMapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  View on Google Maps
+                </a>
+              </div>
+            </div>
+
+            {/* Amenities */}
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Amenities</h3>
+              <ul className="list-disc list-inside text-gray-800">
+                {venue.amenities.map(amenity => (
+                  <li key={amenity.id}>
+                    {amenity.resourceName} ({amenity.quantity}) - ${amenity.costPerUnit}/unit
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Booking Conditions */}
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Booking Conditions</h3>
+              <ul className="list-disc list-inside text-gray-800">
+                {venue.bookingConditions.map(condition => (
+                  <li key={condition.id}>
+                    {condition.descriptionCondition}
+                    <br />
+                    Nota Bene: {condition.notaBene}
+                    <br />
+                    Transition Time: {condition.transitionTime} minutes
+                    <br />
+                    Deposit Required: {condition.depositRequiredPercent}%
+                    <br />
+                    Payment Complement Time: {condition.paymentComplementTimeBeforeEvent} minutes
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Availability Slots */}
+            {/* (Removed as per request) */}
+
+            {/* Virtual Tour */}
+            {venue.virtualTourUrl && (
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Virtual Tour</h3>
+                <a href={venue.virtualTourUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  View Virtual Tour
+                </a>
+              </div>
+            )}
+
+            {/* Documents */}
+            {venue.venueDocuments && (
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Documents</h3>
+                <p className="text-gray-800">Documents available for this venue.</p>
+              </div>
+            )}
           </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Venue Information Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Building2 className="h-5 w-5 mr-2" />
-                Venue Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Basic Details */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Venue Type</label>
-                  <p className="text-lg font-semibold">{venue.venueType}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Status</label>
-                  <div className="mt-1">
-                    <Badge variant={venue.isAvailable ? "default" : "secondary"}>
-                      {venue.isAvailable ? (
-                        <>
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Available
-                        </>
-                      ) : (
-                        <>
-                          <Clock className="h-3 w-3 mr-1" />
-                          Pending Approval
-                        </>
-                      )}
-                    </Badge>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Capacity</label>
-                  <p className="text-lg font-semibold flex items-center">
-                    <Users className="h-4 w-4 mr-2" />
-                    {venue.capacity.toLocaleString()} people
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Price</label>
-                  <p className="text-lg font-semibold flex items-center text-gray-600">
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    {venue.amount.toLocaleString()} RWF
-                  </p>
-                </div>
-              </div>
-              
-              {venue.description && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Description</label>
-                  <p className="text-gray-700 mt-1">{venue.description}</p>
-                </div>
-              )}
-
-              {/* Amenities */}
-              {venue.amenities && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500 mb-2 block">Amenities</label>
-                  <div className="flex flex-wrap gap-2">
-                    {venue.amenities.split(',').map((amenity, index) => (
-                      <Badge key={index} variant="outline" className="flex items-center">
-                        {amenity.trim().toLowerCase().includes('wifi') && <Wifi className="h-3 w-3 mr-1" />}
-                        {amenity.trim().toLowerCase().includes('parking') && <Car className="h-3 w-3 mr-1" />}
-                        {amenity.trim()}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Resources */}
-              {venue.resources && venue.resources.length > 0 && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500 mb-3 block">Available Resources</label>
-                  <div className="space-y-3">
-                    {venue.resources.map((resource, index) => (
-                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium">{resource.resourceName}</p>
-                          <p className="text-sm text-gray-600">{resource.description}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">{resource.quantity} units</p>
-                          <p className="text-sm text-gray-600">{resource.costPerUnit} RWF each</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Quick Stats */}
-              <Separator />
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-500">Organization ID</span>
-                  <p className="font-mono">{venue.organizationId || 'N/A'}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Created</span>
-                  <p>{venue.createdAt ? new Date(venue.createdAt).toLocaleDateString() : 'N/A'}</p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Updated</span>
-                  <p>{venue.updatedAt ? new Date(venue.updatedAt).toLocaleDateString() : 'N/A'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Contact & Location Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <MapPin className="h-5 w-5 mr-2" />
-                Contact & Location
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Location Details */}
-              <div>
-                <label className="text-sm font-medium text-gray-500 mb-3 block">Location Details</label>
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-sm text-gray-500">Address</span>
-                    <p className="text-gray-700">{venue.location}</p>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-sm text-gray-500">Latitude</span>
-                      <p className="text-gray-700">{venue.latitude}</p>
-                    </div>
-                    <div>
-                      <span className="text-sm text-gray-500">Longitude</span>
-                      <p className="text-gray-700">{venue.longitude}</p>
-                    </div>
-                  </div>
-                  
-                  {venue.googleMapsLink && (
-                    <div>
-                      <span className="text-sm text-gray-500">Google Maps</span>
-                      <a 
-                        href={venue.googleMapsLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 flex items-center mt-1"
-                      >
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        View on Google Maps
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Contact Information */}
-              <div>
-                <label className="text-sm font-medium text-gray-500 mb-3 block">Contact Information</label>
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-sm text-gray-500">Contact Person</span>
-                    <p className="text-gray-700">{venue.contactPerson}</p>
-                  </div>
-                  
-                  <div>
-                    <span className="text-sm text-gray-500">Email</span>
-                    <a 
-                      href={`mailto:${venue.contactEmail}`}
-                      className="text-blue-600 hover:text-blue-800 flex items-center"
-                    >
-                      <Mail className="h-4 w-4 mr-2" />
-                      {venue.contactEmail}
-                    </a>
-                  </div>
-                  
-                  <div>
-                    <span className="text-sm text-gray-500">Phone</span>
-                    <a 
-                      href={`tel:${venue.contactPhone}`}
-                      className="text-blue-600 hover:text-blue-800 flex items-center"
-                    >
-                      <Phone className="h-4 w-4 mr-2" />
-                      {venue.contactPhone}
-                    </a>
-                  </div>
-                  
-                  {venue.websiteURL && (
-                    <div>
-                      <span className="text-sm text-gray-500">Website</span>
-                      <a 
-                        href={venue.websiteURL} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 flex items-center"
-                      >
-                        <Globe className="h-4 w-4 mr-2" />
-                        Visit Website
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <Separator />
-              <div>
-                <label className="text-sm font-medium text-gray-500 mb-3 block">Quick Actions</label>
-                <div className="space-y-2">
-                  <Button 
-                    onClick={() => router.push(`/admin/venues/${venue.venueId}/edit`)}
-                    className="w-full"
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Venue
-                  </Button>
-                  
-                  {venue.googleMapsLink && (
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => window.open(venue.googleMapsLink, '_blank')}
-                    >
-                      <Navigation className="h-4 w-4 mr-2" />
-                      View on Map
-                    </Button>
-                  )}
-                  
-                  {venue.websiteURL && (
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={() => window.open(venue.websiteURL, '_blank')}
-                    >
-                      <Globe className="h-4 w-4 mr-2" />
-                      Visit Website
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
-  )
-} 
+  );
+}

@@ -229,7 +229,7 @@ export default function EventSection() {
                 <div className="flex flex-col md:flex-row gap-4 mt-4 md:mt-0">
                   <button
                     className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    onClick={() => router.push("/manage/events/create")}
+                    onClick={() => router.push("/user-dashboard/events/create")}
                   >
                     <Plus className="h-4 w-4" />
                     Create Event
@@ -239,7 +239,7 @@ export default function EventSection() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
-        <div className="border rounded-lg p-6">
+        <div className="border rounded-lg p-6 bg-white">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-600 text-sm mb-1">Total Events</p>
@@ -249,7 +249,7 @@ export default function EventSection() {
             <Calendar className="h-5 w-5 text-gray-400" />
           </div>
         </div>
-        <div className="border rounded-lg p-6">
+        <div className="border rounded-lg p-6 bg-white">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-600 text-sm mb-1">Total Attendees</p>
@@ -259,7 +259,7 @@ export default function EventSection() {
             <Users className="h-5 w-5 text-gray-400" />
           </div>
         </div>
-        <div className="border rounded-lg p-6">
+        <div className="border rounded-lg p-6 bg-white">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-600 text-sm mb-1">Venues Used</p>
@@ -269,7 +269,7 @@ export default function EventSection() {
             <MapPin className="h-5 w-5 text-gray-400" />
           </div>
         </div>
-        <div className="border rounded-lg p-6">
+        <div className="border rounded-lg p-6 bg-white">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-600 text-sm mb-1">Upcoming Events</p>
@@ -279,7 +279,7 @@ export default function EventSection() {
             <Clock className="h-5 w-5 text-gray-400" />
           </div>
         </div>
-        <div className="border rounded-lg p-6">
+        <div className="border rounded-lg p-6 bg-white">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-600 text-sm mb-1">Payable Events</p>
@@ -288,7 +288,7 @@ export default function EventSection() {
             <span className="inline-block bg-red-100 text-red-600 rounded-full px-3 py-1 text-xs font-semibold">Payable</span>
           </div>
         </div>
-        <div className="border rounded-lg p-6">
+        <div className="border rounded-lg p-6 bg-white">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-gray-600 text-sm mb-1">Free Entrance Events</p>
@@ -299,8 +299,10 @@ export default function EventSection() {
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="border-b mb-6">
+
+      <div className="bg-white">
+           {/* Tab Navigation */}
+      <div className="border-b mb-6 ml-3 mr-3 ">
         <div className="flex -mb-px">
           <button
             className={`px-6 py-2 font-medium text-sm border-b-2 ${
@@ -328,7 +330,7 @@ export default function EventSection() {
       {activeTab === "my-events" && (
         <>
           {/* Events Header */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 ml-3 mr-3">
             <h2 className="text-xl font-bold">Your Events</h2>
             <div className="flex flex-col md:flex-row gap-2 md:gap-4 w-full md:w-auto">
               {/* Search by event name */}
@@ -418,7 +420,7 @@ export default function EventSection() {
             </div>
           </div>
           {/* Events Table (shadcn) */}
-          <div className="border rounded-lg overflow-x-auto">
+          <div className="border rounded-lg overflow-x-auto ml-3 mr-3">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -507,7 +509,7 @@ export default function EventSection() {
           </div>
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-6">
+            <div className="mt-6 ml-3 mr-3">
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
@@ -586,7 +588,7 @@ export default function EventSection() {
       )}
 
       {activeTab === "analytics" && (
-        <div className="border rounded-lg p-6">
+        <div className="border rounded-lg p-6 m-3">
           <h2 className="text-xl font-bold mb-6">Event Analytics</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -678,6 +680,10 @@ export default function EventSection() {
           </div>
         </div>
       )}
+
+              
+      </div>
+      
       </div>
     </div>
   )
