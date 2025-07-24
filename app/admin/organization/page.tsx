@@ -254,11 +254,13 @@ export default function AdminOrganization() {
                   <DialogTrigger asChild>
                     <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> Add Organization</Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-4xl no-dialog-close">
+                  <DialogContent className="max-w-3xl bg-white rounded-2xl shadow-2xl p-0 overflow-visible no-dialog-close">
                     <DialogHeader>
                       <DialogTitle className="sr-only">Add Organization</DialogTitle>
                     </DialogHeader>
-                    <OrganizationForm onSuccess={handleAdd} onCancel={() => setAddOpen(false)} />
+                    <div className="m-6">
+                      <OrganizationForm onSuccess={handleAdd} onCancel={() => setAddOpen(false)} />
+                    </div>
                   </DialogContent>
                 </Dialog>
               </div>

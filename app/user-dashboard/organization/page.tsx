@@ -121,20 +121,22 @@ export default function OrganizationsSection() {
                 <DialogTrigger asChild>
                   <Button>Add Organization</Button>
                 </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
+                <DialogContent className="sm:max-w-[800px]">
+                  <DialogHeader className="max-w-3xl bg-white rounded-2xl shadow-2xl p-0 overflow-visible no-dialog-close">
                     <DialogTitle>Add Organization</DialogTitle>
                   </DialogHeader>
-                  <OrganizationForm
-                    onSuccess={(newOrg) => {
-                      setAddOrgOpen(false);
-                      setOrganizations(prev => [
-                        ...prev,
-                        { ...newOrg, organizationId: `ORG-${prev.length + 1}` }
-                      ]);
-                    }}
-                    onCancel={() => setAddOrgOpen(false)}
-                  />
+                  <div className="max-w-3xl mx-auto">
+                    <OrganizationForm
+                      onSuccess={(newOrg) => {
+                        setAddOrgOpen(false);
+                        setOrganizations(prev => [
+                          ...prev,
+                          { ...newOrg, organizationId: `ORG-${prev.length + 1}` }
+                        ]);
+                      }}
+                      onCancel={() => setAddOrgOpen(false)}
+                    />
+                  </div>
                 </DialogContent>
               </Dialog>
             </div>
@@ -268,16 +270,18 @@ export default function OrganizationsSection() {
                 <DialogHeader>
                   <DialogTitle>Edit Organization</DialogTitle>
                 </DialogHeader>
-                <OrganizationForm
-                  onSuccess={(updatedOrg) => {
-                    setShowEdit(false);
-                    setOrganizations(prev => prev.map(org =>
-                      org.organizationId === editOrg.organizationId ? { ...org, ...updatedOrg } : org
-                    ));
-                  }}
-                  onCancel={() => setShowEdit(false)}
-                  initialData={editOrg}
-                />
+                <div className="max-w-3xl mx-auto">
+                  <OrganizationForm
+                    onSuccess={(updatedOrg) => {
+                      setShowEdit(false);
+                      setOrganizations(prev => prev.map(org =>
+                        org.organizationId === editOrg.organizationId ? { ...org, ...updatedOrg } : org
+                      ));
+                    }}
+                    onCancel={() => setShowEdit(false)}
+                    initialData={editOrg}
+                  />
+                </div>
               </DialogContent>
             </Dialog>
           )}
