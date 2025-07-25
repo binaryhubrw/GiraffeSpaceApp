@@ -4,6 +4,8 @@ import type React from "react"
 import { useState } from "react"
 import { Building2, AlertCircle, X, FileText, ImageIcon, Upload, Mail, Phone, MapPin, Globe } from "lucide-react"
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import ApiService from "@/api/apiConfig";
 
 interface Organization {
   organizationName: string;
@@ -34,22 +36,47 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
     router.push("/login");
     return null;
   }
-  const [organizationName, setOrganizationName] = useState(initialData?.organizationName || "");
-  const [description, setDescription] = useState(initialData?.description || "");
-  const [contactEmail, setContactEmail] = useState(initialData?.contactEmail || "");
-  const [contactPhone, setContactPhone] = useState(initialData?.contactPhone || "");
-  const [address, setAddress] = useState(initialData?.address || "");
-  const [organizationType, setOrganizationType] = useState(initialData?.organizationType || "");
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({
+    organizationName: initialData?.organizationName || "",
+    description: initialData?.description || "",
+    contactEmail: initialData?.contactEmail || "",
+    contactPhone: initialData?.contactPhone || "",
+    address: initialData?.address || "",
+    organizationType: initialData?.organizationType || "",
+    city: initialData?.city || "",
+    country: initialData?.country || "",
+    postalCode: initialData?.postalCode || "",
+    stateProvince: initialData?.stateProvince || "",
+    members: initialData?.members || 0,
+  });
   const [supportingDocuments, setSupportingDocuments] = useState<FileList | null>(null);
   const [logo, setLogo] = useState<File | null>(null);
-  const [city, setCity] = useState(initialData?.city || "");
-  const [country, setCountry] = useState(initialData?.country || "");
-  const [postalCode, setPostalCode] = useState(initialData?.postalCode || "");
-  const [stateProvince, setStateProvince] = useState(initialData?.stateProvince || "");
-  const [members, setMembers] = useState(initialData?.members || 0);
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+
+  // Helper to check if a field should be highlighted due to error
+  const isFieldError = (field: string) => {
+    if (!error) return false;
+    return error.toLowerCase().includes(field);
+  };
+
+  // Helper to check for duplicate name or email
+  const checkDuplicate = async () => {
+    try {
+      const allOrgs = await ApiService.getAllOrganization();
+      if (!Array.isArray(allOrgs)) return false;
+      return allOrgs.some(
+        org =>
+          org.organizationName === formData.organizationName ||
+          org.contactEmail === formData.contactEmail
+      );
+    } catch (e) {
+      // If the check fails, allow submit (backend will still catch)
+      return false;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,62 +86,79 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
 
     try {
       const orgId = initialData?.organizationId || initialData?._id;
-      if (!orgId) {
-        throw new Error("Organization ID is missing");
-      }
-
       const token = localStorage.getItem("token");
       if (!token) {
         router.push("/login");
         return;
       }
 
-      // PATCH JSON fields
+      // Only check for duplicates on create
+      if (!orgId) {
+        const isDuplicate = await checkDuplicate();
+        if (isDuplicate) {
+          setIsLoading(false);
+          setError("An organization with this name or email already exists.");
+          return;
+        }
+      }
+
       const jsonBody = {
-        organizationName,
-        description,
-        contactEmail,
-        contactPhone,
-        address,
-        city,
-        country,
-        postalCode,
-        stateProvince,
-        organizationType,
-        members: Number(members) || 0,
+        ...formData,
+        members: Number(formData.members) || 0,
+        // Set status based on user role when creating
+        ...(orgId ? {} : { status: user?.roles?.roleName === "ADMIN" ? "APPROVED" : "PENDING" }),
       };
 
-      console.log("Updating organization with ID:", orgId);
-      console.log("Request payload:", jsonBody);
-
-      // PUT organization info - MAIN FIX: Ensure endpoint is correct
-      const res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}`, {
-        method: "PUT", // <-- Use PUT here
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify(jsonBody),
-      });
+      let res;
+      if (orgId) {
+        // EDIT mode
+        res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify(jsonBody),
+          }
+        );
+      } else {
+        // CREATE mode
+        res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify(jsonBody),
+          }
+        );
+      }
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to update organization info");
+        throw new Error(errorData.message || "Failed to save organization info");
+      }
+
+      // Get the org id for uploads (from edit or create response)
+      let updatedOrgData = await res.json();
+      let newOrgId = orgId;
+      if (!orgId && updatedOrgData) {
+        newOrgId = updatedOrgData.organizationId || updatedOrgData._id || updatedOrgData.id;
       }
 
       // Handle logo upload if changed
-      if (logo) {
+      if (logo && newOrgId) {
         const logoData = new FormData();
         logoData.append("logo", logo);
-        
-        const logoRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}/logo`, {
-          method: "PATCH", // <-- Use PATCH here
+        const logoRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${newOrgId}/logo`, {
+          method: "PATCH",
           headers: {
             "Authorization": `Bearer ${token}`,
           },
           body: logoData,
         });
-
         if (!logoRes.ok) {
           const errorData = await logoRes.json().catch(() => ({}));
           throw new Error(errorData.message || "Failed to update logo");
@@ -122,50 +166,46 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
       }
 
       // Handle supporting document upload if changed
-      if (supportingDocuments && supportingDocuments.length > 0) {
+      if (supportingDocuments && supportingDocuments.length > 0 && newOrgId) {
         const docData = new FormData();
         Array.from(supportingDocuments).forEach((file, index) => {
           docData.append("supportingDocument", file);
         });
-        
-        const docRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}/supporting-document`, {
-          method: "PATCH", // <-- Use PATCH here
+        const docRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${newOrgId}/supporting-document`, {
+          method: "PATCH",
           headers: {
             "Authorization": `Bearer ${token}`,
           },
           body: docData,
         });
-
         if (!docRes.ok) {
           const errorData = await docRes.json().catch(() => ({}));
           throw new Error(errorData.message || "Failed to update supporting document");
         }
       }
 
-      // Fetch the updated organization data
-      const updatedOrgRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-
-      if (!updatedOrgRes.ok) {
-        throw new Error("Failed to fetch updated organization data");
+      // Optionally, fetch the updated org data again
+      if (newOrgId) {
+        const updatedOrgRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${newOrgId}`, {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+        if (updatedOrgRes.ok) {
+          updatedOrgData = await updatedOrgRes.json();
+        }
       }
 
-      const updatedOrgData = await updatedOrgRes.json();
-      
       setIsLoading(false);
-      setSuccess("Organization updated successfully!"); // Show success
+      setSuccess(orgId ? "Organization updated successfully!" : "Organization created successfully!");
       if (onSuccess) {
         onSuccess(updatedOrgData);
       }
-
     } catch (err: any) {
       setIsLoading(false);
-      setError(err?.message || "Failed to update organization. Please try again.");
+      setError(err?.message || "Failed to save organization. Please try again.");
       setSuccess(""); // Clear success on error
-      console.error("Update error:", err);
+      console.error("Save error:", err);
     }
   };
 
@@ -250,10 +290,10 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                     <input
                       id="organizationName"
                       type="text"
-                      value={organizationName}
-                      onChange={(e) => setOrganizationName(e.target.value)}
+                      value={formData.organizationName}
+                      onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
                       placeholder="Enter your organization name"
-                      className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                      className={`w-full h-14 px-4 bg-gray-50 border-2 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500 ${isFieldError('name') ? 'border-red-500 border-2' : 'border-gray-200'}`}
                       required
                     />
                   </div>
@@ -264,8 +304,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                     </label>
                     <select
                       id="organizationType"
-                      value={organizationType}
-                      onChange={e => setOrganizationType(e.target.value)}
+                      value={formData.organizationType}
+                      onChange={e => setFormData({ ...formData, organizationType: e.target.value })}
                       className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 appearance-none"
                       required
                     >
@@ -284,8 +324,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                   <input
                     id="members"
                     type="number"
-                    value={members}
-                    onChange={(e) => setMembers(Number(e.target.value))}
+                    value={formData.members}
+                    onChange={(e) => setFormData({ ...formData, members: Number(e.target.value) })}
                     placeholder="Number of members"
                     className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                   />
@@ -297,8 +337,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                   </label>
                   <textarea
                     id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Describe your organization's mission, vision, and key activities..."
                     className="w-full h-32 px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500 resize-none"
                   />
@@ -327,10 +367,10 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                       <input
                         id="contactEmail"
                         type="email"
-                        value={contactEmail}
-                        onChange={(e) => setContactEmail(e.target.value)}
+                        value={formData.contactEmail}
+                        onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
                         placeholder="organization@example.com"
-                        className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                        className={`w-full h-14 pl-12 pr-4 bg-gray-50 border-2 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500 ${isFieldError('email') ? 'border-red-500' : 'border-gray-200'}`}
                         required
                       />
                     </div>
@@ -345,8 +385,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                       <input
                         id="contactPhone"
                         type="tel"
-                        value={contactPhone}
-                        onChange={(e) => setContactPhone(e.target.value)}
+                        value={formData.contactPhone}
+                        onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
                         placeholder="+1 (555) 123-4567"
                         className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                       />
@@ -375,8 +415,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                     <input
                       id="address"
                       type="text"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       placeholder="123 Main Street, Suite 100"
                       className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                     />
@@ -390,8 +430,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                       <input
                         id="city"
                         type="text"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                         placeholder="New York"
                         className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                       />
@@ -404,8 +444,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                       <input
                         id="stateProvince"
                         type="text"
-                        value={stateProvince}
-                        onChange={(e) => setStateProvince(e.target.value)}
+                        value={formData.stateProvince}
+                        onChange={(e) => setFormData({ ...formData, stateProvince: e.target.value })}
                         placeholder="NY"
                         className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                       />
@@ -420,8 +460,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                         <input
                           id="country"
                           type="text"
-                          value={country}
-                          onChange={(e) => setCountry(e.target.value)}
+                          value={formData.country}
+                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                           placeholder="United States"
                           className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                         />
@@ -435,8 +475,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                       <input
                         id="postalCode"
                         type="text"
-                        value={postalCode}
-                        onChange={(e) => setPostalCode(e.target.value)}
+                        value={formData.postalCode}
+                        onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
                         placeholder="10001"
                         className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                       />

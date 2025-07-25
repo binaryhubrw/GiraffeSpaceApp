@@ -53,29 +53,30 @@ export default function UserOrgDetailPage() {
   const [loading, setLoading] = useState(true)
   const [editOpen, setEditOpen] = useState(false)
   const [updating, setUpdating] = useState(false)
+  const [responseMessage, setResponseMessage] = useState<string | null>(null)
+  const [responseType, setResponseType] = useState<'success' | 'error' | null>(null)
 
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string)
 
-  useEffect(() => {
-    const fetchOrg = async () => {
-      if (!id) return
-      setLoading(true)
-      try {
-        const res = await ApiService.getOrganizationById(id)
-        if (res.success) {
-          const org = (res.data && (res.data as any).data) ? (res.data as any).data : res.data;
-          setOrganization(org)
-        } else {
-          toast.error(res.error || "Failed to fetch organization")
-          router.back()
-        }
-      } catch (err) {
-        toast.error("Failed to fetch organization")
-        router.back()
-      } finally {
-        setLoading(false)
+  // Move fetchOrg outside useEffect so it can be called after edit
+  const fetchOrg = async () => {
+    setLoading(true);
+    try {
+      const res = await ApiService.getOrganizationById(id);
+      if (res.success) {
+        const org = (res.data && (res.data as any).data) ? (res.data as any).data : res.data;
+        setOrganization({ ...org }); // clone to trigger re-render
+      } else {
+        console.error("Failed to fetch organization", res.error);
       }
+    } catch (error) {
+      console.error("Failed to fetch organization", error);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     fetchOrg()
   }, [id, router])
 
@@ -87,10 +88,19 @@ export default function UserOrgDetailPage() {
       if (res.success) {
         toast.success("Request submitted, status set to PENDING")
         setOrganization(prev => prev ? { ...prev, status: "PENDING" } : prev)
+        setResponseMessage("Request submitted, status set to PENDING")
+        setResponseType('success')
+        toast.success("Request submitted, status set to PENDING")
       } else {
+        toast.error(res.error || "Failed to request")
+        setResponseMessage(res.error || "Failed to request")
+        setResponseType('error')
         toast.error(res.error || "Failed to request")
       }
     } catch (err) {
+      toast.error("Failed to request")
+      setResponseMessage("Failed to request")
+      setResponseType('error')
       toast.error("Failed to request")
     } finally {
       setUpdating(false)
@@ -102,6 +112,12 @@ export default function UserOrgDetailPage() {
 
   return (
     <div className="min-h-screen flex flex-col p-8">
+      {/* Response message UI */}
+      {responseMessage && (
+        <div className={`mb-4 px-4 py-3 rounded border text-sm font-medium ${responseType === 'success' ? 'bg-green-50 border-green-300 text-green-800' : 'bg-red-50 border-red-300 text-red-800'}`}>
+          {responseMessage}
+        </div>
+      )}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="icon" onClick={() => router.back()}>
@@ -122,28 +138,12 @@ export default function UserOrgDetailPage() {
               <div className="m-6">
                 <OrganizationForm
                   initialData={organization as any}
-                  onSuccess={(updatedOrg) => {
-                    let org;
-                    if (
-                      updatedOrg &&
-                      typeof updatedOrg === 'object' &&
-                      'data' in (updatedOrg as any) &&
-                      Array.isArray((updatedOrg as any).data)
-                    ) {
-                      org = ((updatedOrg as any).data as Organization[]).find(
-                        (o: Organization) => o.organizationId === organization.organizationId
-                      );
-                    } else if (
-                      updatedOrg &&
-                      typeof updatedOrg === 'object' &&
-                      'data' in (updatedOrg as any)
-                    ) {
-                      org = (updatedOrg as any).data as Organization;
-                    } else {
-                      org = updatedOrg;
-                    }
-                    setOrganization(org as Organization);
+                  onSuccess={(_) => {
                     setEditOpen(false);
+                    fetchOrg(); // Refetch organization data after edit
+                    setResponseMessage("Organization updated successfully.")
+                    setResponseType('success')
+                    toast.success("Organization updated successfully.")
                   }}
                   onCancel={() => setEditOpen(false)}
                 />

@@ -70,15 +70,18 @@ export default function AdminOrganization() {
   const [deleteOrgId, setDeleteOrgId] = useState<string | null>(null)
   const itemsPerPage = 5
 
+  // Refactored fetchOrganizations function
+  const fetchOrganizations = async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    const orgs = await ApiService.getOrganizationsByUserId(user.userId);
+    console.log("Fetched organizations:", orgs);
+    setOrganizations(Array.isArray(orgs) ? [...orgs] : []); // Force new array reference
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchOrganizations = async () => {
-      if (!user) return;
-      setLoading(true);
-      setError(null);
-      const orgs = await ApiService.getOrganizationsByUserId(user.userId);
-      setOrganizations(Array.isArray(orgs) ? orgs : []);
-      setLoading(false);
-    };
     fetchOrganizations();
   }, [user]);
 
@@ -162,10 +165,7 @@ export default function AdminOrganization() {
 
   const handleAdd = async (data: any) => {
     setAddOpen(false);
-    setOrganizations(prev => [
-      ...prev,
-      { ...data, id: `ORG-${prev.length + 1}` }
-    ]);
+    await fetchOrganizations();
     toast.success("Organization created successfully!");
   };
 
@@ -178,10 +178,7 @@ export default function AdminOrganization() {
       }
       const response = await ApiService.updateOrganizationById(editOrg.id, data)
       if (response && response.success) {
-        const updatedResponse = await ApiService.getAllOrganization()
-        if (updatedResponse && updatedResponse.success) {
-          setOrganizations(updatedResponse.data || [])
-        }
+        await fetchOrganizations();
         setEditOpen(null)
         setEditOrg(null)
       } else {
@@ -205,10 +202,7 @@ export default function AdminOrganization() {
       setLoading(true)
       const response = await ApiService.deleteOrganization(orgId)
       if (response && response.success) {
-        const updatedResponse = await ApiService.getAllOrganization()
-        if (updatedResponse && updatedResponse.success) {
-          setOrganizations(updatedResponse.data || [])
-        }
+        await fetchOrganizations();
         setDeleteOrgId(null)
         toast.success("Organization deleted successfully!")
       } else {
