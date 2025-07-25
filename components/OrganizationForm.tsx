@@ -186,13 +186,25 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
 
       // Optionally, fetch the updated org data again
       if (newOrgId) {
-        const updatedOrgRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${newOrgId}`, {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-        if (updatedOrgRes.ok) {
-          updatedOrgData = await updatedOrgRes.json();
+        // After editing, always fetch the latest org data
+        if (orgId) {
+          const updatedOrgRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}`, {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+            },
+          });
+          if (updatedOrgRes.ok) {
+            updatedOrgData = await updatedOrgRes.json();
+          }
+        } else {
+          const updatedOrgRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${newOrgId}`, {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+            },
+          });
+          if (updatedOrgRes.ok) {
+            updatedOrgData = await updatedOrgRes.json();
+          }
         }
       }
 
