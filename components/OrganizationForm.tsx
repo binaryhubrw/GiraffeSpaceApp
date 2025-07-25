@@ -3,10 +3,11 @@
 import type React from "react"
 import { useState } from "react"
 import { Building2, AlertCircle, X, FileText, ImageIcon, Upload, Mail, Phone, MapPin, Globe } from "lucide-react"
+import { useRouter } from "next/navigation";
 
 interface Organization {
   organizationName: string;
-  organizationType: string;
+  organizationType: string | null;
   description: string;
   contactEmail: string;
   contactPhone: string;
@@ -16,6 +17,8 @@ interface Organization {
   postalCode: string;
   stateProvince: string;
   _id?: string;
+  organizationId?: string; // Added for PATCHing
+  members?: number; // Added for PATCHing
 }
 
 interface OrganizationFormProps {
@@ -25,69 +28,146 @@ interface OrganizationFormProps {
 }
 
 export default function OrganizationForm({ onSuccess, onCancel, initialData }: OrganizationFormProps) {
-  const [organizationName, setOrganizationName] = useState("")
-  const [description, setDescription] = useState("")
-  const [contactEmail, setContactEmail] = useState("")
-  const [contactPhone, setContactPhone] = useState("")
-  const [address, setAddress] = useState("")
-  const [organizationType, setOrganizationType] = useState("")
-  const [supportingDocuments, setSupportingDocuments] = useState<FileList | null>(null)
-  const [logo, setLogo] = useState<File | null>(null)
-  const [city, setCity] = useState("")
-  const [country, setCountry] = useState("")
-  const [postalCode, setPostalCode] = useState("")
-  const [stateProvince, setStateProvince] = useState("")
+  const router = useRouter();
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  if (!token) {
+    router.push("/login");
+    return null;
+  }
+  const [organizationName, setOrganizationName] = useState(initialData?.organizationName || "");
+  const [description, setDescription] = useState(initialData?.description || "");
+  const [contactEmail, setContactEmail] = useState(initialData?.contactEmail || "");
+  const [contactPhone, setContactPhone] = useState(initialData?.contactPhone || "");
+  const [address, setAddress] = useState(initialData?.address || "");
+  const [organizationType, setOrganizationType] = useState(initialData?.organizationType || "");
+  const [supportingDocuments, setSupportingDocuments] = useState<FileList | null>(null);
+  const [logo, setLogo] = useState<File | null>(null);
+  const [city, setCity] = useState(initialData?.city || "");
+  const [country, setCountry] = useState(initialData?.country || "");
+  const [postalCode, setPostalCode] = useState(initialData?.postalCode || "");
+  const [stateProvince, setStateProvince] = useState(initialData?.stateProvince || "");
+  const [members, setMembers] = useState(initialData?.members || 0);
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    setSuccess(""); // Clear previous success
 
     try {
-      const formData = new FormData()
-      formData.append("organizationName", organizationName)
-      formData.append("organizationType", organizationType)
-      formData.append("description", description)
-      formData.append("contactEmail", contactEmail)
-      formData.append("contactPhone", contactPhone)
-      formData.append("address", address)
-      formData.append("city", city)
-      formData.append("country", country)
-      formData.append("postalCode", postalCode)
-      formData.append("stateProvince", stateProvince)
-
-      if (supportingDocuments) {
-        Array.from(supportingDocuments).forEach((file) => {
-          formData.append("supportingDocument", file)
-        })
+      const orgId = initialData?.organizationId || initialData?._id;
+      if (!orgId) {
+        throw new Error("Organization ID is missing");
       }
 
-      if (logo) {
-        formData.append("logo", logo)
-      }
-
-      // Real API call
       const token = localStorage.getItem("token");
-      const response = await fetch("https://giraffespacev2.onrender.com/api/v1/organizations", {
-        method: "POST",
-        headers: {
-          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-        },
-        body: formData,
-      })
-      const data = await response.json()
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Failed to add organization. Please try again.")
+      if (!token) {
+        router.push("/login");
+        return;
       }
-      setIsLoading(false)
-      if (onSuccess) onSuccess(data.data)
+
+      // PATCH JSON fields
+      const jsonBody = {
+        organizationName,
+        description,
+        contactEmail,
+        contactPhone,
+        address,
+        city,
+        country,
+        postalCode,
+        stateProvince,
+        organizationType,
+        members: Number(members) || 0,
+      };
+
+      console.log("Updating organization with ID:", orgId);
+      console.log("Request payload:", jsonBody);
+
+      // PUT organization info - MAIN FIX: Ensure endpoint is correct
+      const res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}`, {
+        method: "PUT", // <-- Use PUT here
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(jsonBody),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to update organization info");
+      }
+
+      // Handle logo upload if changed
+      if (logo) {
+        const logoData = new FormData();
+        logoData.append("logo", logo);
+        
+        const logoRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}/logo`, {
+          method: "PATCH", // <-- Use PATCH here
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+          body: logoData,
+        });
+
+        if (!logoRes.ok) {
+          const errorData = await logoRes.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to update logo");
+        }
+      }
+
+      // Handle supporting document upload if changed
+      if (supportingDocuments && supportingDocuments.length > 0) {
+        const docData = new FormData();
+        Array.from(supportingDocuments).forEach((file, index) => {
+          docData.append("supportingDocument", file);
+        });
+        
+        const docRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}/supporting-document`, {
+          method: "PATCH", // <-- Use PATCH here
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+          body: docData,
+        });
+
+        if (!docRes.ok) {
+          const errorData = await docRes.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to update supporting document");
+        }
+      }
+
+      // Fetch the updated organization data
+      const updatedOrgRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+
+      if (!updatedOrgRes.ok) {
+        throw new Error("Failed to fetch updated organization data");
+      }
+
+      const updatedOrgData = await updatedOrgRes.json();
+      
+      setIsLoading(false);
+      setSuccess("Organization updated successfully!"); // Show success
+      if (onSuccess) {
+        onSuccess(updatedOrgData);
+      }
+
     } catch (err: any) {
-      setIsLoading(false)
-      setError(err?.message || "Failed to add organization. Please try again.")
+      setIsLoading(false);
+      setError(err?.message || "Failed to update organization. Please try again.");
+      setSuccess(""); // Clear success on error
+      console.error("Update error:", err);
     }
-  }
+  };
 
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSupportingDocuments(e.target.files)
@@ -142,6 +222,12 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                 <p className="text-red-700 text-sm font-medium">{error}</p>
               </div>
             )}
+            {success && (
+              <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-xl flex items-start gap-3">
+                <span className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0">✔️</span>
+                <p className="text-green-700 text-sm font-medium">{success}</p>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-10">
               {/* Organization Details Section */}
@@ -186,8 +272,23 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                       <option value="" disabled>Select organization type</option>
                       <option value="Public">Public Organization</option>
                       <option value="Private">Private Organization</option>
+                      <option value="NGOs">NGOs</option>
                     </select>
                   </div>
+                </div>
+
+                <div className="space-y-2 mt-4">
+                  <label htmlFor="members" className="block text-sm font-semibold text-gray-700 mb-2">
+                    Members
+                  </label>
+                  <input
+                    id="members"
+                    type="number"
+                    value={members}
+                    onChange={(e) => setMembers(Number(e.target.value))}
+                    placeholder="Number of members"
+                    className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                  />
                 </div>
 
                 <div className="mt-8">
@@ -493,12 +594,12 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                   {isLoading ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                      Creating Organization...
+                      Updating Organization...
                     </>
                   ) : (
                     <>
                       <Building2 className="h-5 w-5" />
-                      Create Organization
+                      Update Organization
                     </>
                   )}
                 </button>

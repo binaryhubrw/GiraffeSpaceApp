@@ -37,6 +37,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import ApiService from "@/api/apiConfig"
 import OrganizationForm from "@/components/OrganizationForm";
+import { useAuth } from "@/contexts/auth-context"
 
 interface Organization {
   id: string;
@@ -54,6 +55,7 @@ interface Organization {
 
 export default function AdminOrganization() {
   const router = useRouter()
+  const { user } = useAuth()
   const [currentPage, setCurrentPage] = useState(1)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState("all")
@@ -70,27 +72,15 @@ export default function AdminOrganization() {
 
   useEffect(() => {
     const fetchOrganizations = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const response = await ApiService.getAllOrganization()
-        if (response && response.success) {
-          setOrganizations(response.data || [])
-        } else {
-          setOrganizations([])
-          setError(response?.error || 'Failed to fetch organizations')
-        }
-      } catch (error) {
-        setOrganizations([])
-        setError('Failed to fetch organizations')
-        console.error('Error fetching organizations:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchOrganizations()
-  }, [])
+      if (!user) return;
+      setLoading(true);
+      setError(null);
+      const orgs = await ApiService.getOrganizationsByUserId(user.userId);
+      setOrganizations(Array.isArray(orgs) ? orgs : []);
+      setLoading(false);
+    };
+    fetchOrganizations();
+  }, [user]);
 
   const LoadingSpinner = () => (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
@@ -122,7 +112,7 @@ export default function AdminOrganization() {
     )
   }
 
-  const safeOrganizations: Organization[] = organizations.map((org, index) => ({
+  const safeOrganizations: Organization[] = (Array.isArray(organizations) ? organizations : []).map((org, index) => ({
     id: org.organizationId || org.id || '',
     organizationName: org.organizationName || '',
     description: org.description || '',
@@ -161,7 +151,8 @@ export default function AdminOrganization() {
     // Status filter (case-insensitive)
     const matchesStatus = filterStatus === "all" || (org.status && org.status.toLowerCase() === filterStatus)
 
-    return matchesSearch && matchesType && matchesStatus && !isIndependent
+    const isIndependentName = org.organizationName?.toLowerCase() === 'independent'
+    return matchesSearch && matchesType && matchesStatus && !isIndependentName
   })
 
   const totalPages = Math.max(1, Math.ceil(filteredOrganizations.length / itemsPerPage))
@@ -248,22 +239,6 @@ export default function AdminOrganization() {
         <div className="flex-1 flex flex-col">
           <div className="flex-1 p-8">
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <Dialog open={addOpen} onOpenChange={setAddOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="mr-10"><Plus className="h-4 w-4" /> Add Organization</Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl bg-white rounded-2xl shadow-2xl p-0 overflow-visible no-dialog-close">
-                    <DialogHeader>
-                      <DialogTitle className="sr-only">Add Organization</DialogTitle>
-                    </DialogHeader>
-                    <div className="m-6">
-                      <OrganizationForm onSuccess={handleAdd} onCancel={() => setAddOpen(false)} />
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
               {/* Statistics Cards */}
               {/* <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <Card>
@@ -323,9 +298,22 @@ export default function AdminOrganization() {
 
               {/* Organizations Table */}
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>My Organizations</CardTitle>
                   {/* <CardDescription>Manage organization accounts and assignments</CardDescription> */}
+                  <Dialog open={addOpen} onOpenChange={setAddOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="mr-2"><Plus className="h-4 w-4" /> Add Organization</Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl bg-white rounded-2xl shadow-2xl p-0 overflow-visible no-dialog-close">
+                      <DialogHeader>
+                        <DialogTitle className="sr-only">Add Organization</DialogTitle>
+                      </DialogHeader>
+                      <div className="m-6">
+                        <OrganizationForm onSuccess={handleAdd} onCancel={() => setAddOpen(false)} />
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </CardHeader>
                 <CardContent>
                   {/* Filters */}
@@ -404,7 +392,7 @@ export default function AdminOrganization() {
                                   <Button 
                                     size="icon" 
                                     variant="outline" 
-                                    onClick={() => router.push(`/admin/organization/${org.id}`)}
+                                    onClick={() => router.push(`/user-dashboard/organization/${org.id}`)}
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Button>
