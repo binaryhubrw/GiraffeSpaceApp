@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { 
-  Building2, Users, Calendar, Mail, Phone, MapPin, User, 
-  ArrowLeft, Edit, Link2, CheckCircle2, XCircle, 
+import {
+  Building2, Users, Calendar, Mail, Phone, MapPin, User,
+  ArrowLeft, Edit, Link2, CheckCircle2, XCircle,
   MapPinIcon, Eye, Clock, Shield, FileText, Loader2,
-  ExternalLink, ChevronRight, Home
+  ExternalLink, ChevronRight, Home,
+  PlusIcon
 } from "lucide-react"
 import {
   Table,
@@ -108,8 +109,8 @@ const StatusBadge = ({ status, className }: { status: string, className?: string
   const Icon = config.icon
 
   return (
-    <Badge 
-      variant={config.variant} 
+    <Badge
+      variant={config.variant}
       className={cn("transition-colors duration-200 font-medium", config.className, className)}
     >
       <Icon className="w-3 h-3 mr-1" />
@@ -118,11 +119,11 @@ const StatusBadge = ({ status, className }: { status: string, className?: string
   )
 }
 
-const InfoCard = ({ icon: Icon, label, value, className }: { 
-  icon: any, 
-  label: string, 
-  value: string | React.ReactNode, 
-  className?: string 
+const InfoCard = ({ icon: Icon, label, value, className }: {
+  icon: any,
+  label: string,
+  value: string | React.ReactNode,
+  className?: string
 }) => (
   <div className={cn("flex items-start space-x-3 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors duration-200", className)}>
     <div className="flex-shrink-0 w-10 h-10 bg-white rounded-lg flex items-center justify-center shadow-sm">
@@ -167,15 +168,15 @@ const ErrorState = ({ error, onRetry, onBack }: { error: string, onRetry: () => 
         <p className="text-sm text-gray-500">Please check the organization ID and try again</p>
       </div>
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={onRetry}
           className="hover:bg-gray-50 transition-colors duration-200"
         >
           <Loader2 className="w-4 h-4 mr-2" />
           Try Again
         </Button>
-        <Button 
+        <Button
           onClick={onBack}
           className="bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
         >
@@ -199,6 +200,11 @@ export default function OrganizationDetailPage() {
   const [rejectionReason, setRejectionReason] = useState("")
   const [rejectLoading, setRejectLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>("all")
+  const [addManagerModalOpen, setAddManagerModalOpen] = useState(false);
+  const [managerEmail, setManagerEmail] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteSuccess, setInviteSuccess] = useState("");
 
   // Clean and validate the ID
   const validateId = (rawId: string | string[] | undefined): string | null => {
@@ -206,15 +212,15 @@ export default function OrganizationDetailPage() {
       // Basic validation
       if (!rawId) return null
       if (Array.isArray(rawId)) return null
-      
+
       // Clean and decode the ID
       const cleaned = decodeURIComponent(rawId).trim()
-      
+
       // Check for invalid values
-      if (!cleaned || 
-          cleaned === 'undefined' || 
-          cleaned === 'null' || 
-          cleaned === '[object Object]') {
+      if (!cleaned ||
+        cleaned === 'undefined' ||
+        cleaned === 'null' ||
+        cleaned === '[object Object]') {
         return null
       }
 
@@ -340,6 +346,24 @@ export default function OrganizationDetailPage() {
     }
   }
 
+  const handleInviteManager = async () => {
+    setInviteLoading(true);
+    setInviteError("");
+    setInviteSuccess("");
+    try {
+      // TODO: Replace with actual API call
+      // await ApiService.inviteManager({ email: managerEmail, organizationId: id });
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API
+      setInviteSuccess("Invitation sent successfully!");
+      setManagerEmail("");
+      setAddManagerModalOpen(false);
+    } catch (err) {
+      setInviteError("Failed to send invitation. Please try again.");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
   // Filter logic for organizations (if displaying a list, but here for detail page, we can use this for conditional rendering)
   const isIndependent = !organization?.organizationType || organization.organizationType.toLowerCase() === 'independent'
   const matchesStatus = statusFilter === 'all' || (organization?.status && organization.status.toLowerCase() === statusFilter)
@@ -350,8 +374,8 @@ export default function OrganizationDetailPage() {
 
   if (error || !organization) {
     return (
-      <ErrorState 
-        error={error || 'Organization not found'} 
+      <ErrorState
+        error={error || 'Organization not found'}
         onRetry={() => window.location.reload()}
         onBack={() => router.push("/admin/organization")}
       />
@@ -395,11 +419,11 @@ export default function OrganizationDetailPage() {
             <ChevronRight className="w-4 h-4" />
             <span className="text-gray-900 font-medium">{organization.organizationName}</span>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="icon"
                 onClick={() => router.push("/admin/organization")}
                 className="hover:bg-gray-100 transition-colors duration-200"
@@ -420,7 +444,7 @@ export default function OrganizationDetailPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <StatusBadge status={organization.status} />
               <div className="flex space-x-2">
@@ -487,17 +511,17 @@ export default function OrganizationDetailPage() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <InfoCard 
+                  <InfoCard
                     icon={Building2}
                     label="Organization Name"
                     value={organization.organizationName}
                   />
-                  <InfoCard 
+                  <InfoCard
                     icon={FileText}
                     label="Description"
                     value={organization.description || 'No description available'}
                   />
-                  <InfoCard 
+                  <InfoCard
                     icon={Shield}
                     label="Type"
                     value={organization.organizationType || 'Not specified'}
@@ -547,11 +571,11 @@ export default function OrganizationDetailPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <InfoCard 
+                  <InfoCard
                     icon={Mail}
                     label="Contact Email"
                     value={
-                      <a 
+                      <a
                         href={`mailto:${organization.contactEmail}`}
                         className="text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200"
                       >
@@ -559,12 +583,12 @@ export default function OrganizationDetailPage() {
                       </a>
                     }
                   />
-                  <InfoCard 
+                  <InfoCard
                     icon={Phone}
                     label="Contact Phone"
                     value={organization.contactPhone || 'Not provided'}
                   />
-                  <InfoCard 
+                  <InfoCard
                     icon={MapPinIcon}
                     label="Address"
                     value={
@@ -579,16 +603,16 @@ export default function OrganizationDetailPage() {
                     }
                   />
                   <div className="grid grid-cols-2 gap-4">
-                    <InfoCard 
+                    <InfoCard
                       icon={Calendar}
                       label="Created"
                       value={new Date(organization.createdAt).toLocaleDateString('en-US', {
                         year: 'numeric',
-                        month: 'long', 
+                        month: 'long',
                         day: 'numeric'
                       })}
                     />
-                    <InfoCard 
+                    <InfoCard
                       icon={Clock}
                       label="Last Updated"
                       value={new Date(organization.updatedAt).toLocaleDateString('en-US', {
@@ -614,14 +638,24 @@ export default function OrganizationDetailPage() {
                   <span>Team Members</span>
                   <Badge variant="secondary" className="ml-2">{organization.users?.length || 0}</Badge>
                 </div>
+                <button
+                  className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 focus:bg-blue-700 focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 active:bg-blue-800 transition-all duration-200 ease-in-out transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setAddManagerModalOpen(true)}
+                  aria-label="Add new manager"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <PlusIcon className="w-5 h-5" />
+                    Add Manager
+                  </span>
+                </button>
               </CardTitle>
             </CardHeader>
             <CardContent>
               {organization.users && organization.users.length > 0 ? (
                 <div className="grid gap-4">
                   {organization.users.map((user) => (
-                    <div 
-                      key={user.userId} 
+                    <div
+                      key={user.userId}
                       className="flex items-center justify-between p-6 border border-gray-200 rounded-xl hover:shadow-md hover:border-gray-300 transition-all duration-200 bg-white"
                     >
                       <div className="flex items-center space-x-4">
@@ -819,6 +853,39 @@ export default function OrganizationDetailPage() {
           </div>
         </DialogContent>
       </Dialog>
+      {addManagerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4">Invite Manager</h2>
+            <label className="block mb-2 text-sm font-medium">Manager's Email</label>
+            <input
+              type="email"
+              className="w-full border border-gray-300 rounded px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={managerEmail}
+              onChange={e => setManagerEmail(e.target.value)}
+              placeholder="manager@example.com"
+              disabled={inviteLoading}
+            />
+            {inviteError && <p className="text-red-500 text-sm mb-2">{inviteError}</p>}
+            <div className="flex justify-end space-x-2">
+              <button
+                className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                onClick={() => { setAddManagerModalOpen(false); setManagerEmail(""); setInviteError(""); }}
+                disabled={inviteLoading}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={handleInviteManager}
+                disabled={inviteLoading || !managerEmail}
+              >
+                {inviteLoading ? "Sending..." : "Send Invitation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
