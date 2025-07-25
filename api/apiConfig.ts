@@ -1174,5 +1174,21 @@ class ApiService {
       throw error;
     }
   }
+
+  // Fetch organizations for a specific user
+  static async getOrganizationsByUserId(userId: string): Promise<any[]> {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`${this.BASE_URL}/organizations/user/${userId}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      return Array.isArray(response.data?.data) ? response.data.data : [];
+    } catch (error) {
+      console.error("Error fetching organizations by userId:", error);
+      return [];
+    }
+  }
 }
 export default ApiService;

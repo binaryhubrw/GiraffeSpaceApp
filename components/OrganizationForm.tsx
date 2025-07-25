@@ -3,10 +3,13 @@
 import type React from "react"
 import { useState } from "react"
 import { Building2, AlertCircle, X, FileText, ImageIcon, Upload, Mail, Phone, MapPin, Globe } from "lucide-react"
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import ApiService from "@/api/apiConfig";
 
 interface Organization {
   organizationName: string;
-  organizationType: string;
+  organizationType: string | null;
   description: string;
   contactEmail: string;
   contactPhone: string;
@@ -16,6 +19,8 @@ interface Organization {
   postalCode: string;
   stateProvince: string;
   _id?: string;
+  organizationId?: string; // Added for PATCHing
+  members?: number; // Added for PATCHing
 }
 
 interface OrganizationFormProps {
@@ -25,69 +30,196 @@ interface OrganizationFormProps {
 }
 
 export default function OrganizationForm({ onSuccess, onCancel, initialData }: OrganizationFormProps) {
-  const [organizationName, setOrganizationName] = useState("")
-  const [description, setDescription] = useState("")
-  const [contactEmail, setContactEmail] = useState("")
-  const [contactPhone, setContactPhone] = useState("")
-  const [address, setAddress] = useState("")
-  const [organizationType, setOrganizationType] = useState("")
-  const [supportingDocuments, setSupportingDocuments] = useState<FileList | null>(null)
-  const [logo, setLogo] = useState<File | null>(null)
-  const [city, setCity] = useState("")
-  const [country, setCountry] = useState("")
-  const [postalCode, setPostalCode] = useState("")
-  const [stateProvince, setStateProvince] = useState("")
+  const router = useRouter();
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  if (!token) {
+    router.push("/login");
+    return null;
+  }
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({
+    organizationName: initialData?.organizationName || "",
+    description: initialData?.description || "",
+    contactEmail: initialData?.contactEmail || "",
+    contactPhone: initialData?.contactPhone || "",
+    address: initialData?.address || "",
+    organizationType: initialData?.organizationType || "",
+    city: initialData?.city || "",
+    country: initialData?.country || "",
+    postalCode: initialData?.postalCode || "",
+    stateProvince: initialData?.stateProvince || "",
+    members: initialData?.members || 0,
+  });
+  const [supportingDocuments, setSupportingDocuments] = useState<FileList | null>(null);
+  const [logo, setLogo] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+
+  // Helper to check if a field should be highlighted due to error
+  const isFieldError = (field: string) => {
+    if (!error) return false;
+    return error.toLowerCase().includes(field);
+  };
+
+  // Helper to check for duplicate name or email
+  const checkDuplicate = async () => {
+    try {
+      const allOrgs = await ApiService.getAllOrganization();
+      if (!Array.isArray(allOrgs)) return false;
+      return allOrgs.some(
+        org =>
+          org.organizationName === formData.organizationName ||
+          org.contactEmail === formData.contactEmail
+      );
+    } catch (e) {
+      // If the check fails, allow submit (backend will still catch)
+      return false;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    setSuccess(""); // Clear previous success
 
     try {
-      const formData = new FormData()
-      formData.append("organizationName", organizationName)
-      formData.append("organizationType", organizationType)
-      formData.append("description", description)
-      formData.append("contactEmail", contactEmail)
-      formData.append("contactPhone", contactPhone)
-      formData.append("address", address)
-      formData.append("city", city)
-      formData.append("country", country)
-      formData.append("postalCode", postalCode)
-      formData.append("stateProvince", stateProvince)
-
-      if (supportingDocuments) {
-        Array.from(supportingDocuments).forEach((file) => {
-          formData.append("supportingDocument", file)
-        })
-      }
-
-      if (logo) {
-        formData.append("logo", logo)
-      }
-
-      // Real API call
+      const orgId = initialData?.organizationId || initialData?._id;
       const token = localStorage.getItem("token");
-      const response = await fetch("https://giraffespacev2.onrender.com/api/v1/organizations", {
-        method: "POST",
-        headers: {
-          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-        },
-        body: formData,
-      })
-      const data = await response.json()
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Failed to add organization. Please try again.")
+      if (!token) {
+        router.push("/login");
+        return;
       }
-      setIsLoading(false)
-      if (onSuccess) onSuccess(data.data)
+
+      // Only check for duplicates on create
+      if (!orgId) {
+        const isDuplicate = await checkDuplicate();
+        if (isDuplicate) {
+          setIsLoading(false);
+          setError("An organization with this name or email already exists.");
+          return;
+        }
+      }
+
+      const jsonBody = {
+        ...formData,
+        members: Number(formData.members) || 0,
+        // Set status based on user role when creating
+        ...(orgId ? {} : { status: user?.roles?.roleName === "ADMIN" ? "APPROVED" : "PENDING" }),
+      };
+
+      let res;
+      if (orgId) {
+        // EDIT mode
+        res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify(jsonBody),
+          }
+        );
+      } else {
+        // CREATE mode
+        res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+            body: JSON.stringify(jsonBody),
+          }
+        );
+      }
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to save organization info");
+      }
+
+      // Get the org id for uploads (from edit or create response)
+      let updatedOrgData = await res.json();
+      let newOrgId = orgId;
+      if (!orgId && updatedOrgData) {
+        newOrgId = updatedOrgData.organizationId || updatedOrgData._id || updatedOrgData.id;
+      }
+
+      // Handle logo upload if changed
+      if (logo && newOrgId) {
+        const logoData = new FormData();
+        logoData.append("logo", logo);
+        const logoRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${newOrgId}/logo`, {
+          method: "PATCH",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+          body: logoData,
+        });
+        if (!logoRes.ok) {
+          const errorData = await logoRes.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to update logo");
+        }
+      }
+
+      // Handle supporting document upload if changed
+      if (supportingDocuments && supportingDocuments.length > 0 && newOrgId) {
+        const docData = new FormData();
+        Array.from(supportingDocuments).forEach((file, index) => {
+          docData.append("supportingDocument", file);
+        });
+        const docRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${newOrgId}/supporting-document`, {
+          method: "PATCH",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+          body: docData,
+        });
+        if (!docRes.ok) {
+          const errorData = await docRes.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to update supporting document");
+        }
+      }
+
+      // Optionally, fetch the updated org data again
+      if (newOrgId) {
+        // After editing, always fetch the latest org data
+        if (orgId) {
+          const updatedOrgRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}`, {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+            },
+          });
+          if (updatedOrgRes.ok) {
+            updatedOrgData = await updatedOrgRes.json();
+          }
+        } else {
+          const updatedOrgRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${newOrgId}`, {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+            },
+          });
+          if (updatedOrgRes.ok) {
+            updatedOrgData = await updatedOrgRes.json();
+          }
+        }
+      }
+
+      setIsLoading(false);
+      setSuccess(orgId ? "Organization updated successfully!" : "Organization created successfully!");
+      if (onSuccess) {
+        onSuccess(updatedOrgData);
+      }
     } catch (err: any) {
-      setIsLoading(false)
-      setError(err?.message || "Failed to add organization. Please try again.")
+      setIsLoading(false);
+      setError(err?.message || "Failed to save organization. Please try again.");
+      setSuccess(""); // Clear success on error
+      console.error("Save error:", err);
     }
-  }
+  };
 
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSupportingDocuments(e.target.files)
@@ -142,6 +274,12 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                 <p className="text-red-700 text-sm font-medium">{error}</p>
               </div>
             )}
+            {success && (
+              <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-xl flex items-start gap-3">
+                <span className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0">✔️</span>
+                <p className="text-green-700 text-sm font-medium">{success}</p>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-10">
               {/* Organization Details Section */}
@@ -164,10 +302,10 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                     <input
                       id="organizationName"
                       type="text"
-                      value={organizationName}
-                      onChange={(e) => setOrganizationName(e.target.value)}
+                      value={formData.organizationName}
+                      onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
                       placeholder="Enter your organization name"
-                      className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                      className={`w-full h-14 px-4 bg-gray-50 border-2 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500 ${isFieldError('name') ? 'border-red-500 border-2' : 'border-gray-200'}`}
                       required
                     />
                   </div>
@@ -178,16 +316,31 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                     </label>
                     <select
                       id="organizationType"
-                      value={organizationType}
-                      onChange={e => setOrganizationType(e.target.value)}
+                      value={formData.organizationType}
+                      onChange={e => setFormData({ ...formData, organizationType: e.target.value })}
                       className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 appearance-none"
                       required
                     >
                       <option value="" disabled>Select organization type</option>
                       <option value="Public">Public Organization</option>
                       <option value="Private">Private Organization</option>
+                      <option value="NGOs">NGOs</option>
                     </select>
                   </div>
+                </div>
+
+                <div className="space-y-2 mt-4">
+                  <label htmlFor="members" className="block text-sm font-semibold text-gray-700 mb-2">
+                    Members
+                  </label>
+                  <input
+                    id="members"
+                    type="number"
+                    value={formData.members}
+                    onChange={(e) => setFormData({ ...formData, members: Number(e.target.value) })}
+                    placeholder="Number of members"
+                    className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                  />
                 </div>
 
                 <div className="mt-8">
@@ -196,8 +349,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                   </label>
                   <textarea
                     id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Describe your organization's mission, vision, and key activities..."
                     className="w-full h-32 px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500 resize-none"
                   />
@@ -226,10 +379,10 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                       <input
                         id="contactEmail"
                         type="email"
-                        value={contactEmail}
-                        onChange={(e) => setContactEmail(e.target.value)}
+                        value={formData.contactEmail}
+                        onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
                         placeholder="organization@example.com"
-                        className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
+                        className={`w-full h-14 pl-12 pr-4 bg-gray-50 border-2 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500 ${isFieldError('email') ? 'border-red-500' : 'border-gray-200'}`}
                         required
                       />
                     </div>
@@ -244,8 +397,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                       <input
                         id="contactPhone"
                         type="tel"
-                        value={contactPhone}
-                        onChange={(e) => setContactPhone(e.target.value)}
+                        value={formData.contactPhone}
+                        onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
                         placeholder="+1 (555) 123-4567"
                         className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                       />
@@ -274,8 +427,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                     <input
                       id="address"
                       type="text"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                       placeholder="123 Main Street, Suite 100"
                       className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                     />
@@ -289,8 +442,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                       <input
                         id="city"
                         type="text"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
+                        value={formData.city}
+                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
                         placeholder="New York"
                         className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                       />
@@ -303,8 +456,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                       <input
                         id="stateProvince"
                         type="text"
-                        value={stateProvince}
-                        onChange={(e) => setStateProvince(e.target.value)}
+                        value={formData.stateProvince}
+                        onChange={(e) => setFormData({ ...formData, stateProvince: e.target.value })}
                         placeholder="NY"
                         className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                       />
@@ -319,8 +472,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                         <input
                           id="country"
                           type="text"
-                          value={country}
-                          onChange={(e) => setCountry(e.target.value)}
+                          value={formData.country}
+                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                           placeholder="United States"
                           className="w-full h-14 pl-12 pr-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                         />
@@ -334,8 +487,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                       <input
                         id="postalCode"
                         type="text"
-                        value={postalCode}
-                        onChange={(e) => setPostalCode(e.target.value)}
+                        value={formData.postalCode}
+                        onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
                         placeholder="10001"
                         className="w-full h-14 px-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:bg-white transition-all duration-200 text-gray-900 placeholder-gray-500"
                       />
@@ -493,12 +646,12 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                   {isLoading ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                      Creating Organization...
+                      Updating Organization...
                     </>
                   ) : (
                     <>
                       <Building2 className="h-5 w-5" />
-                      Create Organization
+                      Update Organization
                     </>
                   )}
                 </button>
