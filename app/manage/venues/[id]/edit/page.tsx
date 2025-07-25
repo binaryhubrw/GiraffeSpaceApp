@@ -213,7 +213,7 @@ export default function EditVenuePage() {
   // Map picker
   const handleMapChange = ({ lat, lng, address, district, googleMapsLink }: any) => {
     setFormData(prev => ({
-      ...prev,
+          ...prev,
       latitude: lat.toString(),
       longitude: lng.toString(),
       location: district,
@@ -323,34 +323,34 @@ export default function EditVenuePage() {
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="venueName" className="block text-sm font-medium text-gray-700 mb-1">
-                      Venue Name
-                    </label>
-                    <input
-                      type="text"
+                    Venue Name
+                  </label>
+                  <input
+                    type="text"
                       id="venueName"
                       name="venueName"
                       value={formData.venueName}
-                      onChange={handleInputChange}
+                    onChange={handleInputChange}
                       placeholder="Enter venue name"
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
+                    required
+                  />
+                </div>
                   <div>
                     <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
                       Location
-                    </label>
-                    <input
-                      type="text"
+                  </label>
+                  <input
+                    type="text"
                       id="location"
                       name="location"
                       value={formData.location}
-                      onChange={handleInputChange}
+                    onChange={handleInputChange}
                       placeholder="Enter venue location or pick on map"
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
+                    required
+                  />
+                </div>
                   <div>
                     <label htmlFor="organizationId" className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
                     {orgLoading ? (
@@ -376,18 +376,18 @@ export default function EditVenuePage() {
                     )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
-                        Capacity
-                      </label>
-                      <input
-                        type="number"
-                        id="capacity"
-                        name="capacity"
-                        value={formData.capacity}
-                        onChange={handleInputChange}
+                  <div>
+                    <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
+                      Capacity
+                    </label>
+                    <input
+                      type="number"
+                      id="capacity"
+                      name="capacity"
+                      value={formData.capacity}
+                      onChange={handleInputChange}
                         placeholder="Max number of people"
-                        min="1"
+                      min="1"
                         className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                       />
@@ -404,8 +404,8 @@ export default function EditVenuePage() {
                         onChange={e => setFormData(prev => ({ ...prev, bookingType: e.target.value }))}
                         placeholder="e.g. Daily"
                         className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
+                      required
+                    />
                     </div>
                   </div>
                   {/* Booking Conditions */}

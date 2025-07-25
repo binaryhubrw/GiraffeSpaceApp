@@ -26,10 +26,7 @@ interface Organization {
 
 class ApiService {
   static BASE_URL: string = "https://giraffespacev2.onrender.com/api/v1";
-  // https://giraffespacev2.onrender.com/api/v1
-  // process.env.NODE_ENV === "production"
-  // ? "https://giraffeeventsystem.onrender.com/api/v1"
-  // : "http://localhost:3000/api/v1";
+
 
   static getHeader(data?: any): Record<string, string> {
     const token = localStorage.getItem("token");
@@ -252,7 +249,7 @@ class ApiService {
       throw error;
     }
   }
-    static async getOrganizationById(orgId: string): Promise<any> {
+  static async getOrganizationById(orgId: string): Promise<any> {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -850,11 +847,11 @@ class ApiService {
       }
     );
 
-    return response.data;
-  } catch (error) {
-    console.error(`Error approving venue with ID ${venueId}:`, error);
-    throw error;
-  }
+      return response.data;
+    } catch (error) {
+      console.error(`Error approving venue with ID ${venueId}:`, error);
+      throw error;
+    }
   }
 
 
@@ -884,11 +881,11 @@ class ApiService {
       }
     );
 
-    return response.data;
-  } catch (error) {
+      return response.data;
+    } catch (error) {
     console.error(`Error canceling venue approval with ID ${venueId}:`, error);
-    throw error;
-  }
+      throw error;
+    }
   }
 
 
@@ -917,8 +914,8 @@ class ApiService {
       const response = await axios.get(
         `${this.BASE_URL}/venue-bookings/${bookingId}`,
         {
-          headers: this.getHeader(),
-          withCredentials: true,
+        headers: this.getHeader(),
+        withCredentials: true,
         }
       );
       return response.data;
@@ -951,8 +948,8 @@ class ApiService {
       const response = await axios.get(
         `${this.BASE_URL}/venue-bookings/organization/${orgId}`,
         {
-          headers: this.getHeader(),
-          withCredentials: true,
+        headers: this.getHeader(),
+        withCredentials: true,
         }
       );
       return response.data;
@@ -1026,6 +1023,9 @@ class ApiService {
 
   /**************************************** */
 
+
+
+
   /** EVENT ******* */
 
   static async createEvent(eventData: any): Promise<any> {
@@ -1077,12 +1077,61 @@ class ApiService {
   static async getEventById(eventId: string): Promise<any> {
     try {
       const response = await axios.get(`${this.BASE_URL}/event/${eventId}`, {
+          headers: this.getHeader(),
+          withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+
+  /**** get all pulic event ******* */
+  static async getPubulishedEvents(): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/event/all`, {
         headers: this.getHeader(),
         withCredentials: true,
       });
       return response.data;
     } catch (error) {
-      console.error(`Error fetching event with ID ${eventId}:`, error);
+      console.error("Error fetching public events:", error);
+      throw error;
+    }
+  }
+
+
+/*****  get pubulished event by id*****  */
+  static async getPubulishedEventById(eventId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/event/public/${eventId}`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
+      console.log("response", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching public event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+
+  /***** getEventByUserId*****/
+  static async getAllEventByUserId(userId: string): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${this.BASE_URL}/event/user/${userId}`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching events for user with ID ${userId}:`, error);
       throw error;
     }
   }

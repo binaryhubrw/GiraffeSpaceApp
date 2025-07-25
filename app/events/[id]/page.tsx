@@ -1,303 +1,461 @@
+"use client"
+
+import { useState, useEffect, AwaitedReactNode, JSXElementConstructor, Key, ReactElement, ReactNode } from "react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Calendar,
+  MapPin,
+  Users,
+  Clock,
+  ExternalLink,
+  Star,
+  Info,
+  Share2,
+  Heart,
+  Ticket,
+  Video,
+  Loader2,
+  AlertCircle,
+} from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, Calendar, Clock, MapPin, Facebook, Twitter, Copy, User, Users, Tag } from "lucide-react"
-import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
-import { Button } from "@/components/button"
-import { getEventById } from "@/data/events"
-import { notFound } from "next/navigation"
+import { useParams } from "next/navigation"
+import ApiService from "@/api/apiConfig"
 
-export default function EventDetailPage({ params }: { params: { id: string } }) {
-  const event = getEventById(params.id)
+export default function EventDetails() {
+  const params = useParams()
+  const [eventData, setEventData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  if (!event) {
-    notFound()
+  useEffect(() => {
+    const fetchEventData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        const response = await ApiService.getPubulishedEventById(params.id as string)
+          console.log("Event Data:", response.data)
+        if (response.success) {
+          setEventData(response.data)
+        } else {
+          setError("Failed to load event data")
+        }
+      } catch (err) {
+        console.error("Error fetching event data:", err)
+        setError("An error occurred while loading the event")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (params?.id) {
+      fetchEventData()
+    }
+  }, [params?.id])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+          <p className="text-gray-600">Loading event details...</p>
+        </div>
+      </div>
+    )
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+  if (error || !eventData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <AlertCircle className="h-12 w-12 mx-auto text-red-500" />
+          <h2 className="text-xl font-semibold text-gray-900">Event Not Found</h2>
+          <p className="text-gray-600">{error || "The event you're looking for doesn't exist."}</p>
+          <Button onClick={() => window.history.back()} variant="outline">
+            Go Back
+          </Button>
+        </div>
+      </div>
+    )
   }
 
-  const formatTime = (timeString: string) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
+  const event = eventData // The event data is directly in eventData
+  const venue = event.venues[0] // Get the first venue
+  const eventVenue = event.eventVenues[0] // Get the first event venue
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header activePage="events" />
-
-      <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-7xl">
-        <Link href="/events" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Events
-        </Link>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            {/* Event Banner */}
-            <div className="relative h-64 md:h-80 rounded-lg overflow-hidden mb-6">
-              {event.isFeatured && (
-                <div className="absolute top-4 left-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-2 px-4 rounded-lg font-medium z-10">
-                  FEATURED EVENT
-                </div>
-              )}
-              <Image
-                src={event.imageURL || "/placeholder.svg"}
-                alt={event.eventTitle}
-                fill
-                className="object-cover"
-                priority
-              />
-            </div>
-
-            {/* Event Tags */}
-            <div className="flex flex-wrap gap-2 mb-6">
-              {event.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-800"
-                >
-                  <Tag className="h-3 w-3" />
-                  {tag}
-                </span>
-              ))}
-            </div>
-
-            {/* Event Title and Status */}
-            <div className="flex items-start justify-between mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">{event.eventTitle}</h1>
-              <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  event.status === "Active"
-                    ? "bg-green-100 text-green-800"
-                    : event.status === "Cancelled"
-                      ? "bg-red-100 text-red-800"
-                      : event.status === "Completed"
-                        ? "bg-gray-100 text-gray-800"
-                        : "bg-yellow-100 text-yellow-800"
-                }`}
-              >
-                {event.status}
-              </span>
-            </div>
-
-            {/* Event Details Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="flex items-start">
-                <div className="bg-gray-100 p-2 rounded-lg mr-4">
-                  <Calendar className="h-5 w-5 text-gray-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Date</p>
-                  <p className="font-medium">{formatDate(event.eventDate)}</p>
-                </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* Hero Section */}
+      <div className="relative h-96 md:h-[500px]">
+        <Image
+          src={event.eventPhoto || "/placeholder.svg"}
+          alt={event.eventName}
+          fill
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="absolute inset-0 flex items-end">
+          <div className="container mx-auto p-6">
+            <div className="text-white space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge variant={getEventStatusBadgeVariant(event.eventStatus)} className="bg-white text-black">
+                  {event.eventStatus}
+                </Badge>
+                <Badge variant="outline" className="bg-white/20 text-white border-white/30">
+                  {event.eventType}
+                </Badge>
+                {event.isFeatured && (
+                  <Badge className="bg-yellow-500 text-black">
+                    <Star className="h-3 w-3 mr-1" />
+                    Featured
+                  </Badge>
+                )}
+                <Badge variant="outline" className="bg-white/20 text-white border-white/30">
+                  {event.visibilityScope}
+                </Badge>
               </div>
-
-              <div className="flex items-start">
-                <div className="bg-gray-100 p-2 rounded-lg mr-4">
-                  <Clock className="h-5 w-5 text-gray-600" />
+              <h1 className="text-4xl md:text-6xl font-bold">{event.eventName}</h1>
+              <div className="flex flex-wrap items-center gap-6 text-lg">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  <span>{formatDate(event.bookingDates[0].date)}</span>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-500">Time</p>
-                  <p className="font-medium">
-                    {formatTime(event.eventStartTime)} - {formatTime(event.eventEndTime)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start">
-                <div className="bg-gray-100 p-2 rounded-lg mr-4">
-                  <MapPin className="h-5 w-5 text-gray-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Venue</p>
-                  <p className="font-medium">{event.venue}</p>
-                  <p className="text-sm text-gray-500">{event.address}</p>
-                </div>
-              </div>
-
-              <div className="flex items-start">
-                <div className="bg-gray-100 p-2 rounded-lg mr-4">
-                  <User className="h-5 w-5 text-gray-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Organizer</p>
-                  <p className="font-medium">{event.organizer}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Event Description */}
-            <div className="mb-8">
-              <h2 className="text-xl font-bold mb-4">About This Event</h2>
-              <p className="text-gray-600 leading-relaxed">{event.description}</p>
-            </div>
-
-            {/* Event Details */}
-            <div className="grid md:grid-cols-2 gap-8 mb-8">
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Event Information</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Category:</span>
-                    <span className="font-medium">{event.eventCategory}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Type:</span>
-                    <span className="font-medium">{event.eventType}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Dress Code:</span>
-                    <span className="font-medium">{event.dressCode}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Age Restriction:</span>
-                    <span className="font-medium">{event.ageRestriction}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Policies</h3>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="text-gray-500 block">Ticketing:</span>
-                    <span className="font-medium">{event.ticketingDetails}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 block">Refund Policy:</span>
-                    <span className="font-medium">{event.refundPolicy}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Website Link */}
-            {event.websiteURL && (
-              <div className="mb-8">
-                <h2 className="text-xl font-bold mb-4">More Information</h2>
-                <a
-                  href={event.websiteURL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium"
-                >
-                  Visit Event Website
-                  <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
-                </a>
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            {/* Registration Card */}
-            <div className="bg-white border rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-bold mb-4">Registration</h2>
-
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center text-gray-600">
-                  <Users className="h-4 w-4 mr-2" />
-                  <span className="text-sm">Registered</span>
-                </div>
-                <span className="font-semibold">{event.registeredCount}</span>
-              </div>
-
-              <div className="mb-4">
-                <div className="flex justify-between text-sm mb-2">
-                  <span>Available Seats</span>
-                  <span>
-                    {event.availableSeats} / {event.maxAttendees}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${((event.maxAttendees - event.availableSeats) / event.maxAttendees) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              <div className="text-center mb-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  {event.ticketingDetails.includes("Free") ? "FREE" : event.ticketingDetails}
-                </div>
-                <div className="text-sm text-gray-500">Registration</div>
-              </div>
-
-              <Button
-              href="/events/payment"
-                variant="primary"
-                className="w-full mb-2"
-                disabled={event.availableSeats === 0 || event.status !== "Active"}
-              >
-                {event.availableSeats === 0 ? "Sold Out" : "Register Now"}
-              </Button>
-
-              {event.hashtag && (
-                <div className="text-center mt-4">
-                  <span className="text-sm text-gray-500">Share with</span>
-                  <div className="font-medium text-blue-600">{event.hashtag}</div>
-                </div>
-              )}
-            </div>
-
-            {/* Organizer Card */}
-            <div className="bg-white border rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-bold mb-4">Organizer</h2>
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-gray-200 rounded-full mr-4 flex items-center justify-center">
-                  <User className="h-6 w-6 text-gray-500" />
-                </div>
-                <div>
-                  <p className="font-medium">{event.organizer}</p>
-                  <p className="text-sm text-gray-500">Event Organizer</p>
-                </div>
-              </div>
-              <Button variant="outline" className="w-full">
-                Contact Organizer
-              </Button>
-            </div>
-
-            {/* Share Event Card */}
-            <div className="bg-white border rounded-lg p-6">
-              <h2 className="text-xl font-bold mb-4">Share Event</h2>
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <button className="flex items-center justify-center gap-2 border border-gray-300 py-2 rounded-md hover:bg-gray-50 transition-colors">
-                  <Facebook className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm">Facebook</span>
-                </button>
-                <button className="flex items-center justify-center gap-2 border border-gray-300 py-2 rounded-md hover:bg-gray-50 transition-colors">
-                  <Twitter className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm">Twitter</span>
-                </button>
-              </div>
-              <div className="flex">
-                <input
-                  type="text"
-                  value={`https://events.ur.ac.rw/events/${event.eventId}`}
-                  readOnly
-                  className="flex-grow border border-r-0 rounded-l-md px-3 py-2 bg-gray-50 text-sm"
-                />
-                <button className="bg-gray-900 text-white px-3 py-2 rounded-r-md hover:bg-gray-800 transition-colors">
-                  <Copy className="h-4 w-4" />
-                </button>
+                {venue && (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-5 w-5" />
+                      <span>
+                        {venue.venueName}, {venue.venueLocation}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      <span>Up to {venue.capacity} attendees</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
-      <Footer />
+      <div className="container mx-auto p-6 -mt-20 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Action Buttons */}
+            <Card className="bg-white shadow-lg">
+              <CardContent className="p-6">
+                <div className="flex flex-wrap gap-3">
+                  <Button size="lg" className="flex-1 min-w-[200px]">
+                    <Ticket className="h-4 w-4 mr-2" />
+                    {event.isEntryPaid ? "Buy Tickets" : "Register Now"}
+                  </Button>
+                  <Button variant="outline" size="lg">
+                    <Heart className="h-4 w-4 mr-2" />
+                    Save Event
+                  </Button>
+                  <Button variant="outline" size="lg">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Event Description */}
+            <Card>
+              <CardHeader>
+                <CardTitle>About This Event</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground leading-relaxed">{event.eventDescription}</p>
+                {event.specialNotes && (
+                  <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold text-blue-900">Special Notes</h4>
+                        <p className="text-blue-800 text-sm">{event.specialNotes}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Featured Guests */}
+            {event.eventGuests && event.eventGuests.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Featured Speakers & Guests</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {event.eventGuests.map((guest: { id: Key | null | undefined; guestPhoto: any; guestName: string | number | bigint | boolean | ReactElement<any, string | JSXElementConstructor<any>> | Iterable<ReactNode> | Promise<AwaitedReactNode> | null | undefined }) => (
+                      <div key={guest.id} className="flex items-center gap-4 p-4 border rounded-lg">
+                        <Avatar className="h-16 w-16">
+                          <AvatarImage src={guest.guestPhoto || "/placeholder.svg"} alt={guest.guestName} />
+                          <AvatarFallback>
+                            {guest.guestName
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="font-semibold">{guest.guestName}</h3>
+                          <p className="text-sm text-muted-foreground">Featured Speaker</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Venue Information */}
+            {venue && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Venue Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="relative h-64 rounded-lg overflow-hidden">
+                    <Image
+                      src={venue.mainPhotoUrl || "/placeholder.svg"}
+                      alt={venue.venueName}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold">{venue.venueName}</h3>
+                    <p className="text-muted-foreground mt-2">{venue.description}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      <span>Capacity: {venue.capacity.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      <span>{venue.venueLocation}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      <span>Booking Type: {venue.bookingType}</span>
+                    </div>
+                    {eventVenue && (
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span>Timezone: {eventVenue.timezone}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Venue Gallery */}
+                  {venue.photoGallery && venue.photoGallery.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-3">Venue Gallery</h4>
+                      <div className="grid grid-cols-3 gap-2">
+                        {venue.photoGallery.map((photo, index) => (
+                          <div key={index} className="relative h-24 rounded overflow-hidden">
+                            <Image
+                              src={photo || "/placeholder.svg"}
+                              alt={`Venue gallery ${index + 1}`}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    {venue.googleMapsLink && (
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={venue.googleMapsLink} target="_blank">
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          View on Maps
+                        </Link>
+                      </Button>
+                    )}
+                    {venue.virtualTourUrl && (
+                      <Button asChild size="sm" variant="outline">
+                        <Link href={venue.virtualTourUrl} target="_blank">
+                          <Video className="h-4 w-4 mr-1" />
+                          Virtual Tour
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Event Summary */}
+            <Card className="sticky top-6">
+              <CardHeader>
+                <CardTitle>Event Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Date & Time</div>
+                    <div className="font-semibold">{formatDate(event.bookingDates[0].date)}</div>
+                  </div>
+
+                  <Separator />
+
+                  {venue && (
+                    <>
+                      <div>
+                        <div className="text-sm text-muted-foreground">Location</div>
+                        <div className="font-semibold">{venue.venueName}</div>
+                        <div className="text-sm text-muted-foreground">{venue.venueLocation}</div>
+                      </div>
+
+                      <Separator />
+                    </>
+                  )}
+
+                  <div>
+                    <div className="text-sm text-muted-foreground">Entry</div>
+                    <div className="font-semibold">{event.isEntryPaid ? "Paid Event" : "Free"}</div>
+                  </div>
+
+                  {event.maxAttendees && (
+                    <>
+                      <Separator />
+                      <div>
+                        <div className="text-sm text-muted-foreground">Max Attendees</div>
+                        <div className="font-semibold">{event.maxAttendees.toLocaleString()}</div>
+                      </div>
+                    </>
+                  )}
+
+                  {event.expectedGuests && (
+                    <>
+                      <Separator />
+                      <div>
+                        <div className="text-sm text-muted-foreground">Expected Guests</div>
+                        <div className="font-semibold">{event.expectedGuests.toLocaleString()}</div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <Separator />
+
+                <Button className="w-full" size="lg">
+                  <Ticket className="h-4 w-4 mr-2" />
+                  {event.isEntryPaid ? "Get Tickets" : "Register Free"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Organizer Info */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Event Organizer</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarFallback>{event.eventOrganizerType === "USER" ? "U" : "O"}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-semibold">Event Organizer</div>
+                      <div className="text-sm text-muted-foreground">{event.eventOrganizerType}</div>
+                    </div>
+                  </div>
+                  <Button variant="outline" className="w-full bg-transparent">
+                    Contact Organizer
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Stats */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Info</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Event ID</span>
+                  <span className="font-mono text-xs">{event.eventId.slice(-8)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Created</span>
+                  <span>{new Date(event.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Status</span>
+                  <Badge variant={getEventStatusBadgeVariant(event.eventStatus)} className="text-xs">
+                    {event.eventStatus}
+                  </Badge>
+                </div>
+                {event.socialMediaLinks && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Social Media</span>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={event.socialMediaLinks} target="_blank">
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
     </div>
   )
+}
+
+function getEventStatusBadgeVariant(status: string) {
+  switch (status.toLowerCase()) {
+    case "approved":
+    case "published":
+      return "default"
+    case "drafted":
+    case "pending":
+      return "secondary"
+    case "cancelled":
+      return "destructive"
+    default:
+      return "outline"
+  }
+}
+
+function formatDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+}
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount)
 }
