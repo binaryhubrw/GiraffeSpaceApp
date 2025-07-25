@@ -29,9 +29,11 @@ import { useParams } from "next/navigation"
 import ApiService from "@/api/apiConfig"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function EventDetails() {
   const params = useParams()
+  const { isLoggedIn } = useAuth();
   const [eventData, setEventData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -160,9 +162,11 @@ export default function EventDetails() {
               <Card className="bg-white shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex flex-wrap gap-3">
-                    <Button size="lg" className="flex-1 min-w-[200px]">
-                      <Ticket className="h-4 w-4 mr-2" />
-                      {event.isEntryPaid ? "Buy Tickets" : "Register Now"}
+                    <Button asChild size="lg" className="flex-1 min-w-[200px]">
+                      <Link href={isLoggedIn ? `/events/${params.id}/register` : "/login"}>
+                        <Ticket className="h-4 w-4 mr-2" />
+                        {event.isEntryPaid ? "Buy Tickets" : "Register Now"}
+                      </Link>
                     </Button>
                     <Button variant="outline" size="lg">
                       <Heart className="h-4 w-4 mr-2" />

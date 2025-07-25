@@ -12,7 +12,7 @@ import Link from "next/link"
 import ApiService from "@/api/apiConfig";
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { toast } from '@/hooks/use-toast';
-import { MapPicker } from './MapPicker';
+import MapPicker from './MapPicker';
 
 interface BookingCondition {
   condition: string;
@@ -505,18 +505,16 @@ export default function CreateVenuePage() {
             <div className="col-span-1 md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Pick Venue Location</label>
               <MapPicker
-                value={formData.latitude && formData.longitude ? { lat: parseFloat(formData.latitude), lng: parseFloat(formData.longitude) } : undefined}
-                onChange={({ lat, lng, address, district, googleMapsLink }) => {
+                latitude={formData.latitude ? parseFloat(formData.latitude) : undefined}
+                longitude={formData.longitude ? parseFloat(formData.longitude) : undefined}
+                onLocationSelect={({ lat, lng }: { lat: number; lng: number }) => {
                   setFormData(prev => ({
                     ...prev,
                     latitude: lat.toString(),
                     longitude: lng.toString(),
-                    location: district, // Store the district as the location
-                    googleMapsLink: googleMapsLink
+                    googleMapsLink: `https://maps.google.com/?q=${lat},${lng}`
                   }));
                 }}
-                height="400px"
-                width="100%"
               />
             </div>
 

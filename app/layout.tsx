@@ -5,6 +5,7 @@ import "./globals.css"
 import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/sonner"
 import Script from 'next/script';
+import { AttendeeProvider } from "@/context/AttendeeContext";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -25,7 +26,9 @@ export default function RootLayout({
           src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
           strategy="beforeInteractive"
         />
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <AttendeeProvider>{children}</AttendeeProvider>
+        </AuthProvider>
         <Toaster />
       </body>
     </html>
