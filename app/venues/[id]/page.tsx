@@ -32,6 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Header } from "@/components/header"
 import { useAuth } from "@/contexts/auth-context";
+import { toast } from "sonner"
 
 // Inline Badge component
 const Badge = ({
@@ -273,11 +274,16 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     })
   }
 
-  // Replace handleBookingClick with new redirect logic
+  // Book Now logic: require date selection
   const handleBookingClick = () => {
     if (!mounted) return;
+    if (!selectedDates.length) {
+      toast.error("Please select a date to continue.");
+      return;
+    }
+    const selectedDate = selectedDates[0].toISOString().split("T")[0];
     if (isLoggedIn) {
-      router.push("/venues/book");
+      router.push(`/venues/book?venueId=${venue?.venueId}&date=${selectedDate}`);
     } else {
       router.push("/login");
     }
@@ -786,7 +792,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     </div>
                   </div>
 
-                  <Button onClick={handleBookingClick} className="w-full" disabled={!mounted}>
+                  <Button onClick={handleBookingClick} className="w-full" disabled={!mounted || !selectedDates.length}>
                     {isLoggedIn ? "Book Now" : "Book Now - Continue to Login"}
                   </Button>
 
@@ -907,7 +913,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
         <Button
           onClick={handleBookingClick}
           className="px-8 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-lg text-base font-medium"
-          disabled={!mounted}
+          disabled={!mounted || !selectedDates.length}
         >
           {isLoggedIn ? "Book Now" : "Book Now"}
         </Button>

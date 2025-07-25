@@ -230,18 +230,18 @@ export default function BookingRequestsPage() {
                       <td className="px-4 py-3 whitespace-nowrap text-center">{(page - 1) * ITEMS_PER_PAGE + idx + 1}</td>
                       <td className="px-4 py-3 whitespace-nowrap max-w-[200px] truncate">
                         <div className="text-sm font-medium text-gray-900">{booking.eventDetails?.eventName || '-'}</div>
-                      </td>
+                    </td>
                       <td className="px-4 py-3 whitespace-nowrap max-w-[160px] truncate">
                         <div className="text-sm text-gray-900">{booking.venue?.venueName || '-'}</div>
-                      </td>
+                    </td>
                       <td className="px-4 py-3 whitespace-nowrap max-w-[120px] truncate">
                         <div className="text-sm text-gray-900">{booking.bookingDates?.[0]?.date || '-'}</div>
-                      </td>
+                    </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      <span
+                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                             booking.bookingStatus === "APPROVED"
-                              ? "bg-green-100 text-green-800"
+                            ? "bg-green-100 text-green-800"
                               : booking.bookingStatus === "PENDING"
                               ? "bg-yellow-100 text-yellow-800"
                               : booking.bookingStatus === "CANCELLED"
@@ -250,8 +250,8 @@ export default function BookingRequestsPage() {
                           }`}
                         >
                           {booking.bookingStatus}
-                        </span>
-                      </td>
+                      </span>
+                    </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium flex gap-2">
                         <a
                           href={`/manage/venues/bookings/${booking.bookingId}`}
@@ -269,8 +269,8 @@ export default function BookingRequestsPage() {
                         >
                           <XCircle className="w-5 h-5" />
                         </button>
-                      </td>
-                    </tr>
+                    </td>
+                  </tr>
                   ))
                 )}
               </tbody>

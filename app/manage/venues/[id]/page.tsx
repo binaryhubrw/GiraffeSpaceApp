@@ -309,7 +309,7 @@ export default function VenueDetailsPage() {
         >
           Book Now
         </button>
-      </div>
+                  </div>
 
       <Card>
         <CardHeader>
@@ -390,11 +390,11 @@ export default function VenueDetailsPage() {
                     return url ? (
                       <CarouselItem key={i} className="basis-1/3">
                         <div className="relative rounded-lg overflow-hidden h-24 group">
-                          <img
-                            src={url}
+                    <img 
+                      src={url} 
                             alt={`${venue.venueName} ${i + 1}`}
-                            className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
-                          />
+                      className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                    />
                           {/* Delete icon overlay */}
                           <AlertDialog open={deleteDialogOpen && deleteIndex === i} onOpenChange={setDeleteDialogOpen}>
                             <AlertDialogTrigger asChild>
@@ -435,7 +435,7 @@ export default function VenueDetailsPage() {
                 <CarouselPrevious />
                 <CarouselNext />
               </Carousel>
-            </div>
+                  </div>
 
             {/* Venue Details */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -462,14 +462,14 @@ export default function VenueDetailsPage() {
               <div>
                 <h3 className="text-lg font-semibold mb-2">Contact Phone</h3>
                 <p className="text-gray-800">{venue.contactPhone}</p>
-              </div>
+            </div>
               <div>
                 <h3 className="text-lg font-semibold mb-2">Status</h3>
                 <Badge variant={venue.status === 'APPROVED' ? 'default' : 'secondary'}>
                   {venue.status}
                 </Badge>
               </div>
-              <div>
+            <div>
                 <h3 className="text-lg font-semibold mb-2">Google Maps Link</h3>
                 <a href={venue.googleMapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                   View on Google Maps
@@ -507,7 +507,7 @@ export default function VenueDetailsPage() {
                   </li>
                 ))}
               </ul>
-            </div>
+              </div>
 
             {/* Availability Slots */}
             {/* (Removed as per request) */}
@@ -524,7 +524,7 @@ export default function VenueDetailsPage() {
 
             {/* Documents */}
             {venue.venueDocuments && (
-              <div>
+            <div>
                 <h3 className="text-lg font-semibold mb-2">Documents</h3>
                 <p className="text-gray-800">Documents available for this venue.</p>
               </div>
