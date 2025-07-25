@@ -5,7 +5,7 @@ import { Calendar, ChevronDown, Search } from "lucide-react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { EventCard } from "@/components/event-card"
-import { events } from "@/data/events"
+import ApiService from "@/api/apiConfig"
 import { Button } from "@/components/button"
 
 export default function EventsPage() {
@@ -15,14 +15,29 @@ export default function EventsPage() {
   const [selectedDate, setSelectedDate] = useState<string>("")
   const [searchTerm, setSearchTerm] = useState("")
   const [isLoaded, setIsLoaded] = useState(false)
+  const [events, setEvents] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Trigger animations after component mounts
-    const timer = setTimeout(() => {
-      setIsLoaded(true)
-    }, 100)
-
-    return () => clearTimeout(timer)
+    setLoading(true);
+    ApiService.getPubulishedEvents()
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setEvents(res.data)
+        } else {
+          setEvents([])
+        }
+        setError(null)
+      })
+      .catch((err) => {
+        setError("Failed to load events.")
+        setEvents([])
+      })
+      .finally(() => {
+        setLoading(false)
+        setTimeout(() => setIsLoaded(true), 100)
+      })
   }, [])
 
   const categoryOptions = [
@@ -74,12 +89,14 @@ export default function EventsPage() {
   // Filter events based on search term, category, and date
   const filteredEvents = events.filter((event) => {
     const matchesSearch =
-      event.eventTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      event.description.toLowerCase().includes(searchTerm.toLowerCase())
+      event.eventName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (event.eventDescription || "").toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesCategory = selectedCategory === "All categories" || event.eventType === selectedCategory
 
-    const matchesDate = !selectedDate || event.eventDate === selectedDate
+    // Use first booking date for filtering
+    const eventDate = event.bookingDates && event.bookingDates[0] ? event.bookingDates[0].date : ""
+    const matchesDate = !selectedDate || eventDate === selectedDate
 
     return matchesSearch && matchesCategory && matchesDate
   })
@@ -193,31 +210,50 @@ export default function EventsPage() {
 
         {/* Events Grid with Staggered Animation */}
         <div className="container mx-auto px-16 max-w-7xl pb-16 relative z-10">
-          {filteredEvents.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-12">Loading events...</div>
+          ) : error ? (
+            <div className="text-center py-12 text-red-500">{error}</div>
+          ) : filteredEvents.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {filteredEvents.map((event, index) => (
-                <div
-                  key={event.eventId}
-                  className={`transform transition-all duration-700 ease-out ${
-                    isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-                  }`}
-                  style={{
-                    transitionDelay: `${600 + index * 100}ms`,
-                  }}
-                >
-                  <EventCard
-                    id={event.eventId}
-                    title={event.eventTitle}
-                    type={event.eventType}
-                    typeColor={event.typeColor}
-                    date={formatEventDate(event.eventDate, event.eventStartTime, event.eventEndTime)}
-                    location={event.venue}
-                    registeredCount={event.registeredCount}
-                    imageSrc={event.imageURL}
-                    imageAlt={event.eventTitle}
-                  />
-                </div>
-              ))}
+              {filteredEvents.map((event, index) => {
+                // Map eventType to a color (customize as needed)
+                let typeColor = "blue"
+                if (event.eventType === "WORKSHOP") typeColor = "purple"
+                else if (event.eventType === "MEETING") typeColor = "green"
+                else if (event.eventType === "FESTIVAL") typeColor = "yellow"
+                else if (event.eventType === "CONFERENCE") typeColor = "red"
+
+                // Use first venue if available
+                const venue = event.eventVenues && event.eventVenues[0] && event.eventVenues[0].venue
+                const location = venue ? venue.venueName + (venue.venueLocation ? ", " + venue.venueLocation : "") : ""
+                const imageSrc = event.eventPhoto || (venue && venue.mainPhotoUrl) || undefined
+                const date = event.bookingDates && event.bookingDates[0] ? event.bookingDates[0].date : ""
+
+                return (
+                  <div
+                    key={event.eventId}
+                    className={`transform transition-all duration-700 ease-out ${
+                      isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+                    }`}
+                    style={{
+                      transitionDelay: `${600 + index * 100}ms`,
+                    }}
+                  >
+                    <EventCard
+                      id={event.eventId}
+                      title={event.eventName}
+                      type={event.eventType}
+                      typeColor={typeColor}
+                      date={date}
+                      location={location}
+                      registeredCount={event.registeredCount || 0}
+                      imageSrc={imageSrc}
+                      imageAlt={event.eventName}
+                    />
+                  </div>
+                )
+              })}
             </div>
           ) : (
             <div

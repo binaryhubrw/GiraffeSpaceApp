@@ -41,8 +41,9 @@ export const useUserOrganizations = (userId?: string): UseUserOrganizationsRetur
       setError(null)
       const response = await ApiService.getUserById(userId)
       if (response && response.success && response.user && Array.isArray(response.user.organizations)) {
-        setOrganizations(response.user.organizations)
-        console.log("organizations assigned to user", response.user.organizations)
+        const filteredOrgs = response.user.organizations.filter(org => org.organizationName !== 'Independent');
+        setOrganizations(filteredOrgs)
+        console.log("organizations assigned to user", filteredOrgs)
       } else {
         setOrganizations([])
         setError('No organizations found for this user.')

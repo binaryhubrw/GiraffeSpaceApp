@@ -35,51 +35,8 @@ import {
 import { Pencil, Eye, Trash2, XCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
+import ApiService from "@/api/apiConfig"
 
-
-// Sample event data with updated status values
-const sampleEvents = [
-  {
-    id: "event-1",
-    name: "Annual Conference",
-    date: "April 15, 2025",
-    venue: "Main Conference Hall",
-    registrations: 145,
-    capacity: 300,
-    status: "published", // approved by admin
-    ticketPrice: 0, // Free entrance
-  },
-  {
-    id: "event-2",
-    name: "Product Launch",
-    date: "April 20, 2025",
-    venue: "Exhibition Center",
-    registrations: 78,
-    capacity: 150,
-    status: "pending", // pending admin approval
-    ticketPrice: 50, // Payable
-  },
-  {
-    id: "event-3",
-    name: "Team Building Retreat",
-    date: "April 25, 2025",
-    venue: "Mountain Resort",
-    registrations: 32,
-    capacity: 50,
-    status: "published", // approved by admin
-    ticketPrice: "Free", // Free entrance
-  },
-  {
-    id: "event-4",
-    name: "Client Appreciation Day",
-    date: "May 5, 2025",
-    venue: "Company Headquarters",
-    registrations: 0,
-    capacity: 100,
-    status: "pending", // pending admin approval
-    ticketPrice: 20, // Payable
-  },
-]
 
 const EVENTS_PER_PAGE = 3
 
@@ -110,13 +67,28 @@ export default function EventSection() {
   const [currentPage, setCurrentPage] = useState(1)
   const [showDeleteId, setShowDeleteId] = useState<string | null>(null)
   const [showCancelId, setShowCancelId] = useState<string | null>(null)
-  const [events, setEvents] = useState(sampleEvents)
+  const [events, setEvents] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [eventNameFilter, setEventNameFilter] = useState("")
   const [payTypeFilter, setPayTypeFilter] = useState("all") // all, free, payable
   const [dateFilter, setDateFilter] = useState("all")
   const [customStartDate, setCustomStartDate] = useState("")
   const [customEndDate, setCustomEndDate] = useState("")
 
+  useEffect(() => {
+    if (!isLoggedIn || !user) return;
+    setLoading(true);
+    ApiService.getAllEventByUserId(user.userId)
+      .then(res => {
+        if (res.success && Array.isArray(res.data)) {
+          setEvents(res.data)
+        } else {
+          setEvents([])
+        }
+      })
+      .catch(() => setEvents([]))
+      .finally(() => setLoading(false))
+  }, [isLoggedIn, user])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -138,7 +110,10 @@ export default function EventSection() {
 
   // Date filter logic
   const filteredByDate = events.filter(event => {
-    const eventDate = parseISO(event.date)
+    const eventDate = event.bookingDates && event.bookingDates[0] && event.bookingDates[0].date
+      ? parseISO(event.bookingDates[0].date)
+      : null;
+    if (!eventDate) return false;
     if (dateFilter === "today") {
       return isToday(eventDate)
     }
@@ -161,13 +136,12 @@ export default function EventSection() {
   })
 
   // Filter events based on status, name, and pay type
-  const filteredEvents = (statusFilter === "all" ? filteredByDate : filteredByDate.filter((event) => event.status === statusFilter.toLowerCase()))
+  const filteredEvents = (statusFilter === "all" ? filteredByDate : filteredByDate.filter((event) => (event.eventStatus || "").toLowerCase() === statusFilter.toLowerCase()))
     .filter((event) =>
-      eventNameFilter.trim() === "" || event.name.toLowerCase().includes(eventNameFilter.trim().toLowerCase())
+      eventNameFilter.trim() === "" || (event.eventName || "").toLowerCase().includes(eventNameFilter.trim().toLowerCase())
     )
     .filter((event) => {
       if (payTypeFilter === "all") return true
-      // Find ticketPrice from event (mocked data may not have it, so fallback to free for demo)
       let price = (event.ticketPrice !== undefined ? event.ticketPrice : "Free")
       if (typeof price === "string") price = price.trim()
       if (payTypeFilter === "free") {
@@ -187,13 +161,13 @@ export default function EventSection() {
 
   // Action handlers
   const handleDelete = (id: string) => {
-    setEvents((prev) => prev.filter((e) => e.id !== id))
+    setEvents((prev) => prev.filter((e) => e.eventId !== id))
     setShowDeleteId(null)
   }
   const handleCancel = (id: string) => {
     setEvents((prev) =>
       prev.map((e) =>
-        e.id === id ? { ...e, status: "cancelled" } : e
+        e.eventId === id ? { ...e, eventStatus: "CANCELLED" } : e
       )
     )
     setShowCancelId(null)
@@ -213,6 +187,11 @@ export default function EventSection() {
     upcomingEventsPeriod: "Next 30 days",
     totalPayable,
     totalFree,
+  }
+
+  // In the render, show a loading spinner or message if loading is true
+  if (loading) {
+    return <div className="flex items-center justify-center min-h-screen text-lg text-gray-500">Loading events...</div>;
   }
 
   return (
@@ -457,44 +436,42 @@ export default function EventSection() {
                   </TableRow>
                 ) : (
                   paginatedEvents.map((event) => (
-                    <TableRow key={event.id}>
-                      <TableCell>{event.name}</TableCell>
-                      <TableCell>{event.date}</TableCell>
-                      <TableCell>{event.venue}</TableCell>
-                      <TableCell>{getPayType(event)}</TableCell>
-                      <TableCell>
-                        {event.registrations} / {event.capacity}
-                      </TableCell>
+                    <TableRow key={event.eventId}>
+                      <TableCell>{event.eventName}</TableCell>
+                      <TableCell>{event.bookingDates && event.bookingDates[0] && event.bookingDates[0].date ? event.bookingDates[0].date : ""}</TableCell>
+                      <TableCell>{event.venueBookings && event.venueBookings[0] && event.venueBookings[0].venue ? event.venueBookings[0].venue.venueName : ""}</TableCell>
+                      <TableCell>{event.eventType}</TableCell>
+                      <TableCell>{event.maxAttendees}</TableCell>
                       <TableCell>
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            event.status === "published"
+                            event.eventStatus === "PUBLISHED"
                               ? "bg-green-100 text-green-800"
-                              : event.status === "pending"
+                              : event.eventStatus === "PENDING"
                               ? "bg-yellow-100 text-yellow-800"
                               : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                          {event.eventStatus}
                         </span>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Link href={`/user-dashboard/events/${event.id}`} className="inline-block text-blue-600 hover:text-blue-800">
+                        <Link href={`/user-dashboard/events/${event.eventId}`} className="inline-block text-blue-600 hover:text-blue-800">
                           <Eye className="h-5 w-5" aria-label="View" />
                         </Link>
-                        <Link href={`/user-dashboard/events/${event.id}/edit`} className="inline-block text-gray-600 hover:text-gray-900">
+                        <Link href={`/user-dashboard/events/${event.eventId}/edit`} className="inline-block text-gray-600 hover:text-gray-900">
                           <Pencil className="h-5 w-5" aria-label="Edit" />
                         </Link>
                         <button
-                          onClick={() => setShowCancelId(event.id)}
+                          onClick={() => setShowCancelId(event.eventId)}
                           className="inline-block text-yellow-600 hover:text-yellow-800"
                           title="Cancel Event"
-                          disabled={event.status === "cancelled"}
+                          disabled={event.eventStatus === "CANCELLED"}
                         >
                           <XCircle className="h-5 w-5" aria-label="Cancel Event" />
                         </button>
                         <button
-                          onClick={() => setShowDeleteId(event.id)}
+                          onClick={() => setShowDeleteId(event.eventId)}
                           className="inline-block text-red-600 hover:text-red-800"
                           title="Delete Event"
                         >

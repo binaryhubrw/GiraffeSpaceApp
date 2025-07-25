@@ -32,97 +32,8 @@ import {
   PaginationPrevious,
   PaginationNext,
 } from "@/components/ui/pagination"
+import ApiService from "@/api/apiConfig"
 
-
-// Sample event data - in a real app, this would come from an API or database
-const eventsData = [
-  {
-    id: "event-1",
-    name: "Annual Conference",
-    date: "April 15, 2025",
-    time: "9:00 AM - 5:00 PM",
-    venue: "Main Conference Hall",
-    address: "123 Conference Way, Kigali, Rwanda",
-    registrations: 145,
-    capacity: 300,
-    status: "published",
-    description:
-      "Join us for our annual conference featuring industry experts, networking opportunities, and the latest innovations in technology. This full-day event includes keynote speeches, panel discussions, and interactive workshops.",
-    organizer: "Tech Association of Rwanda",
-    category: "Conference",
-    ticketPrice: "$50",
-    featuredImage: "/techconference.png?height=300&width=400",
-    createdAt: "January 15, 2025",
-  },
-  {
-    id: "event-2",
-    name: "Product Launch",
-    date: "April 20, 2025",
-    time: "10:00 AM - 2:00 PM",
-    venue: "Exhibition Center",
-    address: "456 Innovation Avenue, Kigali, Rwanda",
-    registrations: 78,
-    capacity: 150,
-    status: "pending",
-    description:
-      "Be the first to experience our revolutionary new product. This exclusive launch event will showcase the features, benefits, and technology behind our latest innovation. Includes product demonstrations and Q&A with the development team.",
-    organizer: "TechCorp Rwanda",
-    category: "Product Launch",
-    ticketPrice: "Free",
-    featuredImage: "/techconference.png?height=300&width=400",
-    createdAt: "January 20, 2025",
-  },
-  {
-    id: "event-3",
-    name: "Team Building Retreat",
-    date: "April 25, 2025",
-    time: "8:00 AM - 6:00 PM",
-    venue: "Mountain Resort",
-    address: "789 Mountain View Road, Northern Province, Rwanda",
-    registrations: 32,
-    capacity: 50,
-    status: "published",
-    description:
-      "A day of team-building activities, strategic planning, and relaxation in the beautiful mountains of Rwanda. This retreat is designed to strengthen team bonds, improve communication, and align on company goals for the upcoming year.",
-    organizer: "Corporate Events Rwanda",
-    category: "Corporate",
-    ticketPrice: "$75",
-    featuredImage: "/techconference.png?height=300&width=400",
-    createdAt: "January 25, 2025",
-  },
-  {
-    id: "event-4",
-    name: "Client Appreciation Day",
-    date: "May 5, 2025",
-    time: "6:00 PM - 9:00 PM",
-    venue: "Company Headquarters",
-    address: "101 Business Park, Kigali, Rwanda",
-    registrations: 0,
-    capacity: 100,
-    status: "pending",
-    description:
-      "An evening dedicated to thanking our valued clients for their continued support. Join us for cocktails, hors d'oeuvres, entertainment, and networking. Special recognition will be given to our long-term partners.",
-    organizer: "Business Solutions Ltd",
-    category: "Networking",
-    ticketPrice: "By Invitation",
-    featuredImage: "/techconference.png?height=300&width=400",
-    createdAt: "February 5, 2025",
-  },
-]
-
-// Helper to determine event pay type (same as dashboard)
-function getPayType(event: { ticketPrice: number | string }) {
-  let price = event.ticketPrice !== undefined ? event.ticketPrice : "Free"
-  if (typeof price === "string") price = price.trim()
-  if (
-    price === 0 ||
-    price === "0" ||
-    (typeof price === "string" && (price.toLowerCase() === "free" || price.toLowerCase() === "by invitation"))
-  ) {
-    return "Free Entrance"
-  }
-  return "Payable"
-}
 
 export default function EventDetails({ params }: { params: { id: string } }) {
   const { isLoggedIn, user } = useAuth()
@@ -131,15 +42,12 @@ export default function EventDetails({ params }: { params: { id: string } }) {
   const [event, setEvent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [activeTab, setActiveTab] = useState("attendees")
+  const [activeTab, setActiveTab] = useState("guests")
   const [isLoaded, setIsLoaded] = useState(false)
-  // Attendee table filter and pagination state (move here)
-  const [attendeeSearch, setAttendeeSearch] = useState("")
-  const [attendeeStatus, setAttendeeStatus] = useState("all")
-  const [attendeePage, setAttendeePage] = useState(1)
-  const ATTENDEES_PER_PAGE = 5
+  // Pagination state for guests
+  const [guestPage, setGuestPage] = useState(1)
+  const GUESTS_PER_PAGE = 5
 
-  // Redirect if not logged in
   useEffect(() => {
     if (!isLoggedIn) {
       router.push("/login")
@@ -153,27 +61,25 @@ export default function EventDetails({ params }: { params: { id: string } }) {
     return () => clearTimeout(timer)
   }, [])
 
-  // Fetch event data
+  // Fetch event data from API
   useEffect(() => {
-    // In a real app, this would be an API call
-    const fetchEvent = () => {
-      setLoading(true)
-      // Simulate API delay
-      setTimeout(() => {
-        const foundEvent = eventsData.find((e) => e.id === id)
-        setEvent(foundEvent || null)
-        setLoading(false)
-      }, 500)
-    }
-
-    if (id) {
-      fetchEvent()
-    }
+    if (!id) return;
+    setLoading(true);
+    const eventId = Array.isArray(id) ? id[0] : id;
+    ApiService.getEventById(eventId)
+      .then(res => {
+        if (res.success && res.data) {
+          setEvent(res.data)
+        } else {
+          setEvent(null)
+        }
+      })
+      .catch(() => setEvent(null))
+      .finally(() => setLoading(false))
   }, [id])
 
   const handleDelete = () => {
     // In a real app, this would be an API call to delete the event
-    // For now, just simulate success and redirect
     setTimeout(() => {
       router.push("/user-dashboard/events")
     }, 1000)
@@ -212,73 +118,14 @@ export default function EventDetails({ params }: { params: { id: string } }) {
     )
   }
 
-  // Mock attendees data
-  const attendeesData = [
-    {
-      id: "att-1",
-      name: "John Doe",
-      email: "john.doe@email.com",
-      phone: "+250 788 123 456",
-      ticketType: "Regular",
-      registrationDate: "2025-01-10",
-      status: "confirmed",
-      amount: 50,
-    },
-    {
-      id: "att-2",
-      name: "Jane Smith",
-      email: "jane.smith@email.com",
-      phone: "+250 788 234 567",
-      ticketType: "VIP",
-      registrationDate: "2025-01-12",
-      status: "confirmed",
-      amount: 100,
-    },
-    {
-      id: "att-3",
-      name: "Mike Johnson",
-      email: "mike.johnson@email.com",
-      phone: "+250 788 345 678",
-      ticketType: "Regular",
-      registrationDate: "2025-01-15",
-      status: "pending",
-      amount: 50,
-    },
-  ]
+  // Pagination for guests
+  const guests = event.eventGuests || [];
+  const totalGuestPages = Math.ceil(guests.length / GUESTS_PER_PAGE)
+  const paginatedGuests = guests.slice((guestPage - 1) * GUESTS_PER_PAGE, guestPage * GUESTS_PER_PAGE)
 
-  // Mock tickets data
-  const ticketsData = [
-    {
-      id: "ticket-1",
-      type: "Regular",
-      price: 50,
-      sold: 120,
-      available: 180,
-      total: 300,
-    },
-    {
-      id: "ticket-2",
-      type: "VIP",
-      price: 100,
-      sold: 25,
-      available: 25,
-      total: 50,
-    },
-  ]
-
-  // Filtered attendees
-  const filteredAttendees = attendeesData
-    .filter(a =>
-      (attendeeStatus === "all" || a.status === attendeeStatus) &&
-      (attendeeSearch.trim() === "" ||
-        a.name.toLowerCase().includes(attendeeSearch.trim().toLowerCase()) ||
-        a.email.toLowerCase().includes(attendeeSearch.trim().toLowerCase()))
-    )
-  const totalAttendeePages = Math.ceil(filteredAttendees.length / ATTENDEES_PER_PAGE)
-  const paginatedAttendees = filteredAttendees.slice(
-    (attendeePage - 1) * ATTENDEES_PER_PAGE,
-    attendeePage * ATTENDEES_PER_PAGE
-  )
+  // Mock attendees and tickets data (if you want to keep them for now)
+  const attendeesData = [];
+  const ticketsData = [];
 
   return (
     <div className="p-8">
@@ -291,12 +138,12 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                 <ArrowLeft className="mr-2 h-5 w-5" /> Back to Events
               </Link>
               <div className="flex items-center gap-3 mt-2">
-                <h1 className="text-3xl font-bold text-gray-800">{event.name}</h1>
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPayType(event) === "Payable" ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>{getPayType(event)}</span>
+                <h1 className="text-3xl font-bold text-gray-800">{event.eventName}</h1>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${event.isEntryPaid ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>{event.isEntryPaid ? "Payable" : "Free Entrance"}</span>
               </div>
             </div>
             <div className="flex gap-2">
-              <Link href={`/user-dashboard/events/${event.id}/edit`} className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center">
+              <Link href={`/user-dashboard/events/${event.eventId}/edit`} className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center">
                 <Edit className="mr-2 h-5 w-5" aria-label="Edit" /> Edit
               </Link>
               <button className="bg-green-500 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center">
@@ -312,89 +159,112 @@ export default function EventDetails({ params }: { params: { id: string } }) {
           </div>
           <div className="flex items-center text-gray-600 mt-2">
             <MapPin className="mr-2 h-5 w-5" />
-            <span>{event.venue}, {event.address}</span>
+            <span>{event.venues && event.venues[0] ? event.venues[0].venueName : ""}, {event.venues && event.venues[0] ? event.venues[0].venueLocation : ""}</span>
             <span className="mx-3">|</span>
             <Calendar className="mr-2 h-5 w-5" />
-            <span>{event.date}, {event.time}</span>
-          </div>
-        </div>
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Attendees</p>
-                <p className="text-3xl font-bold">{event.registrations}</p>
-                <p className="text-sm text-green-600">+12 this week</p>
-              </div>
-              <Users className="h-12 w-12 text-blue-500" />
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Tickets</p>
-                <p className="text-3xl font-bold">{ticketsData.reduce((sum, ticket) => sum + ticket.sold, 0)}</p>
-                <p className="text-sm text-gray-500">of {event.capacity} capacity</p>
-              </div>
-              <Calendar className="h-12 w-12 text-green-500" />
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Revenue</p>
-                <p className="text-3xl font-bold">${ticketsData.reduce((sum, ticket) => sum + ticket.sold * ticket.price, 0).toLocaleString()}</p>
-                <p className="text-sm text-green-600">+15% vs last event</p>
-              </div>
-              <DollarSign className="h-12 w-12 text-purple-500" />
-            </div>
+            <span>{event.bookingDates && event.bookingDates[0] ? event.bookingDates[0].date : ""}</span>
           </div>
         </div>
         {/* Event Image */}
-        <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
+        <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="h-64 md:h-80 bg-gray-200 relative">
             <img
-              src={event.featuredImage || "/placeholder.svg?height=400&width=800"}
-              alt={event.name}
+              src={event.eventPhoto || "/placeholder.svg?height=400&width=800"}
+              alt={event.eventName}
               className="w-full h-full object-cover"
             />
             <div className="absolute top-4 right-4 flex gap-2">
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  event.status === "published" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                }`}
+                className={`px-3 py-1 rounded-full text-sm font-medium ${event.eventStatus === "PUBLISHED" ? "bg-green-100 text-green-800" : event.eventStatus === "PENDING" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}
               >
-                {event.status}
+                {event.eventStatus}
               </span>
             </div>
+            {event.eventType && (
             <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white px-3 py-2 rounded-md">
-              <p className="text-sm font-medium">{event.category}</p>
+                <p className="text-sm font-medium">{event.eventType}</p>
             </div>
+            )}
           </div>
         </div>
-        {/* Event Details */}
-        <div className="w-full mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-4">Event Description</h2>
-            <p className="text-gray-700 whitespace-pre-line mb-6">{event.description}</p>
-            <h2 className="text-xl font-bold mb-4">Event Details</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Redesigned Event Description */}
+        <div className="w-full bg-white rounded-lg shadow p-8  mb-8">
+          <div className="">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+              <div className="flex items-center gap-3 mb-4 md:mb-0">
+                <Calendar className="h-6 w-6 text-blue-500" />
+                <span className="text-lg font-semibold">{event.bookingDates && event.bookingDates[0] ? event.bookingDates[0].date : ""}</span>
+                <span className="mx-2">|</span>
+                <MapPin className="h-6 w-6 text-green-500" />
+                <span className="text-lg font-semibold">{event.venues && event.venues[0] ? event.venues[0].venueName : ""}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Users className="h-6 w-6 text-purple-500" />
+                <span className="text-lg font-semibold">Max {event.maxAttendees} Attendees</span>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold mb-2 text-gray-900">About This Event</h2>
+            <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-line mb-4">{event.eventDescription}</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               <div>
-                <p className="text-sm text-gray-500">Category</p>
-                <p className="font-medium">{event.category}</p>
+                <p className="text-sm text-gray-500">Type</p>
+                <p className="font-medium">{event.eventType}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Organizer</p>
-                <p className="font-medium">{event.organizer}</p>
+                <p className="text-sm text-gray-500">Visibility</p>
+                <p className="font-medium">{event.visibilityScope}</p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Ticket Price</p>
-                <p className="font-medium">{event.ticketPrice}</p>
+                <p className="text-sm text-gray-500">Special Notes</p>
+                <p className="font-medium">{event.specialNotes}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Social Media Links</p>
+                <p className="font-medium">{event.socialMediaLinks}</p>
               </div>
               <div>
                 <p className="text-sm text-gray-500">Created On</p>
-                <p className="font-medium">{event.createdAt}</p>
+                <p className="font-medium">{event.createdAt ? new Date(event.createdAt).toLocaleString() : ""}</p>
+              </div>
+            </div>
+          </div>
+        
+          <div className="pt-8">
+            <h3 className="text-lg font-semibold mb-4">Venue Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                  <h4 className="font-semibold text-lg mb-2">Muhazi hall</h4>
+                  <p className="text-gray-700 mb-3">this new venue support meeting, weeding, and also curtal event</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center">
+                      <Users className="h-4 w-4 text-gray-500 mr-2" />
+                      <span className="text-sm">Capacity: 100 people</span>
+                    </div>
+                    <div className="flex items-center">
+                      <MapPin className="h-4 w-4 text-gray-500 mr-2" />
+                      <span className="text-sm">Location: Nyarugenge</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <a 
+                    href="https://maps.google.com/?q=40.7128,-74.0060" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-blue-600 hover:text-blue-800"
+                  >
+                    <MapPin className="h-4 w-4 mr-2" />
+                    View on Google Maps
+                  </a>
+                </div>
+              </div>
+              <div>
+                <img 
+                  src="https://res.cloudinary.com/di5ntdtyl/image/upload/v1752967641/venues/main_photos/ldm3to2phwjgtiaz1n8v.jpg" 
+                  alt="Muhazi hall" 
+                  className="w-full h-64 object-cover rounded-lg"
+                />
               </div>
             </div>
           </div>
@@ -405,6 +275,16 @@ export default function EventDetails({ params }: { params: { id: string } }) {
           <div className="border-b border-gray-200">
             <nav className="flex space-x-8 px-6">
               <button
+                onClick={() => setActiveTab("guests")}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "guests"
+                    ? "border-blue-500 text-blue-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Guests ({guests.length})
+              </button>
+              <button
                 onClick={() => setActiveTab("attendees")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${
                   activeTab === "attendees"
@@ -412,7 +292,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                Attendees ({attendeesData.length})
+                Attendees
               </button>
               <button
                 onClick={() => setActiveTab("tickets")}
@@ -422,97 +302,46 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                Tickets ({ticketsData.length})
+                Tickets
               </button>
             </nav>
           </div>
           {/* Tab Content */}
           <div className="p-6">
-            {activeTab === "attendees" && (
+            {activeTab === "guests" && (
               <div>
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                  <h3 className="text-lg font-semibold">Event Attendees</h3>
-                  <div className="flex flex-col md:flex-row gap-2 md:gap-4 w-full md:w-auto">
-                    <Input
-                      type="text"
-                      placeholder="Search by name or email..."
-                      value={attendeeSearch}
-                      onChange={e => {
-                        setAttendeeSearch(e.target.value)
-                        setAttendeePage(1)
-                      }}
-                      className="w-full md:w-56"
-                    />
-                    <select
-                      value={attendeeStatus}
-                      onChange={e => {
-                        setAttendeeStatus(e.target.value)
-                        setAttendeePage(1)
-                      }}
-                      className="border rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="all">All Statuses</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="pending">Pending</option>
-                    </select>
-                  </div>
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Export List</button>
-                </div>
+                <h3 className="text-lg font-semibold mb-4">Event Guests</h3>
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Ticket Type</TableHead>
-                      <TableHead>Registration Date</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>Photo</TableHead>
+                      <TableHead>Created At</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedAttendees.length === 0 ? (
+                    {paginatedGuests.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">No attendees found.</TableCell>
+                        <TableCell colSpan={3} className="text-center py-8 text-gray-500">No guests found.</TableCell>
                       </TableRow>
                     ) : (
-                      paginatedAttendees.map((attendee) => (
-                        <TableRow key={attendee.id}>
-                          <TableCell>{attendee.name}</TableCell>
-                          <TableCell>{attendee.email}</TableCell>
-                          <TableCell>{attendee.phone}</TableCell>
-                          <TableCell>{attendee.ticketType}</TableCell>
-                          <TableCell>{attendee.registrationDate}</TableCell>
-                          <TableCell>${attendee.amount}</TableCell>
+                      paginatedGuests.map((guest: any) => (
+                        <TableRow key={guest.id}>
+                          <TableCell>{guest.guestName}</TableCell>
                           <TableCell>
-                            <span
-                              className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                attendee.status === "confirmed"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-yellow-100 text-yellow-800"
-                              }`}
-                            >
-                              {attendee.status}
-                            </span>
+                            {guest.guestPhoto ? (
+                              <img src={guest.guestPhoto} alt={guest.guestName} className="h-12 w-12 rounded-full object-cover" />
+                            ) : (
+                              <span className="text-gray-400">No photo</span>
+                            )}
                           </TableCell>
-                          <TableCell className="text-right space-x-2">
-                            <button className="inline-block text-blue-600 hover:text-blue-800" aria-label="View Attendee">
-                              <Eye className="h-5 w-5" />
-                            </button>
-                            <button className="inline-block text-gray-600 hover:text-gray-900" aria-label="Edit Attendee">
-                              <Pencil className="h-5 w-5" />
-                            </button>
-                            <button className="inline-block text-red-600 hover:text-red-800" aria-label="Delete Attendee">
-                              <Trash2 className="h-5 w-5" />
-                            </button>
-                          </TableCell>
+                          <TableCell>{guest.createdAt ? new Date(guest.createdAt).toLocaleString() : ""}</TableCell>
                         </TableRow>
                       ))
                     )}
                   </TableBody>
                 </Table>
-                {totalAttendeePages > 1 && (
+                {totalGuestPages > 1 && (
                   <div className="mt-6">
                     <Pagination>
                       <PaginationContent>
@@ -521,19 +350,19 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                             href="#"
                             onClick={e => {
                               e.preventDefault()
-                              setAttendeePage(p => Math.max(1, p - 1))
+                              setGuestPage(p => Math.max(1, p - 1))
                             }}
-                            aria-disabled={attendeePage === 1}
+                            aria-disabled={guestPage === 1}
                           />
                         </PaginationItem>
-                        {Array.from({ length: totalAttendeePages }, (_, i) => (
+                        {Array.from({ length: totalGuestPages }, (_, i) => (
                           <PaginationItem key={i}>
                             <PaginationLink
                               href="#"
-                              isActive={attendeePage === i + 1}
+                              isActive={guestPage === i + 1}
                               onClick={e => {
                                 e.preventDefault()
-                                setAttendeePage(i + 1)
+                                setGuestPage(i + 1)
                               }}
                             >
                               {i + 1}
@@ -545,9 +374,9 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                             href="#"
                             onClick={e => {
                               e.preventDefault()
-                              setAttendeePage(p => Math.min(totalAttendeePages, p + 1))
+                              setGuestPage(p => Math.min(totalGuestPages, p + 1))
                             }}
-                            aria-disabled={attendeePage === totalAttendeePages}
+                            aria-disabled={guestPage === totalGuestPages}
                           />
                         </PaginationItem>
                       </PaginationContent>
@@ -556,53 +385,11 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                 )}
               </div>
             )}
+            {activeTab === "attendees" && (
+              <div className="text-center text-gray-500 py-8">No attendees data available.</div>
+            )}
             {activeTab === "tickets" && (
-              <div>
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-lg font-semibold">Ticket Types</h3>
-                  <button className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-                    Add Ticket Type
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {ticketsData.map((ticket) => (
-                    <div key={ticket.id} className="border rounded-lg p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <h4 className="text-lg font-semibold">{ticket.type}</h4>
-                        <span className="text-2xl font-bold text-blue-600">${ticket.price}</span>
-                      </div>
-                      <div className="space-y-3">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Sold:</span>
-                          <span className="font-medium">{ticket.sold}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Available:</span>
-                          <span className="font-medium">{ticket.available}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Total:</span>
-                          <span className="font-medium">{ticket.total}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${(ticket.sold / ticket.total) * 100}%` }}
-                          ></div>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {Math.round((ticket.sold / ticket.total) * 100)}% sold
-                        </div>
-                        <div className="pt-2">
-                          <span className="text-lg font-semibold text-green-600">
-                            ${(ticket.sold * ticket.price).toLocaleString()} revenue
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <div className="text-center text-gray-500 py-8">No tickets data available.</div>
             )}
           </div>
         </div>
@@ -612,7 +399,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Event</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete "{event.name}"? This action cannot be undone.
+                Are you sure you want to delete "{event.eventName}"? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

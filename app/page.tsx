@@ -10,13 +10,13 @@ import { Button } from "@/components/button"
 import { Container } from "@/components/container"
 import { Section } from "@/components/section"
 import { HeroSlideshow } from "@/components/hero-slideshow"
-import { events } from "@/data/events"
 import { useEffect, useState } from "react"
 import ApiService from "@/api/apiConfig"
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)
   const [availableVenues, setAvailableVenues] = useState<any[]>([])
+  const [publishedEvents, setPublishedEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -30,28 +30,35 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    const fetchVenues = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true)
-        const response = await ApiService.getAllVenues()
-        if (response.success) {
-          // Get first 3 approved venues
-          const venues = response.data
+        
+        // Fetch venues
+        const venuesResponse = await ApiService.getAllVenues()
+        if (venuesResponse.success) {
+          const venues = venuesResponse.data
             .filter((venue: any) => venue.status === "APPROVED")
             .slice(0, 3)
           setAvailableVenues(venues)
-        } else {
-          setError('Failed to fetch venues')
+        }
+
+        // Fetch events
+        const eventsResponse = await ApiService.getPubulishedEvents()
+        if (eventsResponse.success) {
+          // Get first 3 events
+          const events = eventsResponse.data.slice(0, 3)
+          setPublishedEvents(events)
         }
       } catch (error) {
-        console.error('Error fetching venues:', error)
-        setError('Failed to fetch venues')
+        console.error('Error fetching data:', error)
+        setError('Failed to fetch data')
       } finally {
         setLoading(false)
       }
     }
 
-    fetchVenues()
+    fetchData()
   }, [])
 
   const heroImages = [
@@ -65,26 +72,13 @@ export default function Home() {
     },
   ]
 
-  // Get first 3 events for upcoming events section
-  const upcomingEvents = events.slice(0, 3)
-
-  const formatEventDate = (eventDate: string, startTime: string, endTime: string) => {
-    const date = new Date(eventDate).toLocaleDateString("en-US", {
+  const formatEventDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
       month: "long",
       day: "numeric",
-      year: "numeric",
     })
-    const start = new Date(`2000-01-01T${startTime}`).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-    const end = new Date(`2000-01-01T${endTime}`).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    })
-    return `${date} • ${start} - ${end}`
   }
 
   return (
@@ -110,7 +104,6 @@ export default function Home() {
                   }`}
                 >
            Empowering your organization to create, manage, and elevate every event and venue experience.
-
                 </p>
                 <div
                   className={`flex flex-wrap gap-4 transform transition-all duration-1000 ease-out delay-400 ${
@@ -219,22 +212,33 @@ export default function Home() {
               Discover and register for upcoming events at the University of Rwanda.
             </p>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {upcomingEvents.map((event) => (
-                <EventCard
-                  key={event.eventId}
-                  id={event.eventId}
-                  title={event.eventTitle}
-                  type={event.eventType}
-                  typeColor={event.typeColor}
-                  date={formatEventDate(event.eventDate, event.eventStartTime, event.eventEndTime)}
-                  location={event.venue}
-                  registeredCount={event.registeredCount}
-                  imageSrc={event.imageURL}
-                  imageAlt={event.eventTitle}
-                />
-              ))}
-            </div>
+            {loading ? (
+              <div className="text-center py-8">Loading events...</div>
+            ) : error ? (
+              <div className="text-center text-red-600 py-8">{error}</div>
+            ) : publishedEvents.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {publishedEvents.map((event) => {
+                  const venue = event.eventVenues[0]?.venue
+                  return (
+                    <EventCard
+                      key={event.eventId}
+                      id={event.eventId}
+                      title={event.eventName}
+                      type={event.eventType}
+                      typeColor={getEventTypeColor(event.eventType)}
+                      date={formatEventDate(event.bookingDates[0].date)}
+                      location={venue ? `${venue.venueName}, ${venue.venueLocation}` : 'Location TBA'}
+                      registeredCount={0}
+                      imageSrc={event.eventPhoto || "/placeholder.svg"}
+                      imageAlt={event.eventName}
+                    />
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">No events available</div>
+            )}
 
             <div className="text-center mt-12">
               <Button href="/events" variant="outline">
@@ -244,7 +248,7 @@ export default function Home() {
           </Container>
         </Section>
 
-               {/* Features Section */}
+        {/* Features Section */}
         <Section>
           <Container>
             <div className="text-center mb-12">
@@ -296,8 +300,9 @@ export default function Home() {
             </div>
           </Container>
         </Section>
-                {/* System Overview Section */}
-                <Section>
+
+        {/* System Overview Section */}
+        <Section>
           <Container>
             <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">System Overview</h2>
             <p className="text-center text-gray-600 mb-12">
@@ -305,10 +310,10 @@ export default function Home() {
             </p>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard value={events.length} label="Total Events" />
+              <StatCard value={publishedEvents.length} label="Total Events" />
               <StatCard value="1,892" label="Active Users" />
-              <StatCard value={28} label="Venues" />
-              <StatCard value={events.filter((event) => event.status === "Active").length} label="Upcoming Events" />
+              <StatCard value={availableVenues.length} label="Venues" />
+              <StatCard value={publishedEvents.filter((event) => event.eventStatus === "APPROVED").length} label="Upcoming Events" />
             </div>
           </Container>
         </Section>
@@ -317,4 +322,19 @@ export default function Home() {
       <Footer />
     </div>
   )
+}
+
+function getEventTypeColor(type: string) {
+  switch (type.toUpperCase()) {
+    case 'WORKSHOP':
+      return 'blue'
+    case 'MEETING':
+      return 'green'
+    case 'CONFERENCE':
+      return 'purple'
+    case 'SEMINAR':
+      return 'orange'
+    default:
+      return 'gray'
+  }
 }
