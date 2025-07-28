@@ -46,6 +46,8 @@ import { Loading } from "@/components/loading";
 type Venue = VenueBase & {
   mainPhotoUrl?: string;
   amount?: number;
+  status?: string;
+  isActive?: boolean;
   // Add any other API-only fields here
 };
 
@@ -56,6 +58,7 @@ export default function ManageVenuesPage() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -102,9 +105,17 @@ export default function ManageVenuesPage() {
       const matchesSearch = 
         (venue.venueName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
         (venue.location?.toLowerCase() || '').includes(searchQuery.toLowerCase())
-      return matchesSearch
+      
+      // Status filtering - use the status field directly from API response
+      let matchesStatus = true;
+      if (statusFilter !== "all") {
+        const venueStatus = venue.status || "UNKNOWN";
+        matchesStatus = venueStatus.toLowerCase() === statusFilter.toLowerCase();
+      }
+      
+      return matchesSearch && matchesStatus
     })
-  }, [searchQuery, venues])
+  }, [searchQuery, venues, statusFilter])
 
   // Pagination
   const totalPages = Math.ceil(filteredVenues.length / ITEMS_PER_PAGE)
@@ -115,6 +126,16 @@ export default function ManageVenuesPage() {
   const handleFilterChange = () => {
     setCurrentPage(1)
   }
+
+  // Status filter options
+  const statusFilterOptions = [
+    { value: "all", label: "All Statuses" },
+    { value: "approved", label: "Approved" },
+    { value: "pending", label: "Pending" },
+    { value: "rejected", label: "Rejected" },
+    { value: "suspended", label: "Suspended" },
+    { value: "inactive", label: "Inactive" }
+  ];
 
   const handleEdit = (venueId: string) => {
     console.log("Edit venue:", venueId)
@@ -134,6 +155,51 @@ export default function ManageVenuesPage() {
   const getStatusBadgeVariant = (status: string) => {
     return status === "Active" ? "default" : "secondary"
   }
+
+  // Helper function to get venue status display info
+  const getVenueStatusInfo = (venue: Venue) => {
+    // Use the status field directly from the API response
+    const status = venue.status || "UNKNOWN";
+    
+    switch (status?.toUpperCase()) {
+      case "APPROVED":
+        return {
+          label: "Approved",
+          variant: "default",
+          className: "bg-green-100 text-green-800 border-green-200"
+        };
+      case "PENDING":
+        return {
+          label: "Pending",
+          variant: "secondary",
+          className: "bg-yellow-100 text-yellow-800 border-yellow-200"
+        };
+      case "REJECTED":
+        return {
+          label: "Rejected",
+          variant: "destructive",
+          className: "bg-red-100 text-red-800 border-red-200"
+        };
+      case "SUSPENDED":
+        return {
+          label: "Suspended",
+          variant: "destructive",
+          className: "bg-red-100 text-red-800 border-red-200"
+        };
+      case "INACTIVE":
+        return {
+          label: "Inactive",
+          variant: "secondary",
+          className: "bg-gray-100 text-gray-800 border-gray-200"
+        };
+      default:
+        return {
+          label: status || "Unknown",
+          variant: "secondary",
+          className: "bg-gray-100 text-gray-800 border-gray-200"
+        };
+    }
+  };
 
   if (loading) return (
     <div className="min-h-screen flex">
@@ -215,6 +281,24 @@ export default function ManageVenuesPage() {
                 }}
               />
             </div>
+            
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={(value) => {
+              setStatusFilter(value)
+              handleFilterChange()
+            }}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                {statusFilterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
             <div className="text-sm text-muted-foreground flex items-center">
               Showing {filteredVenues.length} venue{filteredVenues.length !== 1 ? 's' : ''}
             </div>
@@ -229,100 +313,112 @@ export default function ManageVenuesPage() {
                 <TableHead>Venue</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Capacity</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedVenues.map((venue) => (
-                <TableRow key={venue.venueId}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={venue.mainPhotoUrl}
-                        alt={venue.venueName}
-                        className="w-14 h-14 rounded-lg object-cover border shadow-sm"
-                      />
-                      <div>
-                        <div className="font-medium">{venue.venueName}</div>
-                        <div className="text-xs text-muted-foreground">{venue.location}</div>
+              {paginatedVenues.map((venue) => {
+                const statusInfo = getVenueStatusInfo(venue);
+                return (
+                  <TableRow key={venue.venueId}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={venue.mainPhotoUrl}
+                          alt={venue.venueName}
+                          className="w-14 h-14 rounded-lg object-cover border shadow-sm"
+                        />
+                        <div>
+                          <div className="font-medium">{venue.venueName}</div>
+                          <div className="text-xs text-muted-foreground">{venue.location}</div>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>${venue.amount}</TableCell>
-                  <TableCell>{venue.capacity}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <div className="group relative">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          <Link href={`/manage/venues/${venue.venueId}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">View</span>
-                      </div>
-                      <div className="group relative">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          <Link href={`/manage/venues/${venue.venueId}/edit`}>
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">Edit</span>
-                      </div>
-                      <div className="group relative">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          <Link href={`/manage/venues/availability`}>
-                            <Calendar className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">Availability</span>
-                      </div>
-                      <div className="group relative">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Venue</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{venue.venueName}"? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(venue.venueId)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    </TableCell>
+                    <TableCell>{venue.amount} Rwf</TableCell>
+                    <TableCell>{venue.capacity}</TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={statusInfo.variant as any}
+                        className={statusInfo.className}
+                      >
+                        {statusInfo.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <div className="group relative">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Link href={`/manage/venues/${venue.venueId}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">View</span>
+                        </div>
+                        <div className="group relative">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Link href={`/manage/venues/${venue.venueId}/edit`}>
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">Edit</span>
+                        </div>
+                        <div className="group relative">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                          >
+                            <Link href={`/manage/venues/${venue.venueId}/availability`}>
+                              <Calendar className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">Availability</span>
+                        </div>
+                        <div className="group relative">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                               >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                        <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">Delete</span>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Venue</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{venue.venueName}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(venue.venueId)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                          <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">Delete</span>
+                        </div>
                       </div>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
 

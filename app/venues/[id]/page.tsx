@@ -272,9 +272,16 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
       toast.error("Please select a date to continue.");
       return;
     }
-    const selectedDate = selectedDates[0].toISOString().split("T")[0];
+    // Format dates as MM/DD/YYYY to preserve the correct date interpretation
+    const selectedDateString = selectedDates.map(date => {
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}/${day}/${year}`;
+    }).join(',');
+    console.log("Sending dates to booking form:", selectedDateString); // Debug log
     if (isLoggedIn) {
-      router.push(`/venues/book?venueId=${venue?.venueId}&date=${selectedDate}`);
+      router.push(`/venues/book?venueId=${venue?.venueId}&date=${selectedDateString}`);
     } else {
       router.push("/login");
     }

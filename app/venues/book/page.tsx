@@ -115,6 +115,7 @@ const [prefilledVenue, setPrefilledVenue] = useState<{
   useEffect(() => {
     const venueId = searchParams.get("venueId");
     const date = searchParams.get("date");
+    console.log("Received date parameter:", date); // Debug log
     if (venueId) {
       ApiService.getVenueById(venueId)
         .then(res => {
@@ -128,7 +129,20 @@ const [prefilledVenue, setPrefilledVenue] = useState<{
         .catch(() => setVenueError("Venue not found."));
     }
     if (date) {
-      setFormData(prev => ({ ...prev, dates: [date] }));
+      // Handle multiple dates separated by commas
+      const selectedDates = date.split(',').map(d => d.trim()).filter(d => d);
+      console.log("Parsed dates:", selectedDates); // Debug log
+      
+      // Convert MM/DD/YYYY format to proper date strings for form processing
+      const formattedDates = selectedDates.map(dateStr => {
+        // Parse MM/DD/YYYY format
+        const [month, day, year] = dateStr.split('/');
+        // Create a proper date string in YYYY-MM-DD format for the form
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      });
+      
+      console.log("Formatted dates for form:", formattedDates); // Debug log
+      setFormData(prev => ({ ...prev, dates: formattedDates }));
       setPrefilledDate(date);
     }
   }, [searchParams]);
@@ -258,12 +272,7 @@ const [prefilledVenue, setPrefilledVenue] = useState<{
         return guest;
       });
       formDataToSend.append("guests", JSON.stringify(guestsData.filter((guest) => guest.guestName.trim())));
-      // Debug: log all FormData entries
-      for (let pair of formDataToSend.entries()) {
-        console.log(pair[0]+ ':', pair[1]);
-      }
-
-      console.log("Submitting event data:", Object.fromEntries(formDataToSend.entries()));
+      
       await ApiService.createEvent(formDataToSend)
       toast.success("Event created successfully!")
       router.push("/user-dashboard/events")
@@ -413,11 +422,22 @@ const [prefilledVenue, setPrefilledVenue] = useState<{
                 {errors.venueId && <p className="text-sm text-red-500 mt-1">{errors.venueId}</p>}
               </div>
               <div>
-                <Label className="text-base font-medium">Event Date</Label>
-                {prefilledDate ? (
-                  <div className="mt-2 h-12 flex items-center px-3 bg-gray-100 rounded border border-gray-200 text-base font-medium">{prefilledDate}</div>
+                <Label className="text-base font-medium">Event Date(s)</Label>
+                {formData.dates.filter((date) => date).length > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    {formData.dates.filter((date) => date).map((date, index) => (
+                      <div key={index} className="h-12 flex items-center px-3 bg-gray-100 rounded border border-gray-200 text-base font-medium">
+                        {new Date(date).toLocaleDateString('en-US', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <div className="mt-2 h-12 flex items-center px-3 bg-gray-50 rounded border border-gray-200 text-base text-gray-400">No date selected.</div>
+                  <div className="mt-2 h-12 flex items-center px-3 bg-gray-50 rounded border border-gray-200 text-base text-gray-400">No dates selected.</div>
                 )}
                 {errors.dates && <p className="text-sm text-red-500 mt-1">{errors.dates}</p>}
               </div>
@@ -690,9 +710,21 @@ const [prefilledVenue, setPrefilledVenue] = useState<{
                       </div>
                     )}
 
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-500" />
-                      <span>{formData.dates.filter((date) => date).join(", ")}</span>
+                    <div className="flex items-start gap-2">
+                      <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-500">Event Dates:</span>
+                        {formData.dates.filter((date) => date).map((date, index) => (
+                          <span key={index} className="text-sm font-medium">
+                            {new Date(date).toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
                     {formData.maxAttendees && (

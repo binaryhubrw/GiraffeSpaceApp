@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Calendar, Plus, Filter, ChevronDown, Users, MapPin, Clock } from "lucide-react"
+import { Calendar, Plus, Filter, ChevronDown, Users, MapPin, Clock, Send } from "lucide-react"
 import Link from "next/link"
 import {
   Table,
@@ -36,6 +36,7 @@ import { Pencil, Eye, Trash2, XCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
 import ApiService from "@/api/apiConfig"
+import { toast } from "sonner"
 
 
 const EVENTS_PER_PAGE = 3
@@ -57,6 +58,11 @@ function getPayType(event: {
   return "Payable"
 }
 
+// Helper to determine if an event can request publication
+function canRequestPublication(eventStatus: string): boolean {
+  return eventStatus !== "PUBLISHED" && eventStatus !== "PENDING_PUBLICATION"
+}
+
 export default function EventSection() {
   const { isLoggedIn, user } = useAuth()
   const router = useRouter()
@@ -67,6 +73,7 @@ export default function EventSection() {
   const [currentPage, setCurrentPage] = useState(1)
   const [showDeleteId, setShowDeleteId] = useState<string | null>(null)
   const [showCancelId, setShowCancelId] = useState<string | null>(null)
+  const [showPublishRequestId, setShowPublishRequestId] = useState<string | null>(null)
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [eventNameFilter, setEventNameFilter] = useState("")
@@ -171,6 +178,37 @@ export default function EventSection() {
       )
     )
     setShowCancelId(null)
+  }
+
+  const handlePublishRequest = async (eventId: string) => {
+    try {
+      // You can customize the data sent for the publish request
+      const requestData = {
+        status: "PENDING_PUBLICATION",
+        requestDate: new Date().toISOString(),
+        notes: "User requested event publication"
+      }
+      
+      // Call the API to request publication
+      const response = await ApiService.requestEventPublication(eventId, requestData)
+      
+      if (response.success) {
+        // Update the local state to reflect the status change
+        setEvents((prev) =>
+          prev.map((e) =>
+            e.eventId === eventId ? { ...e, eventStatus: "PENDING_PUBLICATION" } : e
+          )
+        )
+        toast.success("Publication request sent successfully!")
+      } else {
+        toast.error("Failed to send publication request")
+      }
+    } catch (error) {
+      console.error("Error requesting publication:", error)
+      toast.error("Failed to send publication request")
+    } finally {
+      setShowPublishRequestId(null)
+    }
   }
 
   // Stats for the dashboard
@@ -449,7 +487,11 @@ export default function EventSection() {
                               ? "bg-green-100 text-green-800"
                               : event.eventStatus === "PENDING"
                               ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
+                              : event.eventStatus === "PENDING_PUBLICATION"
+                              ? "bg-blue-100 text-blue-800"
+                              : event.eventStatus === "CANCELLED"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
                           }`}
                         >
                           {event.eventStatus}
@@ -462,6 +504,16 @@ export default function EventSection() {
                         <Link href={`/user-dashboard/events/${event.eventId}/edit`} className="inline-block text-gray-600 hover:text-gray-900">
                           <Pencil className="h-5 w-5" aria-label="Edit" />
                         </Link>
+                        {/* Publish Request Button - only show for events that are not published */}
+                        {canRequestPublication(event.eventStatus) && (
+                          <button
+                            onClick={() => setShowPublishRequestId(event.eventId)}
+                            className="inline-block text-green-600 hover:text-green-800 transition-colors"
+                            title="Request Publication - Submit event for admin review"
+                          >
+                            <Send className="h-5 w-5" aria-label="Request Publication" />
+                          </button>
+                        )}
                         <button
                           onClick={() => setShowCancelId(event.eventId)}
                           className="inline-block text-yellow-600 hover:text-yellow-800"
@@ -470,13 +522,7 @@ export default function EventSection() {
                         >
                           <XCircle className="h-5 w-5" aria-label="Cancel Event" />
                         </button>
-                        <button
-                          onClick={() => setShowDeleteId(event.eventId)}
-                          className="inline-block text-red-600 hover:text-red-800"
-                          title="Delete Event"
-                        >
-                          <Trash2 className="h-5 w-5" aria-label="Delete Event" />
-                        </button>
+                       
                       </TableCell>
                     </TableRow>
                   ))
@@ -557,6 +603,23 @@ export default function EventSection() {
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={() => handleDelete(showDeleteId!)}>
                   Yes, Delete Event
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {/* Publish Request Dialog */}
+          <AlertDialog open={!!showPublishRequestId} onOpenChange={() => setShowPublishRequestId(null)}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Request Event Publication</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to send a publication request for this event? This will submit your event for review and approval by administrators.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handlePublishRequest(showPublishRequestId!)}>
+                  Yes, Send Request
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

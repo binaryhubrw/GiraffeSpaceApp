@@ -154,7 +154,7 @@ export default function DashboardPage() {
               <h2 className="text-gray-600 text-sm">Total Revenue</h2>
               <DollarSign className="h-5 w-5 text-gray-400" />
             </div>
-            <p className="text-3xl font-bold mb-1">$4500</p>
+            <p className="text-3xl font-bold mb-1">4500 Rwf</p>
             <p className="text-xs text-gray-500">+12% from last month</p>
           </div>
         </div>

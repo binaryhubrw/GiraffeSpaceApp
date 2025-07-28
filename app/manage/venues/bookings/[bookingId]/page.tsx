@@ -411,10 +411,13 @@ export default function VenueBookingDetail() {
               <CardTitle>Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
+           
+           <Link href={`/venues/book/payment/${bookingId}`} className="w-full">
               <Button className="w-full" disabled={data.bookingStatus === "CANCELLED"}>
                 <DollarSign className="h-4 w-4 mr-2" />
                 Process Payment
               </Button>
+           </Link>
         
             </CardContent>
           </Card>

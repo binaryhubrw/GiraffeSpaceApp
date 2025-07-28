@@ -3,11 +3,21 @@
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Check, X, Eye, XCircle } from "lucide-react";
+import { Check, X, Eye, XCircle, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
 import ApiService from "@/api/apiConfig";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function BookingRequestsPage() {
   const { isLoggedIn, user } = useAuth();
@@ -15,12 +25,12 @@ export default function BookingRequestsPage() {
   const searchParams = useSearchParams();
   const statusFilter = searchParams.get("status") || "all";
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("All Statuses");
+  const [selectedStatus, setSelectedStatus] = useState("all");
   const [dateFilter, setDateFilter] = useState("all"); // all, today, week, month
   const [customDate, setCustomDate] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("");
-  const [bookingStatusFilter, setBookingStatusFilter] = useState("");
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
+  const [bookingStatusFilter, setBookingStatusFilter] = useState("all");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const ITEMS_PER_PAGE = 6;
@@ -34,6 +44,54 @@ export default function BookingRequestsPage() {
     if (!year || !month || !day) return '';
     return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
+
+  // Helper function to get status display info
+  const getStatusInfo = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case "PENDING":
+        return {
+          label: "Pending",
+          variant: "secondary",
+          className: "bg-yellow-100 text-yellow-800 border-yellow-200"
+        };
+      case "APPROVED_NOT_PAID":
+        return {
+          label: "Approved - Unpaid",
+          variant: "default",
+          className: "bg-orange-100 text-orange-800 border-orange-200"
+        };
+      case "APPROVED_PAID":
+        return {
+          label: "Approved - Paid",
+          variant: "default",
+          className: "bg-green-100 text-green-800 border-green-200"
+        };
+      case "PAID":
+        return {
+          label: "Paid",
+          variant: "default",
+          className: "bg-green-100 text-green-800 border-green-200"
+        };
+      case "CANCELLED":
+        return {
+          label: "Cancelled",
+          variant: "destructive",
+          className: "bg-red-100 text-red-800 border-red-200"
+        };
+      case "REJECTED":
+        return {
+          label: "Rejected",
+          variant: "destructive",
+          className: "bg-red-100 text-red-800 border-red-200"
+        };
+      default:
+        return {
+          label: status || "Unknown",
+          variant: "secondary",
+          className: "bg-gray-100 text-gray-800 border-gray-200"
+        };
+    }
+  };
 
   // Redirect if not logged in
   useEffect(() => {
@@ -54,8 +112,6 @@ export default function BookingRequestsPage() {
       } catch (err) {
         toast.error("Failed to fetch bookings. Please try again later.");
         console.error("Error fetching bookings:", err);
-
-        // Optionally show a toast
       } finally {
         setLoading(false);
       }
@@ -92,8 +148,8 @@ export default function BookingRequestsPage() {
     return true;
   });
 
-  // Reset page to 1 when date filter changes
-  useEffect(() => { setPage(1); }, [dateFilter, customDate]);
+  // Reset page to 1 when filters change
+  useEffect(() => { setPage(1); }, [dateFilter, customDate, bookingStatusFilter, searchQuery]);
 
   // Filter bookings based on search query and status
   const filteredBookings = filteredByDate.filter((booking) => {
@@ -102,23 +158,46 @@ export default function BookingRequestsPage() {
       (booking.eventDetails?.eventName?.toLowerCase() || "").includes(search) ||
       (booking.venue?.venueName?.toLowerCase() || "").includes(search);
 
-    const matchesStatus =
-      bookingStatusFilter === "" || bookingStatusFilter === "All Statuses" || (booking.bookingStatus || "").toLowerCase() === bookingStatusFilter.toLowerCase();
+    // Enhanced status filtering
+    let matchesStatus = true;
+    if (bookingStatusFilter !== "all") {
+      const bookingStatus = booking.bookingStatus?.toUpperCase() || "";
+      switch (bookingStatusFilter) {
+        case "pending":
+          matchesStatus = bookingStatus === "PENDING";
+          break;
+        case "approved_unpaid":
+          matchesStatus = bookingStatus === "APPROVED_NOT_PAID";
+          break;
+        case "approved_paid":
+          matchesStatus = bookingStatus === "APPROVED_PAID" || bookingStatus === "PAID";
+          break;
+        case "cancelled":
+          matchesStatus = bookingStatus === "CANCELLED";
+          break;
+        case "rejected":
+          matchesStatus = bookingStatus === "REJECTED";
+          break;
+        default:
+          matchesStatus = true;
+      }
+    }
 
-    // For event type and payment status, you may need to adjust based on your API response
-    const matchesEventType = true;
-    // Remove venue filter; search input will handle venue name filtering
-    const matchesVenue = true;
-    const matchesPaymentStatus = true;
-
-    return matchesSearch && matchesStatus && matchesEventType && matchesVenue && matchesPaymentStatus;
+    return matchesSearch && matchesStatus;
   });
 
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / ITEMS_PER_PAGE));
   const paginated = filteredBookings.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  // Mock options for event type and venue
-  const bookingStatusOptions = ["All Statuses", "Pending", "Approved", "Cancelled"];
+  // Status filter options
+  const statusFilterOptions = [
+    { value: "all", label: "All Statuses" },
+    { value: "pending", label: "Pending" },
+    { value: "approved_unpaid", label: "Approved - Unpaid" },
+    { value: "approved_paid", label: "Approved - Paid" },
+    { value: "cancelled", label: "Cancelled" },
+    { value: "rejected", label: "Rejected" }
+  ];
 
   const handleCancelBooking = (bookingId: string) => {
     // TODO: Implement cancel logic or open a dialog
@@ -130,7 +209,7 @@ export default function BookingRequestsPage() {
     <div className="min-h-screen flex">
       <Sidebar />
 
-      <main className="max-w-8xl flex-1 ">
+      <main className="max-w-8xl flex-1">
         <div className="p-8">
           <div className="mb-6">
             <h1 className="text-2xl font-bold">Booking Requests</h1>
@@ -138,66 +217,66 @@ export default function BookingRequestsPage() {
           </div>
 
           {/* Search, Status, and Date Filters */}
-          <div className="flex flex-wrap gap-4 mb-8 items-center">
-            <div className="flex-1 min-w-[200px]">
-              <input
-                type="text"
-                placeholder="Search by event or venue..."
-                className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2">
+          <div className="bg-card p-4 rounded-lg border mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  placeholder="Search by event or venue..."
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              
               {/* Status Filter */}
-              <div className="relative min-w-[140px]">
-                <select
-                  className="appearance-none w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 pr-8"
-                  value={bookingStatusFilter}
-                  onChange={e => setBookingStatusFilter(e.target.value)}
-                >
-                  {bookingStatusOptions.map(opt => <option key={opt}>{opt}</option>)}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                  </svg>
-                </div>
-              </div>
+              <Select value={bookingStatusFilter} onValueChange={setBookingStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusFilterOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               {/* Date Filter */}
-              <div className="relative min-w-[140px]">
-                <select
-                  className="appearance-none w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 pr-8"
-                  value={dateFilter}
-                  onChange={e => setDateFilter(e.target.value)}
-                >
-                  <option value="all">All Dates</option>
-                  <option value="today">Today</option>
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                  <option value="custom">Custom</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                  </svg>
-                </div>
-                {dateFilter === "custom" && (
-                  <div className="flex gap-2 mt-2">
-                    <input
-                      type="date"
-                      value={customDate}
-                      onChange={e => setCustomDate(e.target.value)}
-                      className="input input-bordered"
-                    />
-                  </div>
-                )}
+              <Select value={dateFilter} onValueChange={setDateFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Filter by date" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Dates</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="custom">Custom Date</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="text-sm text-muted-foreground flex items-center">
+                Showing {filteredBookings.length} booking{filteredBookings.length !== 1 ? 's' : ''}
               </div>
             </div>
+
+            {/* Custom Date Input */}
+            {dateFilter === "custom" && (
+              <div className="mt-4">
+                <Input
+                  type="date"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  className="max-w-xs"
+                />
+              </div>
+            )}
           </div>
 
           {/* Bookings Table */}
-          <div className="border rounded-lg overflow-hidden bg-white">
+          <div className="bg-card rounded-lg border overflow-hidden bg-white">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -225,84 +304,89 @@ export default function BookingRequestsPage() {
                 ) : paginated.length === 0 ? (
                   <tr><td colSpan={6} className="text-center py-8">No bookings found.</td></tr>
                 ) : (
-                  paginated.map((booking, idx) => (
-                    <tr key={booking.bookingId || idx}>
-                      <td className="px-4 py-3 whitespace-nowrap text-center">{(page - 1) * ITEMS_PER_PAGE + idx + 1}</td>
-                      <td className="px-4 py-3 whitespace-nowrap max-w-[200px] truncate">
-                        <div className="text-sm font-medium text-gray-900">{booking.eventDetails?.eventName || '-'}</div>
-                    </td>
-                      <td className="px-4 py-3 whitespace-nowrap max-w-[160px] truncate">
-                        <div className="text-sm text-gray-900">{booking.venue?.venueName || '-'}</div>
-                    </td>
-                      <td className="px-4 py-3 whitespace-nowrap max-w-[120px] truncate">
-                        <div className="text-sm text-gray-900">{booking.bookingDates?.[0]?.date || '-'}</div>
-                    </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            booking.bookingStatus === "APPROVED"
-                            ? "bg-green-100 text-green-800"
-                              : booking.bookingStatus === "PENDING"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : booking.bookingStatus === "CANCELLED"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {booking.bookingStatus}
-                      </span>
-                    </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium flex gap-2">
-                        <a
-                          href={`/manage/venues/bookings/${booking.bookingId}`}
-                          className="text-blue-600 hover:text-blue-900 bg-gray-100 hover:bg-gray-200 p-2 rounded-full"
-                          aria-label="View Booking"
-                          title="View Booking"
-                        >
-                          <Eye className="w-5 h-5" />
-                        </a>
-                        <button
-                          className="text-red-600 hover:text-red-900 bg-gray-100 hover:bg-gray-200 p-2 rounded-full"
-                          onClick={() => handleCancelBooking(booking.bookingId)}
-                          aria-label="Cancel Booking"
-                          title="Cancel Booking"
-                        >
-                          <XCircle className="w-5 h-5" />
-                        </button>
-                    </td>
-                  </tr>
-                  ))
+                  paginated.map((booking, idx) => {
+                    const statusInfo = getStatusInfo(booking.bookingStatus);
+                    return (
+                      <tr key={booking.bookingId || idx}>
+                        <td className="px-4 py-3 whitespace-nowrap text-center">{(page - 1) * ITEMS_PER_PAGE + idx + 1}</td>
+                        <td className="px-4 py-3 whitespace-nowrap max-w-[200px] truncate">
+                          <div className="text-sm font-medium text-gray-900">{booking.eventDetails?.eventName || '-'}</div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap max-w-[160px] truncate">
+                          <div className="text-sm text-gray-900">{booking.venue?.venueName || '-'}</div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap max-w-[120px] truncate">
+                          <div className="text-sm text-gray-900">{booking.bookingDates?.[0]?.date || '-'}</div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <Badge 
+                            variant={statusInfo.variant as any}
+                            className={statusInfo.className}
+                          >
+                            {statusInfo.label}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm font-medium flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            asChild
+                          >
+                            <a
+                              href={`/manage/venues/bookings/${booking.bookingId}`}
+                              aria-label="View Booking"
+                              title="View Booking"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </a>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={() => handleCancelBooking(booking.bookingId)}
+                            aria-label="Cancel Booking"
+                            title="Cancel Booking"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
+            
             {/* Pagination Controls */}
-            <div className="py-4 w-full flex justify-end">
-              <div className="w-auto flex gap-1">
-                <button
-                  className="px-3 py-1 rounded border bg-white text-gray-700 disabled:opacity-50"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                >
-                  Previous
-                </button>
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
-                    key={i}
-                    className={`px-3 py-1 rounded border ${page === i + 1 ? 'bg-gray-200 font-bold' : 'bg-white text-gray-700'}`}
-                    onClick={() => setPage(i + 1)}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between p-4 border-t gap-2">
+                <div className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages} • {filteredBookings.length} total bookings
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                    disabled={page === 1}
                   >
-                    {i + 1}
-                  </button>
-                ))}
-                <button
-                  className="px-3 py-1 rounded border bg-white text-gray-700 disabled:opacity-50"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                >
-                  Next
-                </button>
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={page === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </main>

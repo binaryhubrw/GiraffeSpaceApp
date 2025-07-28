@@ -81,6 +81,7 @@ export default function EditVenuePage() {
     venueVariable: {
       venueAmount: "",
       venueManagerId: "",
+      isFree: false,
     },
     venueAmenities: [],
     bookingType: "",
@@ -111,13 +112,16 @@ export default function EditVenuePage() {
             googleMapsLink: v.googleMapsLink || "",
             organizationId: v.organization?.organizationId || v.organizationId || "",
             bookingConditions: v.bookingConditions?.map((c: any) => ({
-              condition: c.descriptionCondition || "",
-              description: c.notaBene || "",
-              transitionTime: c.transitionTime?.toString() || ""
+              descriptionCondition: c.descriptionCondition || "",
+              notaBene: c.notaBene || "",
+              transitionTime: c.transitionTime?.toString() || "",
+              depositRequiredPercent: c.depositRequiredPercent?.toString() || "",
+              paymentComplementTimeBeforeEvent: c.paymentComplementTimeBeforeEvent?.toString() || ""
             })) || [],
             venueVariable: {
               venueAmount: v.venueVariables?.[0]?.venueAmount?.toString() || "",
               venueManagerId: v.venueVariables?.[0]?.manager?.userId || "",
+              isFree: v.venueVariables?.[0]?.isFree || false,
             },
             venueAmenities: v.amenities?.map((a: any) => ({
               resourceName: a.resourceName || "",
@@ -150,7 +154,7 @@ export default function EditVenuePage() {
       ...prev,
       bookingConditions: [
         ...prev.bookingConditions,
-        { condition: '', description: '', transitionTime: '' }
+        { descriptionCondition: '', notaBene: '', transitionTime: '', depositRequiredPercent: '', paymentComplementTimeBeforeEvent: '' }
       ]
     }));
   };
@@ -162,7 +166,7 @@ export default function EditVenuePage() {
     setFormData(prev => ({
       ...prev,
       bookingConditions: prev.bookingConditions.map((cond, i) =>
-        i === idx ? { ...cond, condition: value } : cond
+        i === idx ? { ...cond, descriptionCondition: value } : cond
       )
     }));
   };
@@ -171,7 +175,7 @@ export default function EditVenuePage() {
     setFormData(prev => ({
       ...prev,
       bookingConditions: prev.bookingConditions.map((cond, i) =>
-        i === idx ? { ...cond, description: value } : cond
+        i === idx ? { ...cond, notaBene: value } : cond
       )
     }));
   };
@@ -184,9 +188,39 @@ export default function EditVenuePage() {
       )
     }));
   };
+  const handleBookingConditionDepositChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+    const { value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      bookingConditions: prev.bookingConditions.map((cond, i) =>
+        i === idx ? { ...cond, depositRequiredPercent: value } : cond
+      )
+    }));
+  };
+  const handleBookingConditionPaymentTimeChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+    const { value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      bookingConditions: prev.bookingConditions.map((cond, i) =>
+        i === idx ? { ...cond, paymentComplementTimeBeforeEvent: value } : cond
+      )
+    }));
+  };
   const handleVenueVariableChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, venueVariable: { ...prev.venueVariable, [name]: value } }));
+  };
+  const handleVenueVariableIsFreeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { checked } = e.target;
+    setFormData((prev) => ({ 
+      ...prev, 
+      venueVariable: { 
+        ...prev.venueVariable, 
+        isFree: checked,
+        // Clear venue amount if venue is free
+        venueAmount: checked ? "" : prev.venueVariable.venueAmount
+      } 
+    }));
   };
   const handleVenueAmenityChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const { name, value } = e.target;
@@ -211,19 +245,25 @@ export default function EditVenuePage() {
   };
 
   // Map picker
-  const handleMapChange = ({ lat, lng, address, district, googleMapsLink }: any) => {
+  const handleMapChange = ({ lat, lng, address }: { lat: number; lng: number; address?: string }) => {
     setFormData(prev => ({
-          ...prev,
+      ...prev,
       latitude: lat.toString(),
       longitude: lng.toString(),
-      location: district,
-      googleMapsLink: googleMapsLink
+      location: address || `${lat}, ${lng}`,
+      googleMapsLink: `https://maps.google.com/?q=${lat},${lng}`
     }));
   };
 
   // Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.latitude || !formData.longitude || !formData.location) {
+      toast.error("Please select a venue location on the map.");
+      return;
+    }
+    
     setSaving(true);
     try {
       const dataToSend = {
@@ -236,12 +276,15 @@ export default function EditVenuePage() {
         organizationId: formData.organizationId,
         venueVariable: {
           venueAmount: Number(formData.venueVariable.venueAmount),
-          venueManagerId: formData.venueVariable.venueManagerId
+          venueManagerId: formData.venueVariable.venueManagerId,
+          isFree: formData.venueVariable.isFree,
         },
         bookingConditions: formData.bookingConditions.map((c: any) => ({
-          descriptionCondition: c.condition,
-          notaBene: c.description,
-          transitionTime: Number(c.transitionTime)
+          descriptionCondition: c.descriptionCondition,
+          notaBene: c.notaBene,
+          transitionTime: Number(c.transitionTime),
+          depositRequiredPercent: Number(c.depositRequiredPercent),
+          paymentComplementTimeBeforeEvent: Number(c.paymentComplementTimeBeforeEvent)
         })),
         venueAmenities: formData.venueAmenities.map((a: any) => ({
           resourceName: a.resourceName,
@@ -337,21 +380,6 @@ export default function EditVenuePage() {
                   />
                 </div>
                   <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-                      Location
-                  </label>
-                  <input
-                    type="text"
-                      id="location"
-                      name="location"
-                      value={formData.location}
-                    onChange={handleInputChange}
-                      placeholder="Enter venue location or pick on map"
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-                  <div>
                     <label htmlFor="organizationId" className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
                     {orgLoading ? (
                       <div className="text-gray-500 text-sm">Loading organizations...</div>
@@ -412,45 +440,96 @@ export default function EditVenuePage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Booking Conditions</label>
                     {formData.bookingConditions.map((cond, idx) => (
-                      <div key={idx} className="flex flex-col gap-2 mb-2 border p-2 rounded">
-                        <input
-                          type="text"
-                          placeholder="Description Condition"
-                          value={cond.condition}
-                          onChange={e => handleBookingConditionChange(e, idx)}
-                          className="px-3 py-2 border rounded text-sm"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Nota Bene"
-                          value={cond.description}
-                          onChange={e => handleBookingConditionDescriptionChange(e, idx)}
-                          className="px-3 py-2 border rounded text-sm"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Transition Time (minutes)"
-                          value={cond.transitionTime}
-                          onChange={e => handleBookingConditionTransitionTimeChange(e, idx)}
-                          className="px-3 py-2 border rounded text-sm"
-                        />
-                        <button type="button" onClick={() => handleRemoveBookingCondition(idx)} className="text-red-500 text-xs">Remove</button>
+                      <div key={idx} className="flex flex-col gap-3 mb-4 border p-4 rounded-lg bg-gray-50">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Description Condition</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. No outside food allowed"
+                              value={cond.descriptionCondition}
+                              onChange={e => handleBookingConditionChange(e, idx)}
+                              className="w-full px-3 py-2 border rounded text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Nota Bene</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Please respect the property"
+                              value={cond.notaBene}
+                              onChange={e => handleBookingConditionDescriptionChange(e, idx)}
+                              className="w-full px-3 py-2 border rounded text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Transition Time (days)</label>
+                            <input
+                              type="number"
+                              placeholder="e.g. 2"
+                              value={cond.transitionTime}
+                              onChange={e => handleBookingConditionTransitionTimeChange(e, idx)}
+                              className="w-full px-3 py-2 border rounded text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Deposit Required (%)</label>
+                            <input
+                              type="number"
+                              placeholder="e.g. 20"
+                              value={cond.depositRequiredPercent}
+                              onChange={e => handleBookingConditionDepositChange(e, idx)}
+                              className="w-full px-3 py-2 border rounded text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Payment Time Before Event (days)</label>
+                            <input
+                              type="number"
+                              placeholder="e.g. 3"
+                              value={cond.paymentComplementTimeBeforeEvent}
+                              onChange={e => handleBookingConditionPaymentTimeChange(e, idx)}
+                              className="w-full px-3 py-2 border rounded text-sm"
+                            />
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => handleRemoveBookingCondition(idx)} className="text-red-500 text-xs self-end hover:text-red-700">Remove Condition</button>
                       </div>
                     ))}
-                    <button type="button" onClick={handleAddBookingCondition} className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800 text-sm mt-2 transition-colors">Add Condition</button>
+                    <button type="button" onClick={handleAddBookingCondition} className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800 text-sm mt-2 transition-colors">Add Booking Condition</button>
                   </div>
                   {/* Venue Variable */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue Amount</label>
-                    <input
-                      type="number"
-                      name="venueAmount"
-                      value={formData.venueVariable.venueAmount}
-                      onChange={handleVenueVariableChange}
-                      placeholder="Enter venue amount"
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
+                  <div className="space-y-4">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="isFree"
+                        name="isFree"
+                        checked={formData.venueVariable.isFree}
+                        onChange={handleVenueVariableIsFreeChange}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor="isFree" className="ml-2 block text-sm font-medium text-gray-700">
+                        Is Free Venue
+                      </label>
+                    </div>
+                    
+                    {!formData.venueVariable.isFree && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Venue Amount</label>
+                        <input
+                          type="number"
+                          name="venueAmount"
+                          value={formData.venueVariable.venueAmount}
+                          onChange={handleVenueVariableChange}
+                          placeholder="Enter venue amount"
+                          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required={!formData.venueVariable.isFree}
+                        />
+                      </div>
+                    )}
                   </div>
                   {/* Venue Amenities */}
                   <div className="mb-4">
@@ -472,12 +551,12 @@ export default function EditVenuePage() {
               <div>
                 <h2 className="text-xl font-semibold mb-6">Venue Location</h2>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pick Venue Location</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Venue Location *</label>
+                  <p className="text-xs text-gray-500 mb-3">Click on the map or search for a location to set your venue address</p>
                   <MapPicker
-                    value={formData.latitude && formData.longitude ? { lat: parseFloat(formData.latitude), lng: parseFloat(formData.longitude) } : undefined}
-                    onChange={handleMapChange}
-                    height="400px"
-                    width="100%"
+                    latitude={formData.latitude ? parseFloat(formData.latitude) : undefined}
+                    longitude={formData.longitude ? parseFloat(formData.longitude) : undefined}
+                    onLocationSelect={handleMapChange}
                   />
                 </div>
               </div>

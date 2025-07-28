@@ -45,6 +45,7 @@ export default function Home() {
 
         // Fetch events
         const eventsResponse = await ApiService.getPubulishedEvents()
+        console.log('Events Response:', eventsResponse)
         if (eventsResponse.success) {
           // Get first 3 events
           const events = eventsResponse.data.slice(0, 3)

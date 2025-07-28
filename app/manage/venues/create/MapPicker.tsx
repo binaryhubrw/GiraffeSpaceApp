@@ -14,7 +14,7 @@ const containerStyle = {
 interface MapPickerProps {
   latitude?: number;
   longitude?: number;
-  onLocationSelect?: (location: { lat: number; lng: number }) => void;
+  onLocationSelect?: (location: { lat: number; lng: number; address?: string }) => void;
 }
 
 export default function MapPicker({
@@ -23,37 +23,76 @@ export default function MapPicker({
   onLocationSelect = () => {},
 }: MapPickerProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [marker, setMarker] = useState<{ lat: number; lng: number } | null>(
-    latitude !== undefined && longitude !== undefined
-      ? { lat: latitude, lng: longitude }
-      : { lat: -1.9441, lng: 30.0619 }
-  );
-  const [center, setCenter] = useState<{ lat: number; lng: number }>(
-    latitude !== undefined && longitude !== undefined
-      ? { lat: latitude, lng: longitude }
-      : { lat: -1.9441, lng: 30.0619 }
-  );
+  const [marker, setMarker] = useState<{ lat: number; lng: number } | null>(null);
+  const [center, setCenter] = useState<{ lat: number; lng: number }>({ lat: -1.9441, lng: 30.0619 });
+  const [address, setAddress] = useState<string>("");
 
   useEffect(() => {
     if (latitude !== undefined && longitude !== undefined) {
-      setCenter({ lat: latitude, lng: longitude });
-      setMarker({ lat: latitude, lng: longitude });
+      const newLocation = { lat: latitude, lng: longitude };
+      setCenter(newLocation);
+      setMarker(newLocation);
+      fetchAddress(newLocation.lat, newLocation.lng);
+    } else {
+      // Clear marker when no coordinates are provided
+      setMarker(null);
+      setAddress("");
     }
   }, [latitude, longitude]);
 
-  const { isLoaded } = useJsApiLoader({
+  const fetchAddress = async (lat: number, lng: number) => {
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+      );
+      const data = await response.json();
+      if (data.status === "OK" && data.results.length > 0) {
+        const formattedAddress = data.results[0].formatted_address;
+        setAddress(formattedAddress);
+        onLocationSelect({ lat, lng, address: formattedAddress });
+      } else {
+        setAddress("");
+        onLocationSelect({ lat, lng });
+      }
+    } catch (error) {
+      console.error("Error fetching address:", error);
+      setAddress("");
+      onLocationSelect({ lat, lng });
+    }
+  };
+
+  const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
     libraries: ["places"],
   });
+
+  // Debug logging
+  useEffect(() => {
+    console.log("MapPicker props:", { latitude, longitude });
+    console.log("MapPicker state:", { marker, center });
+  }, [latitude, longitude, marker, center]);
+
+  if (loadError) {
+    return (
+      <div className="flex items-center justify-center w-full h-[400px] bg-red-50 border border-red-200 rounded-lg">
+        <div className="text-center">
+          <p className="text-red-600 font-medium">Error loading Google Maps</p>
+          <p className="text-sm text-red-500 mt-1">Please check your API key configuration</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleMapClick = useCallback(
     (e: google.maps.MapMouseEvent) => {
       if (e.latLng) {
         const lat = e.latLng.lat();
         const lng = e.latLng.lng();
-        setMarker({ lat, lng });
-        setCenter({ lat, lng });
-        onLocationSelect({ lat, lng });
+        const newLocation = { lat, lng };
+        setMarker(newLocation);
+        setCenter(newLocation);
+        fetchAddress(lat, lng);
+        onLocationSelect(newLocation);
       }
     },
     [onLocationSelect]
@@ -68,9 +107,12 @@ export default function MapPicker({
       const data = await response.json();
       if (data.status === "OK" && data.results.length > 0) {
         const { lat, lng } = data.results[0].geometry.location;
-        setMarker({ lat, lng });
-        setCenter({ lat, lng });
-        onLocationSelect({ lat, lng });
+        const newLocation = { lat, lng };
+        const formattedAddress = data.results[0].formatted_address;
+        setMarker(newLocation);
+        setCenter(newLocation);
+        setAddress(formattedAddress);
+        onLocationSelect({ ...newLocation, address: formattedAddress });
       }
     } catch (error) {
       console.error("Error searching location:", error);
@@ -108,6 +150,12 @@ export default function MapPicker({
           center={center}
           zoom={13}
           onClick={handleMapClick}
+          options={{
+            zoomControl: true,
+            streetViewControl: false,
+            mapTypeControl: true,
+            fullscreenControl: true,
+          }}
         >
           {marker && (
             <Marker
@@ -120,15 +168,28 @@ export default function MapPicker({
       </div>
       {marker && (
         <div className="mt-2 text-sm text-gray-700">
-          <span className="font-medium">Selected Coordinates:</span> {marker.lat.toFixed(6)}, {marker.lng.toFixed(6)}
+          <div className="font-medium mb-1">Selected Location:</div>
+          {address ? (
+            <div className="text-gray-800">{address}</div>
+          ) : (
+            <div className="text-gray-600">Loading address...</div>
+          )}
+          <div className="mt-1 text-xs text-gray-500">
+            Coordinates: {marker.lat.toFixed(6)}, {marker.lng.toFixed(6)}
+          </div>
           <a
             href={`https://maps.google.com/?q=${marker.lat},${marker.lng}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="ml-4 text-blue-600 hover:underline"
+            className="mt-2 inline-block text-blue-600 hover:underline text-xs"
           >
             View on Google Maps
           </a>
+        </div>
+      )}
+      {!marker && (
+        <div className="mt-2 text-sm text-gray-500">
+          Click on the map or search for a location to select coordinates
         </div>
       )}
     </div>

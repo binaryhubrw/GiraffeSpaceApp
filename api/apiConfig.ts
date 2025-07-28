@@ -1,7 +1,6 @@
 import axios, { AxiosRequestHeaders, AxiosProgressEvent } from "axios";
 import { jwtDecode, JwtPayload } from "jwt-decode";
 import type { User, UserResult, UserApiResponse } from "@/data/users";
-
 interface UserFormData {
   [key: string]: any;
 }
@@ -969,7 +968,7 @@ class ApiService {
   static async getBookingByVenueId(venueId: string): Promise<any> {
     try {
       const response = await axios.get(
-        `${this.BASE_URL}/venue-bookings/venue/${venueId}`,
+        `${this.BASE_URL}/venue-bookings/venue/${venueId}/bookings`,
         {
           headers: this.getHeader(),
           withCredentials: true,
@@ -1173,6 +1172,24 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error(`Error canceling event booking with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+  /*** request event publication** */
+  static async requestEventPublication(eventId: string, data: any): Promise<any> {
+    try {
+      const response = await axios.patch(
+        `${this.BASE_URL}/event/${eventId}/request-publish`,
+        data,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error requesting publication for event with ID ${eventId}:`, error);
       throw error;
     }
   }
