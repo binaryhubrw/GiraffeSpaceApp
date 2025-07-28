@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type Organization = {
   organizationName: string;
-  organizationType: string;
+  organizationType: string | null;
   description: string;
   contactEmail: string;
   contactPhone: string;

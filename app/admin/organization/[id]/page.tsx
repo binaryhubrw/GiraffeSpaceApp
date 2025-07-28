@@ -85,6 +85,7 @@ interface Organization {
   venues?: Venue[]
   events?: Event[]
   cancellationReason?: string | null
+  documents?: string[] // Added documents to the interface
 }
 
 const StatusBadge = ({ status, className }: { status: string, className?: string }) => {
@@ -205,6 +206,10 @@ export default function OrganizationDetailPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState("");
+  const [queryDialogOpen, setQueryDialogOpen] = useState(false);
+  const [queryReason, setQueryReason] = useState("");
+  const [queryLoading, setQueryLoading] = useState(false);
+  const [lastQueryMessage, setLastQueryMessage] = useState<string | null>(null);
 
   // Clean and validate the ID
   const validateId = (rawId: string | string[] | undefined): string | null => {
@@ -526,48 +531,109 @@ export default function OrganizationDetailPage() {
                     label="Type"
                     value={organization.organizationType || 'Not specified'}
                   />
-                  <div className="p-4 rounded-lg bg-gray-50">
-                    <p className="text-sm font-medium text-gray-500 mb-3">Supporting Document</p>
-                    {organization.supportingDocument ? (
-                      <Dialog open={docOpen} onOpenChange={setDocOpen}>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className="hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            View Document
-                            <ExternalLink className="h-3 w-3 ml-2" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[80vh]">
-                          <DialogHeader>
-                            <DialogTitle className="flex items-center space-x-2">
-                              <FileText className="w-5 h-5" />
-                              <span>Supporting Document</span>
-                            </DialogTitle>
-                          </DialogHeader>
-                          <div className="w-full h-[60vh] flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden">
-                            {organization.supportingDocument.endsWith('.pdf') ? (
-                              <iframe
-                                src={organization.supportingDocument}
-                                title="Supporting Document"
-                                className="w-full h-full border-none"
-                              />
-                            ) : (
-                              <img
-                                src={organization.supportingDocument}
-                                alt="Supporting Document"
-                                className="max-h-full max-w-full object-contain"
-                              />
-                            )}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    ) : (
-                      <p className="text-sm text-gray-500">No document available</p>
-                    )}
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="font-medium">Status:</span>
+                    <StatusBadge status={organization.status === 'QUERY' ? 'QUERY' : organization.status} />
                   </div>
+                  <div className="p-4 rounded-lg bg-gray-50">
+                    <p className="text-sm font-medium text-gray-500 mb-3">Supporting Documents</p>
+                    {(organization.documents ?? []).length > 0 ? (
+                      <div className="flex flex-col gap-2">
+                        {(organization.documents ?? []).map((doc: string, idx: number) => (
+                          <Dialog key={doc + idx}>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                View Document {(organization.documents ?? []).length > 1 ? idx + 1 : ''}
+                                <ExternalLink className="h-3 w-3 ml-2" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-4xl max-h-[80vh]">
+                              <DialogHeader>
+                                <DialogTitle className="flex items-center space-x-2">
+                                  <FileText className="w-5 h-5" />
+                                  <span>Supporting Document {(organization.documents ?? []).length > 1 ? idx + 1 : ''}</span>
+                                </DialogTitle>
+                              </DialogHeader>
+                              <div className="w-full h-[60vh] flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden">
+                                {doc.endsWith('.pdf') ? (
+                                  <iframe
+                                    src={doc}
+                                    title={`Supporting Document ${idx + 1}`}
+                                    className="w-full h-full border-none"
+                                  />
+                                ) : (
+                                  <img
+                                    src={doc}
+                                    alt={`Supporting Document ${idx + 1}`}
+                                    className="max-h-full max-w-full object-contain"
+                                  />
+                                )}
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No documents available</p>
+                    )}
+                    {/* Query Organization Button and Modal */}
+                    <Dialog open={queryDialogOpen} onOpenChange={setQueryDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="default" size="lg" className="mt-4 flex items-center gap-2" onClick={() => setQueryDialogOpen(true)}>
+                          <FileText className="w-5 h-5" />
+                          Query Organization
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Send Query to Organization</DialogTitle>
+                        </DialogHeader>
+                        <form
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            setQueryLoading(true);
+                            try {
+                              await ApiService.queryOrganization(organization.organizationId, queryReason);
+                              toast.success("Query sent successfully.");
+                              setLastQueryMessage(queryReason);
+                              setOrganization((prev) => prev ? { ...prev, status: "QUERY" } : prev);
+                              setQueryReason("");
+                              setQueryDialogOpen(false);
+                            } catch (err) {
+                              toast.error("Failed to send query.");
+                            } finally {
+                              setQueryLoading(false);
+                            }
+                          }}
+                        >
+                          <Textarea
+                            value={queryReason}
+                            onChange={e => setQueryReason(e.target.value)}
+                            placeholder="Enter your query reason..."
+                            required
+                            className="mb-4"
+                          />
+                          <Button type="submit" disabled={queryLoading}>
+                            {queryLoading ? "Sending..." : "Send Query"}
+                          </Button>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                  {/* Show last query message if available */}
+                  {lastQueryMessage && (
+                    <div className="mt-4 p-4 rounded-lg bg-yellow-50 border border-yellow-200">
+                      <div className="font-semibold text-yellow-800 mb-1 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Last Query Sent to Organization
+                      </div>
+                      <div className="text-yellow-900 text-sm whitespace-pre-line">{lastQueryMessage}</div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">

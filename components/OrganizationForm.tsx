@@ -1,8 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
-import { Building2, AlertCircle, X, FileText, ImageIcon, Upload, Mail, Phone, MapPin, Globe } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Building2, AlertCircle, X, FileText, ImageIcon, Upload, Mail, Phone, MapPin, Globe, Plus } from "lucide-react"
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import ApiService from "@/api/apiConfig";
@@ -21,6 +21,7 @@ interface Organization {
   _id?: string;
   organizationId?: string; // Added for PATCHing
   members?: number; // Added for PATCHing
+  supportingDocuments?: string[]; // Added for PATCHing
 }
 
 interface OrganizationFormProps {
@@ -55,6 +56,9 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [docLimitError, setDocLimitError] = useState("");
+  const [existingDocuments, setExistingDocuments] = useState<string[]>(initialData?.supportingDocuments ?? []);
+  const [removedDocuments, setRemovedDocuments] = useState<string[]>([]);
 
   // Helper to check if a field should be highlighted due to error
   const isFieldError = (field: string) => {
@@ -102,16 +106,50 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
         }
       }
 
-      const jsonBody = {
-        ...formData,
-        members: Number(formData.members) || 0,
-        // Set status based on user role when creating
-        ...(orgId ? {} : { status: user?.roles?.roleName === "ADMIN" ? "APPROVED" : "PENDING" }),
-      };
-
       let res;
-      if (orgId) {
+      let updatedOrgData;
+      let newOrgId = orgId;
+
+      if (!orgId) {
+        // CREATE mode: send all fields and files as FormData
+        const fd = new FormData();
+        fd.append('organizationName', formData.organizationName);
+        fd.append('description', formData.description);
+        fd.append('contactEmail', formData.contactEmail);
+        fd.append('contactPhone', formData.contactPhone);
+        fd.append('address', formData.address);
+        fd.append('organizationType', formData.organizationType);
+        fd.append('city', formData.city);
+        fd.append('country', formData.country);
+        fd.append('postalCode', formData.postalCode);
+        fd.append('stateProvince', formData.stateProvince);
+        fd.append('members', String(formData.members));
+        if (logo) fd.append('logo', logo);
+        if (supportingDocuments) {
+          Array.from(supportingDocuments).forEach(file => fd.append('supportingDocument', file));
+        }
+        res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            // DO NOT set Content-Type for FormData
+          },
+          body: fd,
+        });
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to save organization info");
+        }
+        updatedOrgData = await res.json();
+        newOrgId = updatedOrgData.organizationId || updatedOrgData._id || updatedOrgData.id;
+      } else {
         // EDIT mode
+        const jsonBody = {
+          ...formData,
+          members: Number(formData.members) || 0,
+          // Set status based on user role when creating
+          ...(orgId ? {} : { status: user?.roles?.roleName === "ADMIN" ? "APPROVED" : "PENDING" }),
+        };
         res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}`,
           {
             method: "PUT",
@@ -122,28 +160,15 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
             body: JSON.stringify(jsonBody),
           }
         );
-      } else {
-        // CREATE mode
-        res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`,
-            },
-            body: JSON.stringify(jsonBody),
-          }
-        );
-      }
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to save organization info");
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to save organization info");
+        }
+        updatedOrgData = await res.json();
+        newOrgId = orgId;
       }
 
       // Get the org id for uploads (from edit or create response)
-      let updatedOrgData = await res.json();
-      let newOrgId = orgId;
       if (!orgId && updatedOrgData) {
         newOrgId = updatedOrgData.organizationId || updatedOrgData._id || updatedOrgData.id;
       }
@@ -221,8 +246,30 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
     }
   };
 
+  // When editing, show existing documents and allow removal
+  // Only allow uploading new documents up to (3 - existingDocuments.length + removedDocuments.length)
+  // In handleSubmit, send info to backend to keep only the remaining documents and add new ones
+
+  // Update handleDocumentChange to limit total documents
   const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSupportingDocuments(e.target.files)
+    const files = e.target.files;
+    const allowed = 3 - (existingDocuments.length - removedDocuments.length);
+    if (files && files.length > allowed) {
+      setDocLimitError(`You can only upload up to ${allowed} more document(s).`);
+      // Only keep the allowed number of files
+      const dt = new DataTransfer();
+      Array.from(files).slice(0, allowed).forEach(file => dt.items.add(file));
+      setSupportingDocuments(dt.files);
+    } else {
+      setDocLimitError("");
+      setSupportingDocuments(files);
+    }
+  }
+
+  // Remove an existing document (mark for deletion)
+  const removeExistingDocument = (url: string) => {
+    setRemovedDocuments(prev => [...prev, url]);
+    setExistingDocuments(prev => prev.filter(doc => doc !== url));
   }
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -512,9 +559,42 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Supporting Documents */}
                   <div className="space-y-4">
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                       Supporting Documents
+                      {/* Show plus icon only if less than 3 total documents are selected */}
+                      {(existingDocuments.length - removedDocuments.length + (supportingDocuments?.length || 0) < 3) && (
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById('documents-upload')?.click()}
+                          className="ml-2 p-1 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600 hover:text-blue-800 transition-colors"
+                          title="Add another document"
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                      )}
                     </label>
+                    {/* Show existing documents */}
+                    {existingDocuments.length - removedDocuments.length > 0 && (
+                      <div className="space-y-3 mt-2">
+                        {existingDocuments.map((doc, idx) => (
+                          <div key={doc} className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-200">
+                            <div className="flex items-center gap-3">
+                              <FileText className="h-5 w-5 text-blue-600" />
+                              <span className="text-sm font-medium text-gray-900">Supporting Document {idx + 1}</span>
+                              <a href={doc} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-2">View</a>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeExistingDocument(doc)}
+                              className="p-2 hover:bg-red-100 rounded-lg transition-colors group"
+                            >
+                              <X className="h-4 w-4 text-gray-400 group-hover:text-red-500" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* New uploads */}
                     <div className="relative">
                       <input
                         type="file"
@@ -522,6 +602,7 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                         onChange={handleDocumentChange}
                         className="hidden"
                         id="documents-upload"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                       />
                       <label
                         htmlFor="documents-upload"
@@ -542,14 +623,16 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                                 Click to upload documents
                               </p>
                               <p className="text-sm text-gray-500 mt-1">
-                                PDF, DOC, DOCX up to 10MB each
+                                PDF, DOC, DOCX, JPG, PNG up to 10MB each (max 3 files)
                               </p>
                             </>
                           )}
                         </div>
                       </label>
                     </div>
-                    
+                    {docLimitError && (
+                      <div className="text-red-500 text-sm mt-2">{docLimitError}</div>
+                    )}
                     {supportingDocuments && supportingDocuments.length > 0 && (
                       <div className="space-y-3 mt-4">
                         {Array.from(supportingDocuments).map((file, index) => (

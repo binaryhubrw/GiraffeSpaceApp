@@ -353,6 +353,28 @@ class ApiService {
     }
   }
 
+  /**
+   * Send a query to an organization (e.g., request more info or document)
+   * @param organizationId The ID of the organization
+   * @param reason The reason for the query
+   */
+  static async queryOrganization(organizationId: string, reason: string): Promise<any> {
+    try {
+      const response = await axios.patch(
+        `${this.BASE_URL}/organizations/${organizationId}/query`,
+        { reason },
+        {
+          headers: this.getHeader({ reason }),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error querying organization with ID ${organizationId}:`, error);
+      throw error;
+    }
+  }
+
   //**** RESOURCE ROUTE *** */
 
   /** Get all resources */

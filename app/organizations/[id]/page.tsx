@@ -4,13 +4,14 @@ import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { Users, Calendar, MapPin, Mail, Phone, Globe, ChevronLeft, ChevronDown } from "lucide-react"
+import { Users, Calendar, MapPin, Mail, Phone, Globe, ChevronLeft, ChevronDown, FileText, Shield } from "lucide-react"
 import Link from "next/link"
 
 export default function OrganizationDetailsPage() {
   const { id } = useParams()
   const [organization, setOrganization] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [openDoc, setOpenDoc] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchOrganization = async () => {
@@ -23,11 +24,16 @@ export default function OrganizationDetailsPage() {
           return;
         }
 
-        const response = await fetch("https://giraffespacev2.onrender.com/api/v1/organizations/public")
+        // Fetch a single organization by ID
+        const response = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${id}`)
         const data = await response.json()
         if (data && data.data) {
-          const org = data.data.find((org: any) => org.organizationId === id)
-          setOrganization(org || null)
+          // Default supportingDocuments to [] if null
+          const org = {
+            ...data.data,
+            supportingDocuments: data.data.supportingDocuments || []
+          };
+          setOrganization(org)
         } else {
           setOrganization(null)
         }
@@ -48,217 +54,146 @@ export default function OrganizationDetailsPage() {
     }
   }
 
+  // Format member count with commas
+  const formatMemberCount = (count: number) => {
+    return count?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") || "0";
+  }
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <Header activePage="organizations" />
-
       <main className="flex-1">
-        {/* Back Button */}
-        <div className="bg-gray-50 py-3 sm:py-4">
-          <div className="container-responsive">
-            <Link href="/organizations" className="flex items-center text-gray-600 hover:text-gray-900">
-              <ChevronLeft className="icon-sm mr-1" />
-              <span>Back to Organizations</span>
-            </Link>
-          </div>
-        </div>
-
-        {loading ? (
-          // Loading state
-          <div className="container-responsive section-padding">
-            <div className="flex-center flex-col gap-4">
-              <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-blue-500 border-l-transparent animate-spin"></div>
-              <p className="text-body">Loading organization details...</p>
+        <div className="max-w-4xl mx-auto py-10 px-4">
+          {/* Card */}
+          <div className="bg-white rounded-xl shadow p-8">
+            {/* Top: Logo, Name, Status */}
+            <div className="flex items-center gap-4 mb-8">
+              {organization.logo && (
+                <img src={organization.logo} alt="Logo" className="w-16 h-16 rounded-lg object-cover border" />
+              )}
+              <div>
+                <h1 className="text-2xl font-bold">{organization.organizationName}</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`badge ${organization.status === "APPROVED" ? "badge-green" : "badge-yellow"}`}>
+                    {organization.status}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
-        ) : !organization ? (
-          // Organization not found
-          <div className="container-responsive section-padding text-center">
-            <h2 className="heading-2 mb-4">Organization Not Found</h2>
-            <p className="text-body mb-8">The organization you're looking for doesn't exist or has been removed.</p>
-            <Link href="/organizations" className="btn-primary">
-              Return to Organizations
-            </Link>
-          </div>
-        ) : (
-          <>
-            {/* Header with logo and basic info */}
-            <div className="bg-white border-b">
-              <div className="container-responsive section-padding">
-                <div className="flex-responsive gap-responsive items-center md:items-start">
-                  <div className="image-container-md flex-center bg-white p-4 border rounded-lg">
-                    <img
-                      src={organization.logo || "/placeholder.svg"}
-                      alt={organization.organizationName}
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  </div>
+            {/* Basic Information Header */}
+            <div className="flex items-center gap-2 mb-6">
+              <span className="bg-blue-100 p-2 rounded-lg">
+                <Users className="w-6 h-6 text-blue-600" />
+              </span>
+              <h2 className="text-xl font-semibold">Basic Information</h2>
+            </div>
+            {/* Info Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">Organization Name</span>
+                </div>
+                <div>{organization.organizationName}</div>
+              </div>
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">Contact Email</span>
+                </div>
+                <div>{organization.contactEmail}</div>
+              </div>
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">Description</span>
+                </div>
+                <div>{organization.description}</div>
+              </div>
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <Phone className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">Contact Phone</span>
+                </div>
+                <div>{organization.contactPhone}</div>
+              </div>
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">Type</span>
+                </div>
+                <div>{organization.organizationType}</div>
+              </div>
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">Address</span>
+                </div>
+                <div>{organization.address}</div>
+              </div>
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">Members</span>
+                </div>
+                <div>{organization.members}</div>
+              </div>
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">Created</span>
+                </div>
+                <div>{new Date(organization.createdAt).toLocaleDateString()}</div>
+              </div>
+              <div>
+                <div className="mb-4 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-gray-500" />
+                  <span className="font-medium">Last Updated</span>
+                </div>
+                <div>{new Date(organization.updatedAt).toLocaleDateString()}</div>
+              </div>
+            </div>
+            {/* Supporting Documents */}
+            <div className="mt-6">
+              <div className="font-semibold mb-2">Supporting Documents</div>
+              {organization.supportingDocuments && organization.supportingDocuments.length > 0 ? (
+                <div className="flex flex-wrap gap-4">
+                  {organization.supportingDocuments.map((doc: string, idx: number) => (
+                    <button
+                      key={doc + idx}
+                      onClick={() => setOpenDoc(doc)}
+                      className="px-4 py-2 border rounded bg-gray-50 hover:bg-blue-50 text-blue-700 flex items-center gap-2"
+                    >
+                      <FileText className="w-5 h-5" /> View Document {idx + 1}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-gray-500">No documents available</div>
+              )}
 
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="flex flex-wrap gap-2 mb-3 justify-center md:justify-start">
-                      <span className="badge-blue">
-                        {organization.organizationType}
-                      </span>
-                    </div>
-
-                    <h1 className="heading-1 mb-2">{organization.organizationName}</h1>
-                    <p className="text-body mb-4">{organization.description}</p>
-
-                    <div className="flex flex-wrap gap-4 sm:gap-6 text-small justify-center md:justify-start mb-4">
-                      <div className="flex items-center">
-                        <Users className="icon-sm mr-2 text-gray-400" />
-                        <span>{organization.venues.length} venues</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Calendar className="icon-sm mr-2 text-gray-400" />
-                        <span>{organization.members} members</span>
-                      </div>
-                    </div>
-
-                    {organization.venues.length > 0 && (
-                      <button 
-                        onClick={scrollToVenues}
-                        className="btn-primary flex items-center gap-2"
-                      >
-                        View Venues <ChevronDown className="icon-sm" />
-                      </button>
+              {/* Modal */}
+              {openDoc && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 max-w-2xl w-full relative">
+                    <button
+                      onClick={() => setOpenDoc(null)}
+                      className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                    >
+                      Close
+                    </button>
+                    {openDoc.endsWith('.pdf') ? (
+                      <iframe src={openDoc} className="w-full h-[70vh]" title="Supporting Document" />
+                    ) : (
+                      <img src={openDoc} alt="Supporting Document" className="max-h-[70vh] mx-auto" />
                     )}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
-
-            {/* Main content */}
-            <div className="container-responsive section-padding">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left column - About and Contact */}
-                <div className="lg:col-span-2 space-y-6 sm:space-y-8">
-                  <div className="card-base card-padding">
-                    <h2 className="heading-2 mb-4">About</h2>
-                    <p className="text-body">{organization.description}</p>
-                  </div>
-
-                  <div className="card-base card-padding">
-                    <h2 className="heading-2 mb-4">Contact Information</h2>
-                    <div className="space-y-3">
-                      <div className="flex items-start">
-                        <MapPin className="icon-md mr-3 text-gray-400 mt-0.5" />
-                        <span className="text-body">{organization.address}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Mail className="icon-md mr-3 text-gray-400" />
-                        <a href={`mailto:${organization.contactEmail}`} className="text-body text-blue-600 hover:underline">
-                          {organization.contactEmail}
-                        </a>
-                      </div>
-                      <div className="flex items-center">
-                        <Phone className="icon-md mr-3 text-gray-400" />
-                        <span className="text-body">{organization.contactPhone}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right column - Status Section */}
-                <div>
-                  <div className="card-base card-padding">
-                    <h2 className="heading-2 mb-4">Organization Status</h2>
-                    <div className="space-y-3">
-                      <div className="flex-between">
-                        <span className="text-body">Status</span>
-                        <span className={`badge ${
-                          organization.status === "APPROVED" 
-                            ? "badge-green"
-                            : "badge-blue"
-                        }`}>
-                          {organization.status}
-                        </span>
-                      </div>
-                      <div className="flex-between">
-                        <span className="text-body">Type</span>
-                        <span className="badge-blue">
-                          {organization.organizationType}
-                        </span>
-                      </div>
-                      <div className="flex-between">
-                        <span className="text-body">Members</span>
-                        <span className="text-body">{organization.members}</span>
-                      </div>
-                      <div className="flex-between">
-                        <span className="text-body">Venues</span>
-                        <span className="text-body">{organization.venues.length}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Venues Section */}
-            {organization.venues.length > 0 && (
-              <div id="venues-section" className="bg-gray-50 py-16">
-                <div className="container-responsive">
-                  <div className="text-center mb-12">
-                    <h2 className="heading-1 mb-4">Available Venues</h2>
-                    <p className="text-body max-w-2xl mx-auto">
-                      Explore our {organization.venues.length} venues available for your events. 
-                      Each venue offers unique features and facilities to make your event successful.
-                    </p>
-                    <div className="mt-6">
-                      <Link
-                        href={`/venues?organizationId=${organization.organizationId}`}
-                        className="btn-primary inline-flex items-center"
-                      >
-                        View All Organization Venues
-                      </Link>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {organization.venues.slice(0, 3).map((venue: any) => (
-                      <div key={venue.venueId} className="card-base bg-white">
-                        {/* Venue Image */}
-                        <div className="h-48 relative">
-                          <img
-                            src={venue.mainPhotoUrl || "/placeholder.svg"}
-                            alt={venue.venueName}
-                            className="w-full h-full object-cover"
-                          />
-                          <span className="absolute top-2 right-2 badge-blue">
-                            {venue.venueTypeId}
-                          </span>
-                        </div>
-
-                        {/* Venue Details */}
-                        <div className="p-6">
-                          <h3 className="text-xl font-bold mb-4">{venue.venueName}</h3>
-                          <div className="space-y-2 text-sm text-gray-600 mb-4">
-                            <div className="flex items-center">
-                              <MapPin className="h-4 w-4 mr-2 text-gray-400" />
-                              <span>{venue.location}</span>
-                            </div>
-                            <div className="flex items-center">
-                              <Users className="h-4 w-4 mr-2 text-gray-400" />
-                              <span>Capacity: {venue.capacity} people</span>
-                            </div>
-                          </div>
-                          <Link
-                            href={`/venues/${venue.venueId}`}
-                            className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors duration-200"
-                          >
-                            View Details
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+          </div>
+        </div>
       </main>
-
       <Footer />
     </div>
   )

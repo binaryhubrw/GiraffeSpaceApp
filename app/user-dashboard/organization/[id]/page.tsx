@@ -23,7 +23,7 @@ interface Organization {
   country: string | null
   postalCode: string | null
   stateProvince: string | null
-  supportingDocument: string | null
+  supportingDocuments: string[] | null
   logo: string | null
   status: string
   createdAt: string
@@ -55,6 +55,7 @@ export default function UserOrgDetailPage() {
   const [updating, setUpdating] = useState(false)
   const [responseMessage, setResponseMessage] = useState<string | null>(null)
   const [responseType, setResponseType] = useState<'success' | 'error' | null>(null)
+  const [openDoc, setOpenDoc] = useState<string | null>(null);
 
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string)
 
@@ -166,10 +167,10 @@ export default function UserOrgDetailPage() {
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
           {organization.logo && (
-              <div>
-                <img src={organization.logo} alt="Logo" className="w-24 h-24 object-contain border rounded" />
-              </div>
-            )}
+            <div>
+              <img src={organization.logo} alt="Logo" className="w-24 h-24 object-contain border rounded" />
+            </div>
+          )}
             <div>
               <p className="text-sm text-gray-500">Name</p>
               <p className="font-medium">{organization.organizationName}</p>
@@ -186,19 +187,47 @@ export default function UserOrgDetailPage() {
               <p className="text-sm text-gray-500">Members</p>
               <p className="text-sm">{organization.members ?? 0}</p>
             </div>
-            {organization.supportingDocument && (
-              <div>
-                <p className="text-sm text-gray-500">Supporting Document</p>
-                <a
-                  href={organization.supportingDocument}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline text-sm flex items-center gap-1"
-                >
-                  View Document
-                </a>
-              </div>
-            )}
+            {/* Replace supporting document display with the provided code */}
+            <div>
+              <p className="text-sm text-gray-500">Supporting Documents</p>
+              {(organization.supportingDocuments?.length ?? 0) > 0 ? (
+                <div className="flex flex-col gap-4">
+                  {(organization.supportingDocuments ?? []).slice(0, 3).map((doc: string, idx: number) => (
+                    <div key={doc + idx} className="flex items-center gap-3">
+                      <span className="font-medium text-gray-700">Supporting Document {idx + 1}</span>
+                      <button
+                        onClick={() => setOpenDoc(doc)}
+                        className="px-4 py-2 border rounded bg-gray-50 hover:bg-blue-50 text-blue-700 flex items-center gap-2"
+                      >
+                        View
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">No documents provided</p>
+              )}
+
+              {/* Modal */}
+              {openDoc && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 max-w-2xl w-full relative">
+                    <button
+                      onClick={() => setOpenDoc(null)}
+                      className="absolute top-2 right-2 text-gray-500 hover:text-red-600 focus:outline-none"
+                      aria-label="Close modal"
+                    >
+                      <XCircle className="w-7 h-7" />
+                    </button>
+                    {openDoc.endsWith('.pdf') ? (
+                      <iframe src={openDoc} className="w-full h-[70vh]" title="Supporting Document" />
+                    ) : (
+                      <img src={openDoc} alt="Supporting Document" className="max-h-[70vh] mx-auto" />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           <div className="space-y-4">
             <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400" /><p>{organization.contactEmail}</p></div>
