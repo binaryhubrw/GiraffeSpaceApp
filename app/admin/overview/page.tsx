@@ -97,14 +97,17 @@ export default function AdminOverview() {
     if (!autoRefresh) return;
 
     const refreshTimer = setInterval(() => {
-      Promise.all([ApiService.getAllEvents(), ApiService.getAllVenues()])
+      Promise.all([ApiService.getAllEvents(), ApiService.getAllVenueAdminOnly()])
         .then(([eventsRes, venuesRes]) => {
-          setEvents(
-            Array.isArray(eventsRes) ? eventsRes : eventsRes.data || []
-          );
-          setVenues(
-            Array.isArray(venuesRes) ? venuesRes : venuesRes.data || []
-          );
+          // Handle events response
+          if (eventsRes.success && eventsRes.data) {
+            setEvents(eventsRes.data);
+          }
+          
+          // Handle venues response
+          if (venuesRes.success && venuesRes.data) {
+            setVenues(venuesRes.data);
+          }
         })
         .catch((err) => {
           console.error("Auto refresh failed:", err);
@@ -119,10 +122,35 @@ export default function AdminOverview() {
     setError(null);
     Promise.all([ApiService.getAllEvents(), ApiService.getAllVenueAdminOnly()])
       .then(([eventsRes, venuesRes]) => {
-        setEvents(Array.isArray(eventsRes) ? eventsRes : eventsRes.data || []);
-        setVenues(Array.isArray(venuesRes) ? venuesRes : venuesRes.data || []);
+        console.log("Events API Response:", eventsRes);
+        console.log("Venues API Response:", venuesRes);
+        
+        // Handle events response
+        if (eventsRes.success && eventsRes.data) {
+          setEvents(eventsRes.data);
+        } else {
+          console.error("Failed to fetch events:", eventsRes);
+          setEvents([]);
+        }
+        
+        // Handle venues response
+        if (venuesRes.success && venuesRes.data) {
+          setVenues(venuesRes.data);
+        } else {
+          console.error("Failed to fetch venues:", venuesRes);
+          setVenues([]);
+        }
+        
+        // Show success message
+        if (eventsRes.success && venuesRes.success) {
+          toast({
+            title: "Data Loaded",
+            description: `Loaded ${eventsRes.data?.length || 0} events and ${venuesRes.data?.length || 0} venues successfully.`,
+          });
+        }
       })
       .catch((err) => {
+        console.error("Error fetching data:", err);
         setError("Failed to load data.");
       })
       .finally(() => setLoading(false));
@@ -130,9 +158,7 @@ export default function AdminOverview() {
 
   // Filter for pending status
   const pendingEvents = events.filter(
-    (event) =>
-      event.status?.toUpperCase?.() === "PENDING" ||
-      event.status?.toUpperCase?.() === "DRAFT"
+    (event) => event.eventStatus === "REQUESTED"
   );
   const pendingVenues = venues.filter(
     (venue) => venue.status?.toUpperCase?.() === "PENDING"
@@ -325,7 +351,7 @@ export default function AdminOverview() {
     totalVenues: venues.length,
     pendingApprovals: pendingEvents.length + pendingVenues.length,
     approvedEvents: events.filter(
-      (event) => event.status?.toUpperCase?.() === "APPROVED"
+      (event) => event.eventStatus === "APPROVED"
     ).length,
     approvedVenues: venues.filter(
       (venue) => venue.status?.toUpperCase?.() === "APPROVED"
@@ -347,7 +373,7 @@ export default function AdminOverview() {
       <h2 className="text-2xl font-bold mb-4">Admin Overview</h2>
       {/* Statistics Cards */}
       {showStatistics && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -374,10 +400,21 @@ export default function AdminOverview() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
+                  <p className="text-sm text-gray-600">Pending Events</p>
+                  <p className="text-2xl font-bold">{pendingEvents.length}</p>
+                </div>
+                <Clock className="h-8 w-8 text-yellow-500" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
                   <p className="text-sm text-gray-600">Pending Approvals</p>
                   <p className="text-2xl font-bold">{stats.pendingApprovals}</p>
                 </div>
-                <AlertTriangle className="h-8 w-8 text-blue-600" />
+                <AlertTriangle className="h-8 w-8 text-orange-500" />
               </div>
             </CardContent>
           </Card>
@@ -388,7 +425,7 @@ export default function AdminOverview() {
                   <p className="text-sm text-gray-600">Approved Events</p>
                   <p className="text-2xl font-bold">{stats.approvedEvents}</p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-blue-600" />
+                <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
             </CardContent>
           </Card>
@@ -399,7 +436,7 @@ export default function AdminOverview() {
                   <p className="text-sm text-gray-600">Approved Venues</p>
                   <p className="text-2xl font-bold">{stats.approvedVenues}</p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-blue-600" />
+                <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
             </CardContent>
           </Card>
@@ -426,19 +463,33 @@ export default function AdminOverview() {
                     className="flex items-center justify-between p-3 border rounded-lg bg-white"
                   >
                     <div>
-                      <p className="font-medium">{event.eventTitle}</p>
+                      <p className="font-medium">{event.eventName}</p>
                       <p className="text-sm text-gray-600">
-                        Start Date:{" "}
-                        {event.startDate
-                          ? new Date(event.startDate).toLocaleDateString()
-                          : "-"}
+                        Type: {event.eventType}
                         <br />
-                        End Date:{" "}
-                        {event.endDate
-                          ? new Date(event.endDate).toLocaleDateString()
-                          : "-"}
-                        <br />
-                        Status: {event.status?.toUpperCase()}
+                        {event.bookingDates && event.bookingDates.length > 0 ? (
+                          <>
+                            Start Date:{" "}
+                            {new Date(event.bookingDates[0].date).toLocaleDateString()}
+                            <br />
+                            {event.bookingDates.length > 1 && (
+                              <>
+                                End Date:{" "}
+                                {new Date(event.bookingDates[event.bookingDates.length - 1].date).toLocaleDateString()}
+                                <br />
+                              </>
+                            )}
+                          </>
+                        ) : (
+                          "No dates set"
+                        )}
+                        Status: {event.eventStatus}
+                        {event.maxAttendees && (
+                          <>
+                            <br />
+                            Max Attendees: {event.maxAttendees.toLocaleString()}
+                          </>
+                        )}
                       </p>
                       {showCountdowns && (
                         <p className="text-sm text-gray-600">
@@ -450,20 +501,15 @@ export default function AdminOverview() {
                       )}
                     </div>
                     <div className="flex space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleApproveEvent(event.eventId)}
-                      >
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRejectEvent(event.eventId)}
-                      >
-                        <XCircle className="h-4 w-4 text-red-600" />
-                      </Button>
+                     <Link href={`/admin/events/${event.eventId}`}>
+                        <Button
+                          variant="outline"
+                          className="flex items-center gap-2"
+                        >
+                          <Eye className="w-4 h-4" />
+                          View
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 ))

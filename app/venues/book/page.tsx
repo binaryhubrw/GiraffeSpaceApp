@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, ReactNode } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -38,6 +38,7 @@ import { toast } from "sonner"
 import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useUserOrganizations } from "@/hooks/useUserOrganizations"
+import { useBooking } from "@/contexts/booking-context"
 
 interface Guest {
   guestName: string
@@ -75,11 +76,12 @@ const steps = [
 ]
 
 export default function CreateEventForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { user } = useAuth();
-  const { organizations, loading: orgLoading } = useUserOrganizations(user?.userId);
-  const [selectedOrgId, setSelectedOrgId] = useState<string>("");
+  const router = useRouter()
+  const { user } = useAuth()
+  const { setBookingData } = useBooking()
+  const { organizations, loading: orgLoading } = useUserOrganizations(user?.userId)
+  const searchParams = useSearchParams()
+  const [selectedOrgId, setSelectedOrgId] = useState<string>("")
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<EventFormData>({
     eventTitle: "",
@@ -97,17 +99,17 @@ export default function CreateEventForm() {
     expectedGuests: "",
     socialMediaLinks: "",
   })
-const [prefilledVenue, setPrefilledVenue] = useState<{
-  location: ReactNode
-  id: string;
-  name: string;
-  capacity: ReactNode;
-} | null>(null);
+  const [prefilledVenue, setPrefilledVenue] = useState<{
+    location: string
+    id: string;
+    name: string;
+    capacity: number;
+  } | null>(null);
   const [venueError, setVenueError] = useState<string | null>(null);
   const [prefilledDate, setPrefilledDate] = useState<string | null>(null);
 
   useEffect(() => {
-    if (organizations.length === 1) {
+    if (organizations && organizations.length === 1) {
       setSelectedOrgId(organizations[0].organizationId);
     }
   }, [organizations]);
@@ -273,9 +275,27 @@ const [prefilledVenue, setPrefilledVenue] = useState<{
       });
       formDataToSend.append("guests", JSON.stringify(guestsData.filter((guest) => guest.guestName.trim())));
       
-      await ApiService.createEvent(formDataToSend)
+      const response = await ApiService.createEvent(formDataToSend)
       toast.success("Event created successfully!")
-      router.push("/user-dashboard/events")
+      
+      // Extract booking ID from the response
+      const bookingId = response.data?.venueBookings?.[0]?.bookingId
+      
+      if (bookingId) {
+        // Store the response data in context
+        setBookingData({
+          event: response.data.event,
+          eventVenues: response.data.eventVenues,
+          venueBookings: response.data.venueBookings,
+          eventGuests: response.data.eventGuests
+        })
+        
+        // Navigate to payment page with booking ID
+        router.push(`/venues/book/payment/${bookingId}`)
+      } else {
+        // Fallback to venue ID if booking ID is not available
+        router.push(`/venues/book/payment/${formData.venueId}`)
+      }
     } catch (err: any) {
       console.error("Error creating event:", err?.response);
       toast.error(err?.response?.data?.message || "Failed to create event")
@@ -376,7 +396,7 @@ const [prefilledVenue, setPrefilledVenue] = useState<{
               {/* Organization selection with explanation */}
               {orgLoading ? (
                 <div className="text-gray-500">Loading organizations...</div>
-              ) : organizations.length > 0 ? (
+              ) : organizations && organizations.length > 0 ? (
                     <div>
                   <Label className="text-base font-medium">Organization</Label>
                   <div className="text-xs text-gray-500 mb-2">
@@ -457,7 +477,7 @@ const [prefilledVenue, setPrefilledVenue] = useState<{
               {/* Organization selection with explanation */}
               {orgLoading ? (
                 <div className="text-gray-500">Loading organizations...</div>
-              ) : organizations.length > 0 ? (
+              ) : organizations && organizations.length > 0 ? (
                 <div>
                   <Label className="text-base font-medium">Organization</Label>
                   <div className="text-xs text-gray-500 mb-2">

@@ -342,6 +342,9 @@ export default function CreateVenuePage() {
         formDataToSend.append("managerId", user.userId);
       }
 
+
+      console.log("Submitting venue data:", formDataToSend);
+
       const response = await ApiService.createVenue(formDataToSend);
       
       if (response.success) {
@@ -446,16 +449,20 @@ export default function CreateVenuePage() {
                       <label htmlFor="bookingType" className="block text-sm font-medium text-gray-700 mb-1">
                         Booking Type
                       </label>
-                      <input
-                        type="text"
+                      <select
                         id="bookingType"
                         name="bookingType"
                         value={formData.bookingType || ''}
                         onChange={e => setFormData(prev => ({ ...prev, bookingType: e.target.value }))}
-                        placeholder="e.g. Daily"
                         className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
-                      />
+                      >
+                        <option value="">Select booking type</option>
+                        <option value="DAILY">Daily</option>
+                        <option value="HOURLY">Hourly</option>
+                        <option value="WEEKLY">Weekly</option>
+                        <option value="MONTHLY">Monthly</option>
+                      </select>
                     </div>
                   </div>
                   {/* New: Booking Conditions */}

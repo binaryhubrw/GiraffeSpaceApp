@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
-import { MapPicker } from "../create/MapPicker";
+
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -166,6 +166,8 @@ export default function VenueDetailsPage() {
         });
         // Refresh venue details
         const response = await ApiService.getVenueById(venue.venueId);
+       
+
         if (response.success) setVenue(response.data);
         toast.success("Sub image added successfully.");
       } catch (err) {
@@ -209,6 +211,7 @@ export default function VenueDetailsPage() {
     const fetchVenueDetails = async () => {
       try {
         const response = await ApiService.getVenueById(params.id as string);
+         console.log("venue details response:", response);
         if (response.success) {
           setVenue(response.data);
           // Initialize time slots for the current date
@@ -448,6 +451,10 @@ export default function VenueDetailsPage() {
                 <p className="text-gray-800">{venue.capacity} people</p>
               </div>
               <div>
+                <h3 className="text-lg font-semibold mb-2">Booking Type</h3>
+                <p className="text-gray-800">{venue.bookingType}</p>
+              </div>
+              <div>
                 <h3 className="text-lg font-semibold mb-2">Amount</h3>
                 <p className="text-gray-800">${venue.amount.toFixed(2)}</p>
               </div>
@@ -499,11 +506,11 @@ export default function VenueDetailsPage() {
                     <br />
                     Nota Bene: {condition.notaBene}
                     <br />
-                    Transition Time: {condition.transitionTime} minutes
+                    Transition Time: {condition.transitionTime} day
                     <br />
                     Deposit Required: {condition.depositRequiredPercent}%
                     <br />
-                    Payment Complement Time: {condition.paymentComplementTimeBeforeEvent} minutes
+                    Payment Complement Time: {condition.paymentComplementTimeBeforeEvent} day
                   </li>
                 ))}
               </ul>

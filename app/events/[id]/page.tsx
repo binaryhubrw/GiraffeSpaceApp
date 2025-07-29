@@ -163,7 +163,7 @@ export default function EventDetails() {
                 <CardContent className="p-6">
                   <div className="flex flex-wrap gap-3">
                     <Button asChild size="lg" className="flex-1 min-w-[200px]">
-                      <Link href={isLoggedIn ? `/events/${params.id}/register` : "/login"}>
+                      <Link href={isLoggedIn ? (event.isEntryPaid ? `/events/${params.id}/buy-tickets` : `/events/${params.id}/registration`) : "/login"}>
                         <Ticket className="h-4 w-4 mr-2" />
                         {event.isEntryPaid ? "Buy Tickets" : "Register Now"}
                       </Link>

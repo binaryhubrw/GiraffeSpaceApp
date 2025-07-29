@@ -18,8 +18,6 @@ import { useAuth } from "@/contexts/auth-context"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import Link from "next/link"
-import { useAttendee } from "@/context/AttendeeContext"
-import { useRouter } from "next/navigation"
 
 interface EventData {
   eventId: string
@@ -82,8 +80,6 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
     },
   ])
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const { setAttendees: setContextAttendees } = useAttendee();
-  const router = useRouter();
 
   // Fetch full user profile
   useEffect(() => {
@@ -217,26 +213,8 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
       // Simulate registration API call
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      // --- Ticket assignment logic ---
-      let ticketAssignmentSuccess = true;
-      try {
-        if (ApiService.assignTicketsToUser) {
-          await ApiService.assignTicketsToUser(eventId, fullUser?.userId, attendees);
-        } else {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-        }
-      } catch (err) {
-        ticketAssignmentSuccess = false;
-      }
-      if (!ticketAssignmentSuccess) {
-        setError("Registration succeeded, but ticket assignment failed. Please contact support.");
-        setSubmitting(false);
-        return;
-      }
-      // --- End ticket assignment logic ---
-
-      setContextAttendees(attendees); // Store in context
-      router.push(`/events/${eventId}/buy-tickets`); // Navigate to buy-tickets
+      // Registration successful
+      setSuccess(true)
     } catch (err) {
       setError("Failed to register for the event. Please try again.")
     } finally {

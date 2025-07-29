@@ -29,6 +29,8 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useParams } from "next/navigation"
 import ApiService from "@/api/apiConfig"
+import { useBooking } from "@/contexts/booking-context"
+import { toast } from "sonner"
 
 interface VenueBookingData {
   bookingId: string
@@ -110,61 +112,10 @@ const paymentMethods: PaymentMethod[] = [
   },
 ]
 
-// Mock logged-in user
-const mockLoggedInUser = {
-  userId: "5f726607-0112-4474-8e43-fa9af91bd2b7",
-  firstName: "John",
-  lastName: "Doe",
-  email: "john.doe@example.com",
-  phoneNumber: "+1234567890",
-  organization: "Tech Corp",
-}
-
-// Mock venue booking data
-const mockVenueBookingData: VenueBookingData = {
-  bookingId: "fcdc9e82-b0f6-481b-b9e8-3cb77667a6e5",
-  eventId: "980ed166-1202-4807-839c-386212d75dbf",
-  venueId: "eda25e91-ff83-4cbb-8ef6-d90503eb77a2",
-  eventTitle: "Tech Innovation Summit 2025",
-  bookingDates: [{ date: "2025-08-30" }, { date: "2025-08-31" }],
-  bookingReason: "CONFERENCE",
-  venue: {
-    venueName: "Virunga Tents",
-    description: "Premium venue perfect for conferences, meetings, and corporate events with modern facilities",
-    capacity: 1002,
-    venueLocation: "Nyarugenge, Kigali",
-    mainPhotoUrl:
-      "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082307/venues/main_photos/y6tbsfzxqouvd3v8lmcq.jpg",
-    photoGallery: [
-      "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082309/venues/gallery/l3t9thji8ahdbh8kxmxu.jpg",
-      "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082310/venues/gallery/uo5frltdutjxbrwijgem.jpg",
-    ],
-    basePrice: 2500,
-    bookingType: "DAILY",
-    amenities: ["WiFi", "Projector", "Sound System", "Catering", "Parking", "AC"],
-  },
-  organizer: {
-    firstName: mockLoggedInUser.firstName,
-    lastName: mockLoggedInUser.lastName,
-    email: mockLoggedInUser.email,
-    phoneNumber: mockLoggedInUser.phoneNumber,
-    organization: mockLoggedInUser.organization,
-  },
-  pricing: {
-    baseAmount: 5000, // 2 days × $2500
-    discountPercent: 10,
-    discountAmount: 500,
-    taxPercent: 18,
-    taxAmount: 810, // (5000 - 500) × 0.18
-    totalAmount: 5310,
-  },
-  bookingStatus: "PENDING_PAYMENT",
-  createdAt: "2025-07-22T23:41:22.379Z",
-}
-
 export default function PayVenueBooking() {
   const params = useParams()
   const bookingId = params.bookingId as string
+  const { bookingData: contextBookingData } = useBooking()
   
   const [bookingData, setBookingData] = useState<VenueBookingData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -175,6 +126,7 @@ export default function PayVenueBooking() {
 
   // Form state
   const [paymentMethod, setPaymentMethod] = useState<string>("")
+  const [amountPaid, setAmountPaid] = useState<number>(0)
   const [cardDetails, setCardDetails] = useState({
     cardNumber: "",
     expiryDate: "",
@@ -194,9 +146,100 @@ export default function PayVenueBooking() {
     const fetchBookingData = async () => {
       try {
         setLoading(true)
-        // Use mock data for now to ensure page displays correctly
+        
+        // If we have booking data from context, use it
+        if (contextBookingData && contextBookingData.venueBookings) {
+          const venueBooking = contextBookingData.venueBookings.find(
+            (booking: any) => booking.bookingId === bookingId
+          )
+          
+          if (venueBooking) {
+            // Transform context data to match the expected format
+            const transformedData: VenueBookingData = {
+              bookingId: venueBooking.bookingId,
+              eventId: venueBooking.eventId,
+              venueId: venueBooking.venueId,
+              eventTitle: contextBookingData.event.eventName,
+              bookingDates: venueBooking.bookingDates,
+              bookingReason: venueBooking.bookingReason,
+              venue: {
+                venueName: venueBooking.venue.venueName,
+                description: venueBooking.venue.description || "",
+                capacity: venueBooking.venue.capacity,
+                venueLocation: venueBooking.venue.venueLocation,
+                mainPhotoUrl: venueBooking.venue.mainPhotoUrl,
+                photoGallery: venueBooking.venue.photoGallery || [],
+                basePrice: venueBooking.venue.venueVariables?.[0]?.venueAmount || 0,
+                bookingType: venueBooking.venue.bookingType,
+                amenities: []
+              },
+              organizer: {
+                firstName: venueBooking.user.firstName,
+                lastName: venueBooking.user.lastName,
+                email: venueBooking.user.email,
+                phoneNumber: venueBooking.user.phoneNumber
+              },
+              pricing: {
+                baseAmount: venueBooking.amountToBePaid,
+                discountPercent: 0,
+                discountAmount: 0,
+                taxPercent: 0,
+                taxAmount: 0,
+                totalAmount: venueBooking.amountToBePaid
+              },
+              bookingStatus: venueBooking.bookingStatus,
+              createdAt: venueBooking.createdAt
+            }
+            
+            setBookingData(transformedData)
+            setLoading(false)
+            return
+          }
+        }
+        
+        // Fallback to mock data if context data is not available
         await new Promise((resolve) => setTimeout(resolve, 1000)) // Simulate loading
-        setBookingData(mockVenueBookingData)
+        // Mock venue booking data
+        setBookingData({
+          bookingId: "fcdc9e82-b0f6-481b-b9e8-3cb77667a6e5",
+          eventId: "980ed166-1202-4807-839c-386212d75dbf",
+          venueId: "eda25e91-ff83-4cbb-8ef6-d90503eb77a2",
+          eventTitle: "Tech Innovation Summit 2025",
+          bookingDates: [{ date: "2025-08-30" }, { date: "2025-08-31" }],
+          bookingReason: "CONFERENCE",
+          venue: {
+            venueName: "Virunga Tents",
+            description: "Premium venue perfect for conferences, meetings, and corporate events with modern facilities",
+            capacity: 1002,
+            venueLocation: "Nyarugenge, Kigali",
+            mainPhotoUrl:
+              "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082307/venues/main_photos/y6tbsfzxqouvd3v8lmcq.jpg",
+            photoGallery: [
+              "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082309/venues/gallery/l3t9thji8ahdbh8kxmxu.jpg",
+              "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082310/venues/gallery/uo5frltdutjxbrwijgem.jpg",
+            ],
+            basePrice: 2500,
+            bookingType: "DAILY",
+            amenities: ["WiFi", "Projector", "Sound System", "Catering", "Parking", "AC"],
+          },
+          organizer: {
+            firstName: "John",
+            lastName: "Doe",
+            email: "john.doe@example.com",
+            phoneNumber: "+1234567890",
+            organization: "Tech Corp",
+          },
+          pricing: {
+            baseAmount: 5000, // 2 days × $2500
+            discountPercent: 10,
+            discountAmount: 500,
+            taxPercent: 18,
+            taxAmount: 810, // (5000 - 500) × 0.18
+            totalAmount: 5310,
+          },
+          bookingStatus: "PENDING_PAYMENT",
+          createdAt: "2025-07-22T23:41:22.379Z",
+        })
       } catch (err) {
         setError("Failed to load booking data")
         console.error("Error fetching booking:", err)
@@ -206,7 +249,7 @@ export default function PayVenueBooking() {
     }
 
     fetchBookingData()
-  }, [bookingId])
+  }, [bookingId, contextBookingData])
 
   useEffect(() => {
     if (bookingData && installmentPlan.numberOfInstallments > 0) {
@@ -246,6 +289,13 @@ export default function PayVenueBooking() {
             newErrors.installments = "Number of installments must be between 2 and 12"
           }
         }
+        if (paymentMethod === "mobile") {
+          if (!amountPaid || amountPaid <= 0) {
+            newErrors.amountPaid = "Please enter a valid amount to pay"
+          } else if (amountPaid > (bookingData?.pricing.totalAmount || 0)) {
+            newErrors.amountPaid = "Amount cannot exceed the total amount due"
+          }
+        }
         break
     }
 
@@ -267,14 +317,12 @@ export default function PayVenueBooking() {
     if (!validateStep(2)) return
 
     setProcessing(true)
+    toast.info("Processing your payment...")
 
     try {
       const paymentData = {
-        bookingId,
-        eventId: bookingData?.eventId,
-        venueId: bookingData?.venueId,
-        payerId: mockLoggedInUser.userId,
-        paymentMethod,
+        amountPaid: paymentMethod === "mobile" ? amountPaid : bookingData?.pricing.totalAmount,
+        paymentMethod: paymentMethod === "mobile" ? "MOBILE_MONEY" : paymentMethod.toUpperCase(),
         paymentDetails: paymentMethod === "card" ? cardDetails : {},
         installmentPlan: paymentMethod === "installment" ? installmentPlan : null,
         specialInstructions,
@@ -284,13 +332,23 @@ export default function PayVenueBooking() {
 
       console.log("Processing venue booking payment:", paymentData)
 
-      // Simulate payment processing
-      await new Promise((resolve) => setTimeout(resolve, 3000))
-
-      setSuccess(true)
-      setCurrentStep(3)
-    } catch (err) {
-      setError("Payment failed. Please try again.")
+      // Call the API to process the payment
+      const response = await ApiService.payEventBooking(bookingId, paymentData)
+      
+      if (response.success) {
+        toast.success("Payment processed successfully!")
+        setSuccess(true)
+        setCurrentStep(3)
+      } else {
+        const errorMessage = response.message || "Payment failed. Please try again."
+        toast.error(errorMessage)
+        setError(errorMessage)
+      }
+    } catch (err: any) {
+      console.error("Payment error:", err)
+      const errorMessage = err?.response?.data?.message || "Payment failed. Please try again."
+      toast.error(errorMessage)
+      setError(errorMessage)
     } finally {
       setProcessing(false)
     }
@@ -347,10 +405,11 @@ export default function PayVenueBooking() {
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-600">Amount Paid</p>
                 <p className="text-2xl font-bold text-green-600">
-                  $
                   {paymentMethod === "installment"
-                    ? installmentPlan.firstPaymentAmount
-                    : bookingData?.pricing.totalAmount}
+                    ? `${installmentPlan.firstPaymentAmount} Rwf`
+                    : paymentMethod === "mobile"
+                    ? `${amountPaid} Rwf`
+                    : `${bookingData?.pricing.totalAmount} Rwf`}
                 </p>
                 {paymentMethod === "installment" && (
                   <p className="text-xs text-gray-500 mt-1">
@@ -686,13 +745,39 @@ export default function PayVenueBooking() {
 
               {paymentMethod === "mobile" && (
                 <Card className="border-2">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-4">📱</div>
-                    <h3 className="font-semibold mb-2">Mobile Money Payment</h3>
-                    <p className="text-gray-600 text-sm">
-                      You will receive a prompt on your mobile device to complete the payment. Supported: MTN Mobile
-                      Money, Airtel Money
-                    </p>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <span className="text-2xl">📱</span>
+                      Mobile Money Payment
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="amountPaid">Amount to Pay (Rwf) *</Label>
+                      <Input
+                        id="amountPaid"
+                        type="number"
+                        value={amountPaid}
+                        onChange={(e) => setAmountPaid(Number(e.target.value))}
+                        placeholder="Enter amount to pay"
+                        className="mt-1"
+                      />
+                      <p className="text-sm text-gray-600 mt-1">
+                        Total amount due: {bookingData?.pricing.totalAmount} Rwf
+                      </p>
+                      {errors.amountPaid && <p className="text-sm text-red-500 mt-1">{errors.amountPaid}</p>}
+                    </div>
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <h4 className="font-semibold mb-2">Supported Mobile Money Services:</h4>
+                      <ul className="text-sm text-gray-700 space-y-1">
+                        <li>• MTN Mobile Money</li>
+                        <li>• Airtel Money</li>
+                        <li>• M-Pesa</li>
+                      </ul>
+                      <p className="text-sm text-gray-600 mt-2">
+                        You will receive a prompt on your mobile device to complete the payment.
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -852,22 +937,22 @@ export default function PayVenueBooking() {
                     <div className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span>Base Amount:</span>
-                        <span>${bookingData?.pricing.baseAmount}</span>
+                        <span>{bookingData?.pricing.baseAmount} Rwf</span>
                       </div>
-                      {bookingData?.pricing.discountPercent > 0 && (
+                      {bookingData && bookingData.pricing.discountPercent > 0 && (
                         <div className="flex justify-between text-sm text-green-600">
-                          <span>Discount ({bookingData?.pricing.discountPercent}%):</span>
-                          <span>-${bookingData?.pricing.discountAmount}</span>
+                          <span>Discount ({bookingData.pricing.discountPercent}%):</span>
+                          <span>{bookingData.pricing.discountAmount} RWf</span>
                         </div>
                       )}
                       <div className="flex justify-between text-sm">
                         <span>Tax ({bookingData?.pricing.taxPercent}%):</span>
-                        <span>${bookingData?.pricing.taxAmount}</span>
+                        <span>{bookingData?.pricing.taxAmount} Rwf</span>
                       </div>
                       <Separator />
                       <div className="flex justify-between font-bold text-lg">
                         <span>Total Amount:</span>
-                        <span className="text-purple-600">${bookingData?.pricing.totalAmount}</span>
+                        <span className="text-purple-600">{bookingData?.pricing.totalAmount} Rwf</span>
                       </div>
                     </div>
 
@@ -878,11 +963,11 @@ export default function PayVenueBooking() {
                           <div className="text-sm font-medium">Payment Plan</div>
                           <div className="flex justify-between text-sm">
                             <span>Today:</span>
-                            <span className="font-semibold">${installmentPlan.firstPaymentAmount}</span>
+                            <span className="font-semibold">{installmentPlan.firstPaymentAmount} Rwf</span>
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Monthly ({installmentPlan.numberOfInstallments - 1}x):</span>
-                            <span>${installmentPlan.monthlyAmount}</span>
+                            <span>{installmentPlan.monthlyAmount} Rwf</span>
                           </div>
                         </div>
                       </>
@@ -918,7 +1003,7 @@ export default function PayVenueBooking() {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <DollarSign className="h-4 w-4 text-gray-500" />
-                    <span>${bookingData?.venue.basePrice}/day base rate</span>
+                    <span>{bookingData?.venue.basePrice} Rwf/day base rate</span>
                   </div>
                 </CardContent>
               </Card>

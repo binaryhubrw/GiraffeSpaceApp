@@ -4,8 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Eye, Edit, Calendar, MapPin, Users as UsersIcon, Home, UserX, Search, Plus, CheckCircle, Clock, XCircle, Users } from "lucide-react"
-import { events } from "@/data/events"
+import { Eye, Calendar, MapPin, Users as UsersIcon, Home, UserX, Search, CheckCircle, Clock, XCircle, Users } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -17,26 +16,54 @@ import {
 import { Input } from "@/components/ui/input"
 import { format, parseISO, isSameDay, isToday, isThisWeek, isThisMonth, isAfter, isBefore } from "date-fns"
 import { useRouter } from "next/navigation"
-import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import ApiService from "@/api/apiConfig"
-import { jwtDecode, JwtPayload } from "jwt-decode"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useUserOrganizations } from "@/hooks/useUserOrganizations"
-import { useToast } from "@/hooks/use-toast"
+
+interface Event {
+  eventId: string
+  eventName: string
+  eventDescription: string
+  eventType: string
+  eventStatus: string
+  bookingDates: Array<{ date: string }>
+  maxAttendees: number
+  venueBookings: Array<{
+    venueId: string
+    isPaid: boolean
+  }>
+  eventGuests: Array<{
+    guestName: string
+  }>
+  createdAt: string
+  updatedAt: string
+  imageURL?: string
+  qrCode?: string
+  websiteURL?: string
+  hashtag?: string
+  isFeatured?: boolean
+}
+
+interface Venue {
+  venueId: string
+  venueName: string
+  organizationId: string
+  organization?: {
+    organizationName: string
+  }
+  organizationName?: string
+  location?: string
+  capacity?: number
+  description?: string
+  amenities?: string
+  amount?: number
+}
+
+interface Organization {
+  organizationId: string
+  organizationName: string
+}
 
 export default function AdminEvents() {
   const router = useRouter()
-  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState("all")
@@ -44,34 +71,29 @@ export default function AdminEvents() {
   const [customStartDate, setCustomStartDate] = useState("")
   const [customEndDate, setCustomEndDate] = useState("")
   const itemsPerPage = 10
-  const [addOpen, setAddOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [editEvent, setEditEvent] = useState<any>(null)
-  const [events, setEvents] = useState<any[]>([])
-  const [filteredVenues, setFilteredVenues] = useState([]);
+  const [events, setEvents] = useState<Event[]>([])
 
   // Statistics
   const stats = {
     total: events.length,
-    active: events.filter(e => e.status === "ACTIVE").length,
-    draft: events.filter(e => e.status === "DRAFT").length,
-    cancelled: events.filter(e => e.status === "CANCELLED").length,
-    completed: events.filter(e => e.status === "COMPLETED").length,
+    active: events.filter(e => e.eventStatus === "ACTIVE").length,
+    draft: events.filter(e => e.eventStatus === "DRAFT").length,
+    cancelled: events.filter(e => e.eventStatus === "CANCELLED").length,
+    completed: events.filter(e => e.eventStatus === "COMPLETED").length,
+    requested: events.filter(e => e.eventStatus === "REQUESTED").length,
+    approved: events.filter(e => e.eventStatus === "APPROVED").length,
   }
 
   // Status options
   const statusOptions = [
     { value: "all", label: "All Status" },
-    { value: "Pending", label: "Pending" },
-    { value: "Published", label: "Published" },
-    { value: "Active", label: "Active" },
-    { value: "Cancelled", label: "Cancelled" },
-    { value: "Approved", label: "Approved" },
-    { value: "Postponed", label: "Postponed" },
-    { value: "Completed", label: "Completed" },
-    { value: "Complete", label: "Complete" },
-    { value: "Draft", label: "Draft" },
+    { value: "REQUESTED", label: "Requested" },
+    { value: "APPROVED", label: "Approved" },
+    { value: "ACTIVE", label: "Active" },
+    { value: "CANCELLED", label: "Cancelled" },
+    { value: "COMPLETED", label: "Completed" },
+    { value: "DRAFT", label: "Draft" },
   ]
 
   // fetch all events from database
@@ -80,7 +102,16 @@ export default function AdminEvents() {
       setLoading(true)
       try {
         const response = await ApiService.getAllEvents()
-        setEvents(response)
+        console.log("API Response:", response)
+        if (response.success && response.data) {
+          setEvents(response.data)
+        } else {
+          console.error("Failed to fetch events:", response)
+          setEvents([])
+        }
+      } catch (error) {
+        console.error("Error fetching events:", error)
+        setEvents([])
       } finally {
         setLoading(false)
       }
@@ -89,31 +120,33 @@ export default function AdminEvents() {
   }, [])
 
   // Filtered events
-  const filteredEvents = events.filter(event => {
+  const filteredEvents = events.filter((event: Event) => {
     const search = searchQuery.toLowerCase()
     const matchesSearch =
-      (event.eventTitle?.toLowerCase() || '').includes(search) ||
-      (event.organization?.organizationName?.toLowerCase() || '').includes(search)
-    const matchesStatus = statusFilter === "all" || event.status === statusFilter.toUpperCase()
+      (event.eventName?.toLowerCase() || '').includes(search) ||
+      (event.eventDescription?.toLowerCase() || '').includes(search)
+    const matchesStatus = statusFilter === "all" || event.eventStatus === statusFilter.toUpperCase()
 
     // Date filtering
     let matchesDate = true
-    const eventDate = event.startDate ? parseISO(event.startDate) : null
-    if (eventDate) {
-      if (dateFilter === "today") {
-        matchesDate = isToday(eventDate)
-      } else if (dateFilter === "thisWeek") {
-        matchesDate = isThisWeek(eventDate, { weekStartsOn: 1 })
-      } else if (dateFilter === "thisMonth") {
-        matchesDate = isThisMonth(eventDate)
-      } else if (dateFilter === "custom") {
-        if (customStartDate && customEndDate) {
-          const start = parseISO(customStartDate)
-          const end = parseISO(customEndDate)
-          matchesDate = (isAfter(eventDate, start) || eventDate.getTime() === start.getTime()) &&
-                        (isBefore(eventDate, end) || eventDate.getTime() === end.getTime())
-        } else {
-          matchesDate = true
+    if (event.bookingDates && event.bookingDates.length > 0) {
+      const eventDate = parseISO(event.bookingDates[0].date)
+      if (eventDate) {
+        if (dateFilter === "today") {
+          matchesDate = isToday(eventDate)
+        } else if (dateFilter === "thisWeek") {
+          matchesDate = isThisWeek(eventDate, { weekStartsOn: 1 })
+        } else if (dateFilter === "thisMonth") {
+          matchesDate = isThisMonth(eventDate)
+        } else if (dateFilter === "custom") {
+          if (customStartDate && customEndDate) {
+            const start = parseISO(customStartDate)
+            const end = parseISO(customEndDate)
+            matchesDate = (isAfter(eventDate, start) || eventDate.getTime() === start.getTime()) &&
+                          (isBefore(eventDate, end) || eventDate.getTime() === end.getTime())
+          } else {
+            matchesDate = true
+          }
         }
       }
     }
@@ -128,61 +161,15 @@ export default function AdminEvents() {
 
   if (loading) return <div className="flex items-center justify-center min-h-screen">Loading events...</div>
 
-  const handleAdd = async (data: any) => {
-    setLoading(true)
-    try {
-      const response = await ApiService.createEvent(data)
-      toast({
-        title: "Event Created",
-        description: "The event was created successfully.",
-      })
-      setAddOpen(false)
-      // Refresh event list after creation
-      const updatedEvents = await ApiService.getAllEvents()
-      setEvents(updatedEvents)
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error?.message || "Failed to create event.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-  const handleEdit = async (data: any) => {
-    setLoading(true)
-    // TODO: Edit event logic
-    setTimeout(() => {
-      setLoading(false)
-      setEditOpen(null)
-      // Optionally update event list
-    }, 1000)
-  }
-
   return (
     <div className="flex-1 p-8">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold">Event Management</h2>
-          <Dialog open={addOpen} onOpenChange={setAddOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Event
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Event</DialogTitle>
-              </DialogHeader>
-              <EventForm mode="add" loading={loading} onSubmit={handleAdd} />
-            </DialogContent>
-          </Dialog>
         </div>
         <div className="space-y-6">
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-7 gap-6">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -198,10 +185,32 @@ export default function AdminEvents() {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
+                    <p className="text-sm text-gray-600">Requested</p>
+                    <p className="text-2xl font-bold">{stats.requested}</p>
+                  </div>
+                  <Clock className="h-8 w-8 text-yellow-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">Approved</p>
+                    <p className="text-2xl font-bold">{stats.approved}</p>
+                  </div>
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
                     <p className="text-sm text-gray-600">Active</p>
                     <p className="text-2xl font-bold">{stats.active}</p>
                   </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+                  <CheckCircle className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
@@ -212,7 +221,7 @@ export default function AdminEvents() {
                     <p className="text-sm text-gray-600">Draft</p>
                     <p className="text-2xl font-bold">{stats.draft}</p>
                   </div>
-                  <Clock className="h-8 w-8 text-yellow-500" />
+                  <Clock className="h-8 w-8 text-gray-500" />
                 </div>
               </CardContent>
             </Card>
@@ -234,6 +243,7 @@ export default function AdminEvents() {
                     <p className="text-sm text-gray-600">Completed</p>
                     <p className="text-2xl font-bold">{stats.completed}</p>
                   </div>
+                  <CheckCircle className="h-8 w-8 text-purple-600" />
                 </div>
               </CardContent>
             </Card>
@@ -303,10 +313,12 @@ export default function AdminEvents() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Venue</TableHead>
+                    <TableHead>Event Name</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Venue Bookings</TableHead>
+                    <TableHead>Guests</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -314,23 +326,79 @@ export default function AdminEvents() {
                   {paginatedEvents.length > 0 ? (
                     paginatedEvents.map((event) => (
                       <TableRow key={event.eventId}>
-                        <TableCell>{event.eventTitle}</TableCell>
-                        <TableCell>{event.venue}</TableCell>
-                        <TableCell>{event.eventDate}</TableCell>
                         <TableCell>
-                          <Badge variant={event.status === "Active" ? "default" : event.status === "Draft" ? "secondary" : "outline"}>
-                            {event.status}
+                          <div>
+                            <div className="font-medium">{event.eventName}</div>
+                            <div className="text-sm text-gray-500">{event.eventDescription}</div>
+                            {event.maxAttendees && (
+                              <div className="text-xs text-gray-400">
+                                Max: {event.maxAttendees} attendees
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{event.eventType}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          {event.bookingDates && event.bookingDates.length > 0 ? (
+                            <div>
+                              {event.bookingDates.map((date, index) => (
+                                <div key={index} className="text-sm">
+                                  {format(parseISO(date.date), 'MMM dd, yyyy')}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">No dates</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={
+                              event.eventStatus === "APPROVED" ? "default" : 
+                              event.eventStatus === "REQUESTED" ? "secondary" : 
+                              event.eventStatus === "ACTIVE" ? "default" :
+                              event.eventStatus === "CANCELLED" ? "destructive" :
+                              "outline"
+                            }
+                          >
+                            {event.eventStatus}
                           </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {event.venueBookings && event.venueBookings.length > 0 ? (
+                            <div className="text-sm">
+                              <div>{event.venueBookings.length} venue(s)</div>
+                              <div className="text-gray-500">
+                                {event.venueBookings.some(booking => booking.isPaid) ? 
+                                  "Payment received" : "Payment pending"
+                                }
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">No venues</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {event.eventGuests && event.eventGuests.length > 0 ? (
+                            <div className="text-sm">
+                              <div>{event.eventGuests.length} guest(s)</div>
+                              <div className="text-gray-500">
+                                {event.eventGuests.slice(0, 2).map(guest => guest.guestName).join(', ')}
+                                {event.eventGuests.length > 2 && '...'}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">No guests</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
                             <Button size="sm" variant="outline" onClick={() => router.push(`/admin/events/${event.eventId}`)}>
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button size="icon" variant="outline" onClick={() => { setEditEvent(event); setEditOpen(event.eventId); }}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => {/* handle delete */}}>
+                            <Button size="icon" variant="outline" onClick={() => {/* handle delete */}}>
                               <UserX className="h-4 w-4 text-red-600" />
                             </Button>
                           </div>
@@ -339,7 +407,7 @@ export default function AdminEvents() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-gray-500">
+                      <TableCell colSpan={7} className="text-center text-gray-500">
                         No events found.
                       </TableCell>
                     </TableRow>
@@ -372,535 +440,6 @@ export default function AdminEvents() {
           </Card>
         </div>
       </div>
-      {editEvent && (
-        <Dialog open={!!editOpen} onOpenChange={open => { if (!open) setEditOpen(null); }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit Event</DialogTitle>
-            </DialogHeader>
-            <EventForm mode="edit" initialData={editEvent} loading={loading} onSubmit={handleEdit} />
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
-  )
-}
-
-function EventForm({ initialData, onSubmit, loading, mode }: {
-  initialData?: any,
-  onSubmit: (data: any) => void,
-  loading: boolean,
-  mode: 'add' | 'edit',
-}) {
-  // Get userId from JWT
-  const getUserIdFromToken = (): string | null => {
-    if (typeof window === 'undefined') return null;
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return null;
-      const decoded = jwtDecode<{ userId?: string } & JwtPayload>(token);
-      return decoded.userId || null;
-    } catch {
-      return null;
-    }
-  };
-  const userId = getUserIdFromToken();
-  const { organizations, loading: orgLoading } = useUserOrganizations(userId || undefined);
-
-  // Step management
-  const [currentStep, setCurrentStep] = useState(1)
-  const totalSteps = 5
-
-  // Step 1: Event basics
-  const [eventBasics, setEventBasics] = useState({
-    eventTitle: initialData?.eventTitle || '',
-    eventDate: initialData?.eventDate || '',
-    endDate: initialData?.endDate || '',
-    eventStartTime: initialData?.eventStartTime || '',
-    eventEndTime: initialData?.eventEndTime || '',
-  })
-
-  // Step 2: Venue selection (multi-select)
-  const [availableVenues, setAvailableVenues] = useState<any[]>([])
-  const [selectedVenues, setSelectedVenues] = useState<string[]>(initialData?.venues || [])
-  const [venueOrganizationId, setVenueOrganizationId] = useState(initialData?.venueOrganizationId || '')
-  // Pagination state for venues
-  const [venuePage, setVenuePage] = useState(1);
-  const venuesPerPage = 5;
-
-  // Step 3: Event Details (Core)
-  const [eventDetails, setEventDetails] = useState({
-    description: initialData?.description || '',
-    eventCategory: initialData?.eventCategory || '',
-    eventType: initialData?.eventType || 'PUBLIC',
-    maxAttendees: initialData?.maxAttendees || '',
-    imageURL: initialData?.imageURL || '',
-    ticketingDetails: initialData?.ticketingDetails || '',
-    refundPolicy: initialData?.refundPolicy || '',
-    dressCode: initialData?.dressCode || '',
-    ageRestriction: initialData?.ageRestriction || '',
-    tags: initialData?.tags || [],
-    tagsInput: '',
-    websiteURL: initialData?.websiteURL || '',
-    hashtag: initialData?.hashtag || '',
-    isFeatured: initialData?.isFeatured ?? false,
-    qrCode: initialData?.qrCode || '',
-  })
-  const [selectedImage, setSelectedImage] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string>(initialData?.imageURL || '')
-
-  // Step 4: Media & Ticketing
-  const [qrCode, setQrCode] = useState(initialData?.qrCode || '')
-
-  // Step 5: Additional Details
-  const [websiteURL, setWebsiteURL] = useState(initialData?.websiteURL || '')
-  const [hashtag, setHashtag] = useState(initialData?.hashtag || '')
-
-  // Add a loading state for venue fetching
-  const [venueLoading, setVenueLoading] = useState(false);
-
-  // Add a viewVenue state
-  const [viewVenue, setViewVenue] = useState<any>(null);
-
-  // Add local state for organization filter and all organizations
-  const [organizationFilter, setOrganizationFilter] = useState('all');
-  const [allOrganizations, setAllOrganizations] = useState<any[]>([]);
-
-  // Fetch all organizations for filter dropdown when step 2 is reached
-  useEffect(() => {
-    if (currentStep === 2) {
-      ApiService.getAllOrganization().then(res => {
-        if (Array.isArray(res.data)) setAllOrganizations(res.data);
-      });
-    }
-  }, [currentStep]);
-
-  // Handlers for each step
-  const handleBasicsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setEventBasics(prev => ({ ...prev, [name]: value }))
-  }
-  const handleDetailsChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    if (
-      e.target instanceof HTMLInputElement &&
-      e.target.type === "checkbox"
-    ) {
-      setEventDetails((prev) => ({
-        ...prev,
-        [name]: (e.target as HTMLInputElement).checked,
-      }));
-    } else {
-      setEventDetails((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
-    }
-  };
-  const handleTagsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEventDetails(prev => ({ ...prev, tagsInput: e.target.value }))
-  }
-  const addTag = () => {
-    if (eventDetails.tagsInput.trim()) {
-      setEventDetails(prev => ({
-        ...prev,
-        tags: [...prev.tags, prev.tagsInput.trim()],
-        tagsInput: '',
-      }))
-    }
-  }
-  const removeTag = (tag: string) => {
-    setEventDetails(prev => ({
-      ...prev,
-      tags: prev.tags.filter((t: string) => t !== tag),
-    }))
-  }
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setSelectedImage(file)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const result = e.target?.result as string
-        setImagePreview(result)
-        setEventDetails(prev => ({ ...prev, imageURL: result }))
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-  const removeImage = () => {
-    setSelectedImage(null)
-    setImagePreview('')
-    setEventDetails(prev => ({ ...prev, imageURL: '' }))
-  }
-
-  // Venue multi-select handler
-  const handleVenueSelect = (venueId: string, orgId: string) => {
-    if (organizationFilter === 'all') {
-      setSelectedVenues([venueId]);
-      setVenueOrganizationId(orgId);
-    } else {
-      setSelectedVenues(prev =>
-        prev.includes(venueId)
-          ? prev.filter(id => id !== venueId)
-          : [...prev, venueId]
-      );
-      setVenueOrganizationId(orgId);
-    }
-  };
-
-  // Step navigation
-  const nextStep = async () => {
-    console.log('Current step before increment:', currentStep, 'of', totalSteps);
-    if (currentStep === 1) {
-      if (eventBasics.eventDate && eventBasics.endDate && eventBasics.eventStartTime && eventBasics.eventEndTime && venueOrganizationId) {
-        try {
-          setAvailableVenues([])
-          setVenueLoading(true)
-          const venuesResponse = await ApiService.getAvailableVenues(
-            eventBasics.eventDate,
-            eventBasics.endDate,
-            eventBasics.eventStartTime,
-            eventBasics.eventEndTime
-          )
-          setAvailableVenues(Array.isArray(venuesResponse.data) ? venuesResponse.data : [])
-          setVenuePage(1)
-        } finally {
-          setVenueLoading(false)
-        }
-      } else {
-        // If required fields are missing, do not advance
-        return;
-      }
-    }
-    setCurrentStep(s => {
-      const next = Math.min(s + 1, totalSteps);
-      console.log('Next step:', next);
-      return next;
-    });
-  }
-  const prevStep = () => setCurrentStep(s => Math.max(s - 1, 1))
-
-  // Validation per step
-  const validateStep = () => {
-    if (currentStep === 1) {
-      return eventBasics.eventTitle && eventBasics.eventDate && eventBasics.endDate && eventBasics.eventStartTime && eventBasics.eventEndTime
-    }
-    if (currentStep === 2) {
-      return selectedVenues.length > 0
-    }
-    if (currentStep === 3) {
-      return eventDetails.description && eventDetails.eventCategory && eventDetails.eventType && eventDetails.maxAttendees
-    }
-    if (currentStep === 4) {
-      // All fields in Media & Ticketing are optional
-      return true
-    }
-    if (currentStep === 5) {
-      // Additional details are all optional, so always valid
-      return true
-    }
-    return true
-  }
-
-  // Final submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!validateStep()) {
-      return
-    }
-    // Compose payload
-    const startDate = new Date(eventBasics.eventDate + 'T' + eventBasics.eventStartTime).toISOString()
-    const endDate = new Date(eventBasics.endDate + 'T' + eventBasics.eventEndTime).toISOString()
-    const payload = {
-      eventTitle: eventBasics.eventTitle,
-      eventType: eventDetails.eventType,
-      organizationId: venueOrganizationId,
-      startDate,
-      endDate,
-      startTime: eventBasics.eventStartTime,
-      endTime: eventBasics.eventEndTime,
-      description: eventDetails.description,
-      maxAttendees: Number(eventDetails.maxAttendees),
-      isFeatured: !!eventDetails.isFeatured,
-      qrCode: eventDetails.qrCode,
-     // imageURL: eventDetails.imageURL,
-      venueOrganizationId,
-      venues: selectedVenues,
-    }
-    console.log('Submitted event payload:', payload)
-    onSubmit(payload)
-  }
-
-  // Render step content
-  const renderStep = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="eventTitle">Event Title</Label>
-              <Input id="eventTitle" name="eventTitle" value={eventBasics.eventTitle} onChange={handleBasicsChange} required />
-            </div>
-            <div>
-              <Label htmlFor="organization">Organization</Label>
-              <Select
-                value={venueOrganizationId}
-                onValueChange={val => setVenueOrganizationId(val)}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select organization" />
-                </SelectTrigger>
-                <SelectContent>
-                  {orgLoading ? (
-                    <SelectItem value="loading" disabled>Loading organizations...</SelectItem>
-                  ) : organizations.length > 0 ? (
-                    organizations.map(org => (
-                      <SelectItem key={org.organizationId} value={org.organizationId}>
-                        {org.organizationName}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-organizations" disabled>No organizations found</SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="eventDate">Start Date</Label>
-              <Input id="eventDate" name="eventDate" type="date" value={eventBasics.eventDate} onChange={handleBasicsChange} required />
-            </div>
-            <div>
-              <Label htmlFor="endDate">End Date</Label>
-              <Input id="endDate" name="endDate" type="date" value={eventBasics.endDate} onChange={handleBasicsChange} required />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="eventStartTime">Start Time</Label>
-                <Input id="eventStartTime" name="eventStartTime" type="time" value={eventBasics.eventStartTime} onChange={handleBasicsChange} required />
-              </div>
-              <div>
-                <Label htmlFor="eventEndTime">End Time</Label>
-                <Input id="eventEndTime" name="eventEndTime" type="time" value={eventBasics.eventEndTime} onChange={handleBasicsChange} required />
-              </div>
-            </div>
-          </div>
-        )
-      case 2:
-        // Derive organizations from availableVenues, using organization object if present
-        const organizationsInVenues = Array.from(
-          new Map(
-            availableVenues.map(v => [
-              v.organizationId,
-              {
-                organizationId: v.organizationId,
-                organizationName: v.organization?.organizationName || v.organizationName || v.organizationId
-              }
-            ])
-          ).values()
-        );
-        // Filter venues based on selected organization
-        const venuesToShow = organizationFilter === 'all'
-          ? availableVenues
-          : availableVenues.filter(v => v.organizationId === organizationFilter);
-        // Pagination logic
-        const totalVenuePages = Math.max(1, Math.ceil(venuesToShow.length / venuesPerPage));
-        const startVenueIdx = (venuePage - 1) * venuesPerPage;
-        const paginatedVenues = venuesToShow.slice(startVenueIdx, startVenueIdx + venuesPerPage);
-        return (
-          <div className="space-y-4">
-            <Label>Filter by Organization (optional)</Label>
-            <Select value={organizationFilter} onValueChange={val => setOrganizationFilter(val)}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Organizations" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Organizations</SelectItem>
-                {organizationsInVenues.map(org => (
-                  <SelectItem key={org.organizationId} value={org.organizationId}>{org.organizationName}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Label>Venues (select {organizationFilter === 'all' ? 'one' : 'multiple'} from the same organization)</Label>
-            <div className="space-y-2">
-              {paginatedVenues.map(v => (
-                <div key={v.venueId} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedVenues.includes(v.venueId)}
-                    onChange={() => handleVenueSelect(v.venueId, v.organizationId)}
-                    id={`venue-${v.venueId}`}
-                    disabled={organizationFilter !== 'all' && v.organizationId !== organizationFilter}
-                  />
-                  <label htmlFor={`venue-${v.venueId}`}>{v.venueName}</label>
-                  <Button type="button" size="sm" variant="outline" onClick={() => setViewVenue(v)}>
-                    View Details
-                  </Button>
-                </div>
-              ))}
-            </div>
-            {/* Pagination controls */}
-            {totalVenuePages > 1 && (
-              <div className="flex gap-2 mt-4">
-                <Button type="button" variant="outline" size="sm" onClick={() => setVenuePage(p => Math.max(1, p - 1))} disabled={venuePage === 1}>Previous</Button>
-                <span className="px-2 py-1 text-sm">Page {venuePage} of {totalVenuePages}</span>
-                <Button type="button" variant="outline" size="sm" onClick={() => setVenuePage(p => Math.min(totalVenuePages, p + 1))} disabled={venuePage === totalVenuePages}>Next</Button>
-              </div>
-            )}
-          </div>
-        )
-      case 3:
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto pr-2">
-            <div className="col-span-1 md:col-span-3">
-              <Label htmlFor="description">Description</Label>
-              <Textarea id="description" name="description" value={eventDetails.description} onChange={handleDetailsChange} required rows={2} />
-            </div>
-            <div>
-              <Label htmlFor="eventCategory">Category</Label>
-              <Input id="eventCategory" name="eventCategory" value={eventDetails.eventCategory} onChange={handleDetailsChange} required />
-            </div>
-            <div>
-              <Label htmlFor="eventType">Type</Label>
-              <select id="eventType" name="eventType" value={eventDetails.eventType} onChange={handleDetailsChange} required className="w-full border rounded-md px-3 py-2">
-                <option value="PUBLIC">Public</option>
-                <option value="PRIVATE">Private</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="isFeatured" name="isFeatured" checked={!!eventDetails.isFeatured} onChange={handleDetailsChange} />
-              <Label htmlFor="isFeatured">Featured Event</Label>
-            </div>
-            <div>
-              <Label htmlFor="maxAttendees">Max Attendees</Label>
-              <Input id="maxAttendees" name="maxAttendees" type="number" value={eventDetails.maxAttendees} onChange={handleDetailsChange} required />
-            </div>
-          </div>
-        )
-      case 4:
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto pr-2">
-            <div className="col-span-1 md:col-span-3">
-              <Label htmlFor="imageURL">Event Image</Label>
-              <Input id="imageURL" name="imageURL" type="file" accept="image/*" onChange={handleImageChange} />
-              {imagePreview && (
-                <div className="mt-2">
-                  <img src={imagePreview} alt="Event" className="h-32 rounded" />
-                  <Button type="button" variant="outline" size="sm" onClick={removeImage} className="mt-2">Remove Image</Button>
-                </div>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="qrCode">QR Code URL</Label>
-              <Input id="qrCode" name="qrCode" value={eventDetails.qrCode} onChange={handleDetailsChange} />
-            </div>
-            <div className="col-span-1 md:col-span-3">
-              <Label htmlFor="ticketingDetails">Ticketing Details</Label>
-              <Textarea id="ticketingDetails" name="ticketingDetails" value={eventDetails.ticketingDetails} onChange={handleDetailsChange} rows={2} />
-            </div>
-            <div className="col-span-1 md:col-span-3">
-              <Label htmlFor="refundPolicy">Refund Policy</Label>
-              <Textarea id="refundPolicy" name="refundPolicy" value={eventDetails.refundPolicy} onChange={handleDetailsChange} rows={2} />
-            </div>
-          </div>
-        )
-      case 5:
-        return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto pr-2">
-            <div className="md:col-span-2 flex gap-4">
-              <div className="flex-1">
-                <Label htmlFor="dressCode">Dress Code</Label>
-                <Input id="dressCode" name="dressCode" value={eventDetails.dressCode} onChange={handleDetailsChange} />
-              </div>
-              <div className="flex-1">
-                <Label htmlFor="ageRestriction">Age Restriction</Label>
-                <Input id="ageRestriction" name="ageRestriction" value={eventDetails.ageRestriction} onChange={handleDetailsChange} />
-              </div>
-            </div>
-            <div className="col-span-1 md:col-span-3">
-              <Label htmlFor="tags">Tags</Label>
-              <div className="flex gap-2 mb-2">
-                <Input id="tagsInput" name="tagsInput" value={eventDetails.tagsInput} onChange={handleTagsChange} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); }}} placeholder="Add tag and press Enter" />
-                <Button type="button" onClick={addTag}>Add</Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {eventDetails.tags.map((tag: string) => (
-                  <Badge key={tag} variant="secondary" className="flex items-center gap-1">
-                    {tag}
-                    <Button type="button" size="sm" variant="ghost" onClick={() => removeTag(tag)}>&times;</Button>
-                  </Badge>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="websiteURL">Website</Label>
-              <Input id="websiteURL" name="websiteURL" value={eventDetails.websiteURL} onChange={handleDetailsChange} />
-            </div>
-            <div>
-              <Label htmlFor="hashtag">Hashtag</Label>
-              <Input id="hashtag" name="hashtag" value={eventDetails.hashtag} onChange={handleDetailsChange} />
-            </div>
-          </div>
-        )
-      default:
-        return null
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Stepper */}
-      <div className="flex justify-between mb-6">
-        {Array.from({ length: totalSteps }).map((_, idx) => (
-          <div
-            key={idx}
-            className={`w-1/5 h-2 rounded-full mx-1 ${idx + 1 <= currentStep ? 'bg-blue-600' : 'bg-gray-200'}`}
-          />
-        ))}
-      </div>
-      {renderStep()}
-      <DialogFooter>
-        <div className="flex justify-between w-full">
-          <div>
-            {currentStep > 1 && (
-              <Button type="button" variant="outline" onClick={prevStep}>Previous</Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <DialogClose asChild>
-              <Button type="button" variant="outline">Cancel</Button>
-            </DialogClose>
-            {currentStep < totalSteps ? (
-              <Button type="button" onClick={async () => await nextStep()} disabled={!validateStep() || venueLoading}>
-                {venueLoading && currentStep === 1 ? 'Loading Venues...' : 'Next'}
-              </Button>
-            ) : (
-              <Button type="button" onClick={handleSubmit} disabled={loading}>{loading ? (mode === 'add' ? 'Creating...' : 'Saving...') : (mode === 'add' ? 'Create Event' : 'Save Changes')}</Button>
-            )}
-          </div>
-        </div>
-      </DialogFooter>
-      {/* Venue Details Dialog */}
-      <Dialog open={!!viewVenue} onOpenChange={open => { if (!open) setViewVenue(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{viewVenue?.venueName}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <p><strong>Location:</strong> {viewVenue?.location}</p>
-            <p><strong>Capacity:</strong> {viewVenue?.capacity}</p>
-            <p><strong>Description:</strong> {viewVenue?.description}</p>
-            {viewVenue?.amenities && <p><strong>Amenities:</strong> {viewVenue.amenities}</p>}
-            {viewVenue?.amount && <p><strong>Amount:</strong> {viewVenue.amount}</p>}
-          </div>
-          <DialogFooter>
-            <Button type="button" onClick={() => setViewVenue(null)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </form>
   )
 } 

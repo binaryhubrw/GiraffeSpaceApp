@@ -1020,6 +1020,19 @@ class ApiService {
     }
   }
 
+  /** Create a new venue booking */
+  static async createBooking(bookingData: any): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/venue-bookings`, bookingData, {
+        headers: this.getHeader(bookingData),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      throw error;
+    }
+  }
 
 
   /**************************************** */
@@ -1158,6 +1171,31 @@ class ApiService {
     }
   }
 
+
+
+
+  /**** pay booking **** */
+
+  static async payEventBooking(
+    bookingId: string,
+    paymentData: any
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${this.BASE_URL}/venue-bookings/${bookingId}/payments`,
+        paymentData,
+        {
+          headers: this.getHeader(paymentData),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error processing payment for event booking with ID ${bookingId}:`, error);
+      throw error;
+    } 
+  }
+
   /*** cancel event booking** */
   static async cancelEventBooking(eventId: string, data: any): Promise<any> {
     try {
@@ -1193,6 +1231,116 @@ class ApiService {
       throw error;
     }
   }
+
+
+
+  /**** admin aprove event*** */
+  static async approveEventAdmin(eventId: string): Promise<any> {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No token found. Please login again.");
+      }
+
+      const response = await axios.patch(
+        `${this.BASE_URL}/event/${eventId}/approve`,
+        {}, // no request body needed
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          withCredentials: true, // optional, use only if your backend needs cookies
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error(`Error approving event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+  /*** admin query or feedback*** */
+  static async queryEventAdmin(eventId: string, data: any): Promise<any> {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No token found. Please login again.");
+      }
+
+      const response = await axios.patch(
+        `${this.BASE_URL}/event/${eventId}/query`,
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          withCredentials: true, // optional, use only if your backend needs cookies
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error(`Error querying event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+
+  /** admin reject event** */
+  static async rejectEventAdmin(eventId: string, data: any): Promise<any> {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No token found. Please login again.");
+      }
+
+      const response = await axios.patch(
+        `${this.BASE_URL}/event/${eventId}/reject`,
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          withCredentials: true, // optional, use only if your backend needs cookies
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error(`Error rejecting event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+
+
+
+
+
+
+  /**** EVENT TICKETS*** */
+  /** Create a new event ticket */
+  static async createEventTicket(eventId:string,ticketData: any): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/events/${eventId}/ticket-types`, ticketData,
+        {
+          headers: this.getHeader(ticketData),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error creating event ticket:", error);
+      throw error;
+    }
+  } 
+
+
+
 
   // Fetch organizations for a specific user
   static async getOrganizationsByUserId(userId: string): Promise<any[]> {

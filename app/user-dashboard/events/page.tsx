@@ -60,7 +60,9 @@ function getPayType(event: {
 
 // Helper to determine if an event can request publication
 function canRequestPublication(eventStatus: string): boolean {
-  return eventStatus !== "PUBLISHED" && eventStatus !== "PENDING_PUBLICATION"
+  return eventStatus !== "PUBLISHED" && 
+         eventStatus !== "PENDING_PUBLICATION" && 
+         eventStatus !== "APPROVED"
 }
 
 export default function EventSection() {
@@ -476,25 +478,43 @@ export default function EventSection() {
                   paginatedEvents.map((event) => (
                     <TableRow key={event.eventId}>
                       <TableCell>{event.eventName}</TableCell>
-                      <TableCell>{event.bookingDates && event.bookingDates[0] && event.bookingDates[0].date ? event.bookingDates[0].date : ""}</TableCell>
+                      <TableCell>
+                        {event.bookingDates && event.bookingDates.length > 0 ? (
+                          <div className="space-y-1">
+                            {event.bookingDates.map((date: any, index: number) => (
+                              <div key={index} className="text-sm">
+                                {new Date(date.date).toLocaleDateString()}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          "No dates"
+                        )}
+                      </TableCell>
                       <TableCell>{event.venueBookings && event.venueBookings[0] && event.venueBookings[0].venue ? event.venueBookings[0].venue.venueName : ""}</TableCell>
                       <TableCell>{event.eventType}</TableCell>
                       <TableCell>{event.maxAttendees}</TableCell>
                       <TableCell>
                         <span
                           className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            event.eventStatus === "PUBLISHED"
+                            event.eventStatus === "APPROVED"
                               ? "bg-green-100 text-green-800"
+                              : event.eventStatus === "DRAFT"
+                              ? "bg-gray-100 text-gray-800"
+                              : event.eventStatus === "PUBLISHED"
+                              ? "bg-blue-100 text-blue-800"
                               : event.eventStatus === "PENDING"
                               ? "bg-yellow-100 text-yellow-800"
                               : event.eventStatus === "PENDING_PUBLICATION"
-                              ? "bg-blue-100 text-blue-800"
+                              ? "bg-orange-100 text-orange-800"
                               : event.eventStatus === "CANCELLED"
                               ? "bg-red-100 text-red-800"
                               : "bg-gray-100 text-gray-800"
                           }`}
                         >
-                          {event.eventStatus}
+                          {event.eventStatus === "APPROVED" ? "APPROVED" : 
+                           event.eventStatus === "DRAFT" ? "DRAFT" : 
+                           event.eventStatus}
                         </span>
                       </TableCell>
                       <TableCell className="text-right space-x-2">
@@ -504,8 +524,8 @@ export default function EventSection() {
                         <Link href={`/user-dashboard/events/${event.eventId}/edit`} className="inline-block text-gray-600 hover:text-gray-900">
                           <Pencil className="h-5 w-5" aria-label="Edit" />
                         </Link>
-                        {/* Publish Request Button - only show for events that are not published */}
-                        {canRequestPublication(event.eventStatus) && (
+                        {/* Publish Request Button - only show for events that are not published and not approved */}
+                        {canRequestPublication(event.eventStatus) && event.eventStatus !== "APPROVED" && (
                           <button
                             onClick={() => setShowPublishRequestId(event.eventId)}
                             className="inline-block text-green-600 hover:text-green-800 transition-colors"

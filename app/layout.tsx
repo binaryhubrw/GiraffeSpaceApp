@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/sonner"
 import Script from 'next/script';
 import { AttendeeProvider } from "@/context/AttendeeContext";
+import { BookingProvider } from "@/contexts/booking-context";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,7 +28,9 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
         <AuthProvider>
-          <AttendeeProvider>{children}</AttendeeProvider>
+          <BookingProvider>
+            <AttendeeProvider>{children}</AttendeeProvider>
+          </BookingProvider>
         </AuthProvider>
         <Toaster />
       </body>

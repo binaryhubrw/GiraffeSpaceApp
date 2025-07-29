@@ -63,20 +63,34 @@ export default function EventDetails({ params }: { params: { id: string } }) {
 
   // Fetch event data from API
   useEffect(() => {
-    if (!id) return;
-    setLoading(true);
-    const eventId = Array.isArray(id) ? id[0] : id;
-    ApiService.getEventById(eventId)
-      .then(res => {
-        if (res.success && res.data) {
-          setEvent(res.data)
-        } else {
-          setEvent(null)
+    const fetchEventData = async () => {
+      try {
+        if (!id) {
+          return;
         }
-      })
-      .catch(() => setEvent(null))
-      .finally(() => setLoading(false))
-  }, [id])
+        setLoading(true);
+        const eventId = Array.isArray(id) ? id[0] : id;
+        
+        const response = await ApiService.getEventById(eventId);
+        console.log("event data", response); // Console log the response
+        
+        if (response && response.success && response.data) {
+          setEvent(response.data);
+        } else {
+          console.log("API call failed or no data"); // Debug: Check failure case
+          setEvent(null);
+        }
+      } catch (error) {
+        console.log("API call failed with error:", error); // Debug: Check error
+        setEvent(null);
+      } finally {
+        console.log("API call completed, setting loading to false"); // Debug: Check completion
+        setLoading(false);
+      }
+    };
+
+    fetchEventData();
+  }, [id]);
 
   const handleDelete = () => {
     // In a real app, this would be an API call to delete the event
@@ -149,6 +163,15 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               <button className="bg-green-500 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center">
                 <Share2 className="mr-2 h-5 w-5" aria-label="Share" /> Share
               </button>
+              {/* Registration/Buy Ticket Button */}
+              <Link 
+                href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
+          
+              >
+                <Ticket className="mr-2 h-5 w-5" />
+                create Ticket
+              </Link>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
@@ -159,12 +182,16 @@ export default function EventDetails({ params }: { params: { id: string } }) {
           </div>
           <div className="flex items-center text-gray-600 mt-2">
             <MapPin className="mr-2 h-5 w-5" />
-            <span>{event.venues && event.venues[0] ? event.venues[0].venueName : ""}, {event.venues && event.venues[0] ? event.venues[0].venueLocation : ""}</span>
+            <span>{event.eventVenues && event.eventVenues[0] ? event.eventVenues[0].venue.venueName : ""}, {event.eventVenues && event.eventVenues[0] ? event.eventVenues[0].venue.venueLocation : ""}</span>
             <span className="mx-3">|</span>
             <Calendar className="mr-2 h-5 w-5" />
-            <span>{event.bookingDates && event.bookingDates[0] ? event.bookingDates[0].date : ""}</span>
+            <span>{event.bookingDates && event.bookingDates.length > 0 ? 
+              event.bookingDates.map((date: any) => new Date(date.date).toLocaleDateString()).join(', ') : ""}</span>
           </div>
         </div>
+
+        {/* Debug Section - Raw API Response */}
+        {/* The rawResponse state variable is removed, so this section is also removed. */}
         {/* Event Image */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="h-64 md:h-80 bg-gray-200 relative">
@@ -193,10 +220,13 @@ export default function EventDetails({ params }: { params: { id: string } }) {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
               <div className="flex items-center gap-3 mb-4 md:mb-0">
                 <Calendar className="h-6 w-6 text-blue-500" />
-                <span className="text-lg font-semibold">{event.bookingDates && event.bookingDates[0] ? event.bookingDates[0].date : ""}</span>
+                <span className="text-lg font-semibold">
+                  {event.bookingDates && event.bookingDates.length > 0 ? 
+                    event.bookingDates.map((date: any) => new Date(date.date).toLocaleDateString()).join(', ') : "No dates"}
+                </span>
                 <span className="mx-2">|</span>
                 <MapPin className="h-6 w-6 text-green-500" />
-                <span className="text-lg font-semibold">{event.venues && event.venues[0] ? event.venues[0].venueName : ""}</span>
+                <span className="text-lg font-semibold">{event.eventVenues && event.eventVenues[0] ? event.eventVenues[0].venue.venueName : "Venue Name"}</span>
               </div>
               <div className="flex items-center gap-3">
                 <Users className="h-6 w-6 text-purple-500" />
@@ -234,35 +264,41 @@ export default function EventDetails({ params }: { params: { id: string } }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                  <h4 className="font-semibold text-lg mb-2">Muhazi hall</h4>
-                  <p className="text-gray-700 mb-3">this new venue support meeting, weeding, and also curtal event</p>
+                  <h4 className="font-semibold text-lg mb-2">{event.eventVenues && event.eventVenues[0] ? event.eventVenues[0].venue.venueName : "Venue Name"}</h4>
+                  <p className="text-gray-700 mb-3">{event.eventVenues && event.eventVenues[0] ? event.eventVenues[0].venue.description || "No description available" : "No venue information"}</p>
                   <div className="space-y-2">
                     <div className="flex items-center">
                       <Users className="h-4 w-4 text-gray-500 mr-2" />
-                      <span className="text-sm">Capacity: 100 people</span>
+                      <span className="text-sm">Capacity: {event.eventVenues && event.eventVenues[0] ? event.eventVenues[0].venue.capacity : 0} people</span>
                     </div>
                     <div className="flex items-center">
                       <MapPin className="h-4 w-4 text-gray-500 mr-2" />
-                      <span className="text-sm">Location: Nyarugenge</span>
+                      <span className="text-sm">Location: {event.eventVenues && event.eventVenues[0] ? event.eventVenues[0].venue.venueLocation : "Location not available"}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Building2 className="h-4 w-4 text-gray-500 mr-2" />
+                      <span className="text-sm">Booking Type: {event.eventVenues && event.eventVenues[0] ? event.eventVenues[0].venue.bookingType : "Not specified"}</span>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <a 
-                    href="https://maps.google.com/?q=40.7128,-74.0060" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center text-blue-600 hover:text-blue-800"
-                  >
-                    <MapPin className="h-4 w-4 mr-2" />
-                    View on Google Maps
-                  </a>
+                  {event.eventVenues && event.eventVenues[0] && event.eventVenues[0].venue.googleMapsLink && (
+                    <a 
+                      href={event.eventVenues[0].venue.googleMapsLink}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-blue-600 hover:text-blue-800"
+                    >
+                      <MapPin className="h-4 w-4 mr-2" />
+                      View on Google Maps
+                    </a>
+                  )}
                 </div>
               </div>
               <div>
                 <img 
-                  src="https://res.cloudinary.com/di5ntdtyl/image/upload/v1752967641/venues/main_photos/ldm3to2phwjgtiaz1n8v.jpg" 
-                  alt="Muhazi hall" 
+                  src={event.eventVenues && event.eventVenues[0] ? event.eventVenues[0].venue.mainPhotoUrl : "/placeholder.svg"} 
+                  alt={event.eventVenues && event.eventVenues[0] ? event.eventVenues[0].venue.venueName : "Venue"} 
                   className="w-full h-64 object-cover rounded-lg"
                 />
               </div>

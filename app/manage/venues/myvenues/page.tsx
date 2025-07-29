@@ -232,7 +232,7 @@ export default function ManageVenuesPage() {
               <h2 className="text-2xl font-bold mb-2">No Venues Found</h2>
               <p className="text-gray-600 mb-6">You haven't added any venues yet.</p>
               <Button className="bg-primary text-white hover:bg-primary/90">
-                <Link href="manage/venues/create" className="flex items-center gap-2">
+                <Link href="/manage/venues/create" className="flex items-center gap-2">
                   <span className="text-lg">+</span>
                   Add Your First Venue
                 </Link>
@@ -260,7 +260,7 @@ export default function ManageVenuesPage() {
           </div>
           <Button className="flex items-center gap-2 bg-primary text-white hover:bg-primary/90 shadow-md px-5 py-2 rounded-lg">
           
-            <Link href="manage/venues/create">
+            <Link href="/manage/venues/create">
               <span className="text-lg">+</span>
             Add New Venue</Link>
           </Button>
