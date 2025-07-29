@@ -537,45 +537,77 @@ export default function OrganizationDetailPage() {
                   </div>
                   <div className="p-4 rounded-lg bg-gray-50">
                     <p className="text-sm font-medium text-gray-500 mb-3">Supporting Documents</p>
-                    {(organization.documents ?? []).length > 0 ? (
-                      <div className="flex flex-col gap-2">
-                        {(organization.documents ?? []).map((doc: string, idx: number) => (
-                          <Dialog key={doc + idx}>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className="hover:bg-blue-50 hover:border-blue-300 transition-colors duration-200"
-                              >
-                                <FileText className="h-4 w-4 mr-2" />
-                                View Document {(organization.documents ?? []).length > 1 ? idx + 1 : ''}
-                                <ExternalLink className="h-3 w-3 ml-2" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl max-h-[80vh]">
-                              <DialogHeader>
-                                <DialogTitle className="flex items-center space-x-2">
-                                  <FileText className="w-5 h-5" />
-                                  <span>Supporting Document {(organization.documents ?? []).length > 1 ? idx + 1 : ''}</span>
-                                </DialogTitle>
-                              </DialogHeader>
-                              <div className="w-full h-[60vh] flex items-center justify-center bg-gray-50 rounded-lg overflow-hidden">
-                                {doc.endsWith('.pdf') ? (
-                                  <iframe
-                                    src={doc}
-                                    title={`Supporting Document ${idx + 1}`}
-                                    className="w-full h-full border-none"
-                                  />
-                                ) : (
-                                  <img
-                                    src={doc}
-                                    alt={`Supporting Document ${idx + 1}`}
-                                    className="max-h-full max-w-full object-contain"
-                                  />
-                                )}
-                              </div>
-                            </DialogContent>
-                          </Dialog>
-                        ))}
+                    {(organization.supportingDocuments ?? []).length > 0 ? (
+                      <div className="space-y-3">
+                        <p className="text-xs text-gray-400 uppercase tracking-wide">Uploaded Documents</p>
+                        <div className="flex flex-wrap gap-4">
+                          {(organization.supportingDocuments ?? []).slice(0, 3).map((doc: string, idx: number) => {
+                            const filename = `Supporting Document ${idx + 1}`;
+                            const extension = doc.split('.').pop()?.toUpperCase() || 'FILE';
+                            
+                            return (
+                              <Dialog key={doc + idx}>
+                                <DialogTrigger asChild>
+                                  <button className="flex items-center gap-3 p-3 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors group min-w-0">
+                                    <div className="flex-shrink-0">
+                                      <FileText className="w-8 h-8 text-blue-600" />
+                                    </div>
+                                    <div className="min-w-0 text-left">
+                                      <p className="text-sm font-medium text-blue-700 group-hover:text-blue-800 truncate">
+                                        {filename}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {extension} • Click to view
+                                      </p>
+                                    </div>
+                                  </button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-6xl max-h-[90vh] p-0">
+                                  <div className="bg-white rounded-lg shadow-2xl w-full h-full flex flex-col overflow-hidden">
+                                    {/* Header bar */}
+                                    <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+                                      <div className="flex items-center gap-3">
+                                        <FileText className="w-6 h-6 text-blue-600" />
+                                        <h3 className="text-lg font-semibold text-gray-900">
+                                          {filename}
+                                        </h3>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <a
+                                          href={doc}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                                        >
+                                          Open in new tab
+                                        </a>
+                                      </div>
+                                    </div>
+                                    
+                                    {/* Document viewer */}
+                                    <div className="flex-1 bg-gray-100 flex items-center justify-center">
+                                      {doc.endsWith('.pdf') ? (
+                                        <iframe 
+                                          src={doc} 
+                                          className="w-full h-full border-none" 
+                                          title="Supporting Document"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center p-4">
+                                          <img 
+                                            src={doc} 
+                                            alt="Supporting Document" 
+                                            className="max-w-full max-h-full object-contain shadow-lg rounded"
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            );
+                          })}
+                        </div>
                       </div>
                     ) : (
                       <p className="text-sm text-gray-500">No documents available</p>

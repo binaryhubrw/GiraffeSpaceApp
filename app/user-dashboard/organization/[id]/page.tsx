@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Building2, Mail, Phone, MapPin as MapPinIcon, Edit, XCircle, Loader2 } from "lucide-react"
+import { Building2, Mail, Phone, MapPin as MapPinIcon, Edit, XCircle, Loader2, FileText, AlertTriangle } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import ApiService from "@/api/apiConfig"
 import { toast } from "sonner"
@@ -29,6 +29,7 @@ interface Organization {
   createdAt: string
   updatedAt: string
   members: number | null
+  cancellationReason: string | null
 }
 
 const LoadingSpinner = () => (
@@ -56,8 +57,13 @@ export default function UserOrgDetailPage() {
   const [responseMessage, setResponseMessage] = useState<string | null>(null)
   const [responseType, setResponseType] = useState<'success' | 'error' | null>(null)
   const [openDoc, setOpenDoc] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string)
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Move fetchOrg outside useEffect so it can be called after edit
   const fetchOrg = async () => {
@@ -78,8 +84,10 @@ export default function UserOrgDetailPage() {
   }
 
   useEffect(() => {
-    fetchOrg()
-  }, [id, router])
+    if (mounted) {
+      fetchOrg()
+    }
+  }, [id, router, mounted])
 
   const handleRequestAgain = async () => {
     if (!organization) return
@@ -110,6 +118,7 @@ export default function UserOrgDetailPage() {
 
   if (loading) return <LoadingSpinner />
   if (!organization) return null
+  if (!mounted) return <LoadingSpinner />
 
   return (
     <div className="min-h-screen flex flex-col p-8">
@@ -141,10 +150,12 @@ export default function UserOrgDetailPage() {
                   initialData={organization as any}
                   onSuccess={(_) => {
                     setEditOpen(false);
-                    fetchOrg(); // Refetch organization data after edit
-                    setResponseMessage("Organization updated successfully.")
-                    setResponseType('success')
-                    toast.success("Organization updated successfully.")
+                    // Always fetch fresh data after edit to get the latest status
+                    fetchOrg().then(() => {
+                      setResponseMessage("Organization updated successfully.");
+                      setResponseType('success');
+                      toast.success("Organization updated successfully.");
+                    });
                   }}
                   onCancel={() => setEditOpen(false)}
                 />
@@ -157,8 +168,46 @@ export default function UserOrgDetailPage() {
               Request Again
             </Button>
           )}
+          {organization.status === 'QUERY' && (
+            <Button variant="default" disabled={updating} onClick={() => setEditOpen(true)}>
+              <Edit className="w-4 h-4 mr-2" />
+              Edit & Re-register
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Query Message Section - Show when status is QUERY */}
+      {organization.status === 'QUERY' && (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-1" />
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+                Admin Query - Action Required
+              </h3>
+              <p className="text-yellow-700 mb-3">
+                The admin has sent you a query regarding your organization. Please review the message below, make necessary changes, and re-register.
+              </p>
+              {organization.cancellationReason && (
+                <div className="bg-white p-3 rounded border border-yellow-300">
+                  <p className="text-sm font-medium text-gray-700 mb-1">Query Message:</p>
+                  <p className="text-gray-900 whitespace-pre-line">{organization.cancellationReason}</p>
+                </div>
+              )}
+              <div className="mt-4 flex gap-2">
+                <Button 
+                  onClick={() => setEditOpen(true)}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit & Re-register
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -189,20 +238,37 @@ export default function UserOrgDetailPage() {
             </div>
             {/* Replace supporting document display with the provided code */}
             <div>
-              <p className="text-sm text-gray-500">Supporting Documents</p>
+              <p className="text-sm text-gray-500 mb-3">Supporting Documents</p>
               {(organization.supportingDocuments?.length ?? 0) > 0 ? (
-                <div className="flex flex-col gap-4">
-                  {(organization.supportingDocuments ?? []).slice(0, 3).map((doc: string, idx: number) => (
-                    <div key={doc + idx} className="flex items-center gap-3">
-                      <span className="font-medium text-gray-700">Supporting Document {idx + 1}</span>
-                      <button
-                        onClick={() => setOpenDoc(doc)}
-                        className="px-4 py-2 border rounded bg-gray-50 hover:bg-blue-50 text-blue-700 flex items-center gap-2"
-                      >
-                        View
-                      </button>
-                    </div>
-                  ))}
+                <div className="space-y-3">
+                  <p className="text-xs text-gray-400 uppercase tracking-wide">Scanned Documents</p>
+                  <div className="flex flex-wrap gap-4">
+                    {(organization.supportingDocuments ?? []).slice(0, 3).map((doc: string, idx: number) => {
+                      // Use simple numbered document names
+                      const filename = `Supporting Document ${idx + 1}`;
+                      const extension = doc.split('.').pop()?.toUpperCase() || 'FILE';
+                      
+                      return (
+                        <button
+                          key={doc + idx}
+                          onClick={() => setOpenDoc(doc)}
+                          className="flex items-center gap-3 p-3 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors group min-w-0"
+                        >
+                          <div className="flex-shrink-0">
+                            <FileText className="w-8 h-8 text-blue-600" />
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <p className="text-sm font-medium text-blue-700 group-hover:text-blue-800 truncate">
+                              {filename}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {extension} • Click to view
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
                 <p className="text-sm text-gray-400">No documents provided</p>
@@ -210,20 +276,54 @@ export default function UserOrgDetailPage() {
 
               {/* Modal */}
               {openDoc && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                  <div className="bg-white rounded-lg p-6 max-w-2xl w-full relative">
-                    <button
-                      onClick={() => setOpenDoc(null)}
-                      className="absolute top-2 right-2 text-gray-500 hover:text-red-600 focus:outline-none"
-                      aria-label="Close modal"
-                    >
-                      <XCircle className="w-7 h-7" />
-                    </button>
-                    {openDoc.endsWith('.pdf') ? (
-                      <iframe src={openDoc} className="w-full h-[70vh]" title="Supporting Document" />
-                    ) : (
-                      <img src={openDoc} alt="Supporting Document" className="max-h-[70vh] mx-auto" />
-                    )}
+                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                  {/* Google Drive-like modal */}
+                  <div className="bg-white rounded-lg shadow-2xl w-full h-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+                    {/* Header bar */}
+                    <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-6 h-6 text-blue-600" />
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Supporting Document
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={openDoc}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        >
+                          Open in new tab
+                        </a>
+                        <button
+                          onClick={() => setOpenDoc(null)}
+                          className="p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
+                          aria-label="Close modal"
+                        >
+                          <XCircle className="w-6 h-6" />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Document viewer */}
+                    <div className="flex-1 bg-gray-100 flex items-center justify-center">
+                      {openDoc.endsWith('.pdf') ? (
+                        <iframe 
+                          src={openDoc} 
+                          className="w-full h-full border-none" 
+                          title="Supporting Document"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center p-4">
+                          <img 
+                            src={openDoc} 
+                            alt="Supporting Document" 
+                            className="max-w-full max-h-full object-contain shadow-lg rounded"
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
