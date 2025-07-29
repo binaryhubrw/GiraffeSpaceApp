@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useEffect, use } from "react"
+import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -15,14 +15,14 @@ import {
   ChevronRight,
   ExternalLink,
   Star,
-  Calendar as CalendarIcon,
+  CalendarIcon,
   Volume2,
   Wifi,
   Wind,
   CheckCircle,
   Navigation,
   Info,
-  X
+  X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,8 +31,9 @@ import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { Header } from "@/components/header"
-import { useAuth } from "@/contexts/auth-context";
+import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
+import { use } from "react"
 
 // Inline Badge component
 const Badge = ({
@@ -52,7 +53,6 @@ const Badge = ({
     destructive: "border-transparent bg-red-600 text-white hover:bg-red-700",
     outline: "text-gray-900 border-gray-300",
   }
-
   return <div className={cn(baseClasses, variantClasses[variant], className)}>{children}</div>
 }
 
@@ -94,7 +94,7 @@ interface VenueData {
   photoGallery: string[]
   virtualTourUrl: string | null
   status: string
-  bookingType: string
+  bookingType: "DAILY" | "HOURLY" // Explicitly define booking types
   availabilitySlots: AvailabilitySlot[]
   organization: {
     organizationId: string
@@ -103,7 +103,7 @@ interface VenueData {
     contactEmail: string
     contactPhone: string
     address: string
-    organizationType?: string // Added for new UI
+    organizationType?: string
   }
   manager: {
     userId: string
@@ -129,30 +129,34 @@ interface Comment {
 
 export default function VenuePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-
   const [venue, setVenue] = useState<VenueData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  // Start with Availability tab as default
   const [activeTab, setActiveTab] = useState("Availability")
   const [selectedDates, setSelectedDates] = useState<Date[]>([])
   const [selectedTimes, setSelectedTimes] = useState<{ [key: string]: string[] }>({})
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
-  const [bookedDates, setBookedDates] = useState<Date[]>([])
+  // New states for date statuses
+  const [fullyBookedDates, setFullyBookedDates] = useState<Date[]>([])
+  const [partiallyBookedDates, setPartiallyBookedDates] = useState<Date[]>([])
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([])
   const [showTimePopup, setShowTimePopup] = useState<{ isOpen: boolean; date: Date | null }>({
     isOpen: false,
-    date: null
+    date: null,
   })
-  const { isLoggedIn } = useAuth();
-  const [mounted, setMounted] = useState(false);
+  const { isLoggedIn } = useAuth()
+  const [mounted, setMounted] = useState(false)
+  const [currentMonth, setCurrentMonth] = useState(new Date()) // State to control the displayed month
+
+  // Create photos array from venue data
+  const photos = venue ? [venue.mainPhotoUrl, ...venue.photoGallery].filter(Boolean) : []
 
   // Generate time slots for hourly bookings (8 AM to 10 PM)
   const generateTimeSlots = (): string[] => {
     const slots: string[] = []
     for (let hour = 8; hour < 22; hour++) {
-      slots.push(`${String(hour).padStart(2, '0')}:00`)
+      slots.push(`${String(hour).padStart(2, "0")}:00`)
     }
     return slots
   }
@@ -194,27 +198,51 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
   ])
 
   useEffect(() => {
-    setMounted(true);
+    setMounted(true)
     const fetchVenue = async () => {
       try {
         setLoading(true)
-        // Using the public venues endpoint
         const response = await fetch(`https://giraffespacev2.onrender.com/api/v1/venue/public/${id}`)
         const data = await response.json()
 
         if (data.success) {
-          const venueData = data.data
+          const venueData: VenueData = data.data
           setVenue(venueData)
-          
-          // Set availability slots
+
           if (venueData.availabilitySlots && venueData.availabilitySlots.length > 0) {
-            setAvailabilitySlots(venueData.availabilitySlots.map((slot: AvailabilitySlot) => ({
-              ...slot,
-              // Generate available hours by filtering out booked hours
-              availableHours: generateTimeSlots().filter(time => 
-                !slot.bookedHours?.includes(time)
-              )
-            })))
+            const allPossibleHours = generateTimeSlots()
+
+            const updatedSlots = venueData.availabilitySlots.map((slot: AvailabilitySlot) => {
+              const availableHoursForSlot = allPossibleHours.filter((time) => !slot.bookedHours?.includes(time))
+              return {
+                ...slot,
+                availableHours: availableHoursForSlot,
+              }
+            })
+            setAvailabilitySlots(updatedSlots)
+
+            const newFullyBookedDates: Date[] = []
+            const newPartiallyBookedDates: Date[] = []
+
+            updatedSlots.forEach((slot: AvailabilitySlot) => {
+              const dateObj = new Date(slot.date)
+              dateObj.setHours(0, 0, 0, 0) // Normalize date for comparison
+
+              if (venueData.bookingType === "DAILY") {
+                if (!slot.isAvailable) {
+                  newFullyBookedDates.push(dateObj)
+                }
+                // No partial booking for DAILY type
+              } else if (venueData.bookingType === "HOURLY") {
+                if (!slot.isAvailable || slot.availableHours?.length === 0) {
+                  newFullyBookedDates.push(dateObj)
+                } else if (slot.bookedHours && slot.bookedHours.length > 0) {
+                  newPartiallyBookedDates.push(dateObj)
+                }
+              }
+            })
+            setFullyBookedDates(newFullyBookedDates)
+            setPartiallyBookedDates(newPartiallyBookedDates)
           }
         } else {
           setError("Failed to fetch venue details")
@@ -226,36 +254,30 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
         setLoading(false)
       }
     }
-
     fetchVenue()
   }, [id])
 
   const nextPhoto = () => {
-    if (!venue) return
-    const photos = [venue.mainPhotoUrl, ...venue.photoGallery].filter(Boolean)
+    if (photos.length === 0) return
     setCurrentPhotoIndex((prev) => (prev + 1) % photos.length)
   }
 
   const prevPhoto = () => {
-    if (!venue) return
-    const photos = [venue.mainPhotoUrl, ...venue.photoGallery].filter(Boolean)
+    if (photos.length === 0) return
     setCurrentPhotoIndex((prev) => (prev - 1 + photos.length) % photos.length)
   }
 
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
     if (newComment.rating === 0) {
-      alert("Please select a rating")
+      toast.error("Please select a rating")
       return
     }
-
     const comment: Comment = {
       id: Date.now().toString(),
       ...newComment,
       date: new Date().toISOString().split("T")[0],
     }
-
     setUserComments((prev) => [comment, ...prev])
     setNewComment({
       userName: "",
@@ -265,31 +287,46 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     })
   }
 
-  // Book Now logic: require date selection
   const handleBookingClick = () => {
-    if (!mounted) return;
+    if (!mounted) return
     if (!selectedDates.length) {
-      toast.error("Please select a date to continue.");
-      return;
+      toast.error("Please select a date to continue.")
+      return
     }
-    const selectedDate = selectedDates[0].toISOString().split("T")[0];
+    const selectedDate = selectedDates[0].toISOString().split("T")[0]
     if (isLoggedIn) {
-      router.push(`/venues/book?venueId=${venue?.venueId}&date=${selectedDate}`);
+      router.push(`/venues/book?venueId=${venue?.venueId}&date=${selectedDate}`)
     } else {
-      router.push("/login");
+      router.push("/login")
     }
   }
 
   const averageRating =
     userComments.length > 0 ? userComments.reduce((sum, comment) => sum + comment.rating, 0) / userComments.length : 0
 
-  // Get amenity icon
   const getAmenityIcon = (name: string) => {
     const iconName = name.toLowerCase()
     if (iconName.includes("sound") || iconName.includes("audio")) return <Volume2 className="h-5 w-5 text-green-600" />
     if (iconName.includes("wifi") || iconName.includes("internet")) return <Wifi className="h-5 w-5 text-purple-600" />
     if (iconName.includes("air") || iconName.includes("conditioning")) return <Wind className="h-5 w-5 text-cyan-600" />
     return <CheckCircle className="h-5 w-5 text-gray-600" />
+  }
+
+  // Handlers for external month navigation
+  const handlePrevMonth = () => {
+    setCurrentMonth((prev) => {
+      const newMonth = new Date(prev)
+      newMonth.setMonth(newMonth.getMonth() - 1)
+      return newMonth
+    })
+  }
+
+  const handleNextMonth = () => {
+    setCurrentMonth((prev) => {
+      const newMonth = new Date(prev)
+      newMonth.setMonth(newMonth.getMonth() + 1)
+      return newMonth
+    })
   }
 
   if (loading) {
@@ -317,12 +354,9 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     )
   }
 
-  const photos = [venue.mainPhotoUrl, ...venue.photoGallery].filter(Boolean)
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Header activePage="venues" />
-
       {/* Back Button Bar */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-3">
@@ -332,7 +366,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
           </Link>
         </div>
       </div>
-
       <main className="max-w-7xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Main Content */}
@@ -342,16 +375,16 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
               <div className="absolute top-4 left-4 z-10">
                 <Badge variant="default">{venue?.bookingType}</Badge>
               </div>
-              {venue && (
+              {photos.length > 0 && (
                 <Image
-                  src={venue.mainPhotoUrl || "/placeholder.svg"}
-                  alt={venue.venueName}
+                  src={photos[currentPhotoIndex] || "/placeholder.svg"}
+                  alt={`${venue.venueName} - Image ${currentPhotoIndex + 1}`}
                   fill
                   className="object-cover"
                   priority
                 />
               )}
-              {venue?.photoGallery?.length > 0 && (
+              {photos.length > 1 && (
                 <>
                   <button
                     onClick={prevPhoto}
@@ -366,12 +399,11 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     <ChevronRight className="h-6 w-6" />
                   </button>
                   <div className="absolute bottom-4 right-4 bg-black/50 text-white text-sm px-2 py-1 rounded">
-                    {currentPhotoIndex + 1} / {[venue.mainPhotoUrl, ...venue.photoGallery].length}
+                    {currentPhotoIndex + 1} / {photos.length}
                   </div>
                 </>
               )}
             </div>
-
             {/* Thumbnail Strip */}
             {photos.length > 1 && (
               <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
@@ -379,8 +411,9 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                   <button
                     key={index}
                     onClick={() => setCurrentPhotoIndex(index)}
-                    className={`relative w-20 h-14 flex-shrink-0 rounded-md overflow-hidden border-2 transition-colors ${currentPhotoIndex === index ? "border-blue-500" : "border-transparent hover:border-gray-300"
-                      }`}
+                    className={`relative w-20 h-14 flex-shrink-0 rounded-md overflow-hidden border-2 transition-colors ${
+                      currentPhotoIndex === index ? "border-blue-500" : "border-transparent hover:border-gray-300"
+                    }`}
                   >
                     <Image
                       src={photo || "/placeholder.svg?height=56&width=80&text=Photo"}
@@ -392,12 +425,10 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                 ))}
               </div>
             )}
-
             {/* Venue Title and Basic Info */}
             <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
               <h1 className="text-3xl font-bold mb-4 text-gray-900">{venue?.venueName}</h1>
               <p className="text-gray-600 mb-6 leading-relaxed">{venue?.description}</p>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex items-start space-x-3">
                   <MapPin className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
@@ -417,7 +448,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     )}
                   </div>
                 </div>
-
                 <div className="flex items-start space-x-3">
                   <Users className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
                   <div>
@@ -425,7 +455,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     <p className="font-medium text-gray-900">{venue?.capacity} people</p>
                   </div>
                 </div>
-
                 <div className="flex items-start space-x-3">
                   <User className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
                   <div>
@@ -436,7 +465,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     <p className="text-sm text-gray-500">{venue?.manager.email}</p>
                   </div>
                 </div>
-
                 <div className="flex items-start space-x-3">
                   <Phone className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
                   <div>
@@ -446,32 +474,32 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                 </div>
               </div>
             </div>
-
             {/* Tabs */}
             <div className="bg-white rounded-lg shadow-sm">
               <div className="border-b px-6">
                 <div className="flex space-x-8">
                   <button
                     onClick={() => setActiveTab("Details")}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "Details"
+                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === "Details"
                         ? "border-blue-600 text-blue-600"
                         : "border-transparent text-gray-500 hover:text-gray-700"
-                      }`}
+                    }`}
                   >
                     Details
                   </button>
                   <button
                     onClick={() => setActiveTab("Availability")}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "Availability"
+                    className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === "Availability"
                         ? "border-blue-600 text-blue-600"
                         : "border-transparent text-gray-500 hover:text-gray-700"
-                      }`}
+                    }`}
                   >
                     Availability
                   </button>
                 </div>
               </div>
-
               <div className="p-6">
                 {activeTab === "Details" ? (
                   <div className="space-y-8">
@@ -480,7 +508,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">About This Venue</h2>
                       <p className="text-gray-600 leading-relaxed">{venue?.description}</p>
                     </div>
-
                     {/* Venue Location */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Location</h2>
@@ -514,7 +541,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                         </div>
                       </div>
                     </div>
-
                     {/* Amenities */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Amenities</h2>
@@ -535,7 +561,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                         ))}
                       </div>
                     </div>
-
                     {/* Booking Conditions */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Booking Conditions</h2>
@@ -545,16 +570,17 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                           <div>
                             <p className="text-sm text-blue-900 font-medium">Important Booking Information</p>
                             <p className="text-sm text-blue-800 mt-1">
-                              To secure your booking, a deposit of <span className="font-semibold">
+                              To secure your booking, a deposit of{" "}
+                              <span className="font-semibold">
                                 {venue?.bookingConditions[0]?.depositRequiredPercent ?? "N/A"}%
-                              </span> is required. The remaining payment is due{" "}
+                              </span>{" "}
+                              is required. The remaining payment is due{" "}
                               <span className="font-semibold">
                                 {venue?.bookingConditions[0]?.paymentComplementTimeBeforeEvent ?? "N/A"}{" "}
                                 {venue?.bookingType === "DAILY" ? "days" : "hours"}
                               </span>{" "}
                               before the event. Please review all conditions carefully before proceeding.
                             </p>
-
                           </div>
                         </div>
                       </div>
@@ -570,18 +596,14 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                             <div>
                               <p className="text-gray-500">Payment Due</p>
                               <p className="font-medium text-gray-900">
-                                {condition.paymentComplementTimeBeforeEvent} {venue?.bookingType === 'DAILY' ? 'days' : 'hours'} before
+                                {condition.paymentComplementTimeBeforeEvent}{" "}
+                                {venue?.bookingType === "DAILY" ? "days" : "hours"} before
                               </p>
                             </div>
-                            {/* <div>
-                              <p className="text-gray-500">Transition Time</p>
-                              <p className="font-medium text-gray-900">{condition.transitionTime} minutes</p>
-                            </div> */}
                           </div>
                         </div>
                       ))}
                     </div>
-
                     {/* Virtual Tour */}
                     {venue?.virtualTourUrl && (
                       <div className="mb-8">
@@ -602,18 +624,20 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                           </div>
                           <div className="mt-4">
                             <p className="text-sm text-gray-600">
-                              Take a virtual tour of {venue.venueName}. This video provides a comprehensive view of the venue's layout and facilities.
+                              Take a virtual tour of {venue.venueName}. This video provides a comprehensive view of the
+                              venue's layout and facilities.
                             </p>
                           </div>
                         </div>
                       </div>
                     )}
-
                     {/* Organization Information */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Organization Information</h2>
                       <div className="border border-gray-200 rounded-lg p-4">
-                        <h3 className="font-medium text-lg text-gray-900 mb-2">{venue?.organization.organizationName}</h3>
+                        <h3 className="font-medium text-lg text-gray-900 mb-2">
+                          {venue?.organization.organizationName}
+                        </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                           <div>
                             <p className="text-gray-500">Contact Email</p>
@@ -634,7 +658,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                         </div>
                       </div>
                     </div>
-
                     {/* Manager Information */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Venue Manager</h2>
@@ -657,53 +680,137 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                   </div>
                 ) : (
                   <div>
-                    <div className="mb-6">
-                      <h3 className="text-lg font-semibold mb-2 text-gray-900">Venue Availability</h3>
-                      <p className="text-gray-600">Select a date to book this venue</p>
+                    {/* Calendar View Header */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div>
+                        <h3 className="text-2xl font-bold tracking-tight">Calendar View</h3>
+                        <p className="text-muted-foreground">View and manage bookings</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="icon" onClick={handlePrevMonth}>
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" onClick={handleNextMonth}>
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
+                    {/* Calendars */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card className="rounded-lg shadow-sm">
+                        <CardContent className="p-0">
+                          <Calendar
+                            mode="multiple"
+                            selected={selectedDates}
+                            onSelect={(dates) => {
+                              // Filter out fully booked dates from selection
+                              const newSelectedDates =
+                                dates?.filter(
+                                  (date) =>
+                                    !fullyBookedDates.some(
+                                      (bookedDate) => bookedDate.toDateString() === date.toDateString(),
+                                    ),
+                                ) || []
+                              setSelectedDates(newSelectedDates)
+                            }}
+                            month={currentMonth} // Control the month externally
+                            onMonthChange={setCurrentMonth} // Keep this to allow internal month changes if needed (though nav is hidden)
+                            numberOfMonths={1} // Display one month per card
+                            showOutsideDays={true} // Show dates from adjacent months
+                            disabled={(date) => {
+                              const today = new Date()
+                              today.setHours(0, 0, 0, 0) // Normalize today to start of day
+                              const compareDate = new Date(date)
+                              compareDate.setHours(0, 0, 0, 0) // Normalize date to start of day
 
-                    {/* Custom Calendar with enhanced styling */}
-                    <div className="mb-6">
-                      <Calendar
-                        mode="multiple"
-                        selected={selectedDates}
-                        onSelect={(dates) => dates ? setSelectedDates(dates) : setSelectedDates([])}
-                        numberOfMonths={2}
-                        disabled={(date) => {
-                          // Disable past dates
-                          const isPastDate = date < new Date()
-                          
-                          // Check if date is in availability slots and not available
-                          const dateString = date.toISOString().split('T')[0]
-                          const slotForDate = availabilitySlots.find(slot => slot.date === dateString)
-                          const isNotAvailable = slotForDate ? !slotForDate.isAvailable : false
+                              const isPastDate = compareDate < today
+                              const isFullyBooked = fullyBookedDates.some(
+                                (d) => d.toDateString() === date.toDateString(),
+                              )
+                              return isPastDate || isFullyBooked
+                            }}
+                            modifiers={{
+                              fullyBooked: fullyBookedDates,
+                              ...(venue?.bookingType === "HOURLY" && { partiallyBooked: partiallyBookedDates }),
+                            }}
+                            modifiersClassNames={{
+                              fullyBooked: "bg-gray-600 text-white opacity-70 cursor-not-allowed", // Fully booked style (green)
+                              partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50/50", // Partially booked style
+                            }}
+                            className="rounded-lg"
+                          />
+                        </CardContent>
+                      </Card>
+                      <Card className="rounded-lg shadow-sm">
+                        <CardContent className="p-0">
+                          <Calendar
+                            mode="multiple"
+                            selected={selectedDates}
+                            onSelect={(dates) => {
+                              // Filter out fully booked dates from selection
+                              const newSelectedDates =
+                                dates?.filter(
+                                  (date) =>
+                                    !fullyBookedDates.some(
+                                      (bookedDate) => bookedDate.toDateString() === date.toDateString(),
+                                    ),
+                                ) || []
+                              setSelectedDates(newSelectedDates)
+                            }}
+                            month={(() => {
+                              const nextMonth = new Date(currentMonth)
+                              nextMonth.setMonth(nextMonth.getMonth() + 1)
+                              return nextMonth
+                            })()} // Display the next month
+                            onMonthChange={setCurrentMonth}
+                            numberOfMonths={1}
+                            showOutsideDays={true}
+                            disabled={(date) => {
+                              const today = new Date()
+                              today.setHours(0, 0, 0, 0) // Normalize today to start of day
+                              const compareDate = new Date(date)
+                              compareDate.setHours(0, 0, 0, 0) // Normalize date to start of day
 
-                          return isPastDate || isNotAvailable
-                        }}
-                        className="rounded-lg border"
-                        classNames={{
-                          day_today: "bg-blue-500 text-white rounded-full font-bold",
-                          day_selected: "bg-black text-white rounded-full font-bold hover:bg-black hover:text-white",
-                          day: "h-9 w-9 p-0 font-normal rounded-full aria-selected:opacity-100 hover:bg-gray-100 hover:rounded-full relative",
-                          day_disabled: "text-gray-400 hover:bg-transparent hover:text-gray-400 rounded-full [&:has([aria-label*='booked'])]:after:content-[''] [&:has([aria-label*='booked'])]:after:absolute [&:has([aria-label*='booked'])]:after:left-1/2 [&:has([aria-label*='booked'])]:after:top-1/2 [&:has([aria-label*='booked'])]:after:w-4 [&:has([aria-label*='booked'])]:after:h-0.5 [&:has([aria-label*='booked'])]:after:bg-red-400 [&:has([aria-label*='booked'])]:after:-translate-x-1/2 [&:has([aria-label*='booked'])]:after:-translate-y-1/2 [&:has([aria-label*='booked'])]:after:rotate-45",
-                          cell: "h-9 w-9 text-center text-sm relative p-0 hover:bg-gray-100 hover:rounded-full focus-within:relative focus-within:z-20",
-                        }}
-                      />
+                              const isPastDate = compareDate < today
+                              const isFullyBooked = fullyBookedDates.some(
+                                (d) => d.toDateString() === date.toDateString(),
+                              )
+                              return isPastDate || isFullyBooked
+                            }}
+                            modifiers={{
+                              fullyBooked: fullyBookedDates,
+                              ...(venue?.bookingType === "HOURLY" && { partiallyBooked: partiallyBookedDates }),
+                            }}
+                            modifiersClassNames={{
+                              fullyBooked: "bg-green-600 text-white opacity-70 cursor-not-allowed", // Fully booked style (green)
+                              partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50/50", // Partially booked style
+                            }}
+                            className="rounded-lg"
+                          />
+                        </CardContent>
+                      </Card>
                     </div>
-
-                    <div className="mt-6">
-                      <div className="flex items-center gap-4 text-sm">
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 bg-blue-100 rounded-full mr-2"></div>
-                          <span>Available</span>
-                        </div>
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 bg-red-100 rounded-full mr-2"></div>
+                    {/* Date Status Legend */}
+                    <div className="mt-4 p-4 bg-gray-100 rounded-lg text-sm">
+                      <h4 className="font-semibold mb-2">Date Status Legend:</h4>
+                      <div className="flex items-center gap-4 flex-wrap">
+                        <div className="flex items-center gap-1">
+                          <span className="w-4 h-4 rounded-full bg-green-600"></span>
                           <span>Fully Booked</span>
                         </div>
-                        <div className="flex items-center">
-                          <div className="w-3 h-3 bg-gray-100 rounded-full mr-2"></div>
-                          <span>Past Dates</span>
+                        {venue?.bookingType === "HOURLY" && (
+                          <div className="flex items-center gap-1">
+                            <span className="w-4 h-4 rounded-full border-2 border-orange-500 bg-orange-50/50"></span>
+                            <span>Partially Booked (Hourly)</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <span className="w-4 h-4 rounded-full bg-white border border-gray-300"></span>
+                          <span>Available</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-4 h-4 rounded-full bg-blue-600"></span>
+                          <span>Selected</span>
                         </div>
                       </div>
                     </div>
@@ -712,7 +819,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
               </div>
             </div>
           </div>
-
           {/* Right Column - Booking Panel */}
           <div className="lg:col-span-1">
             <div className="sticky top-6 space-y-6">
@@ -733,9 +839,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                         <div className="space-y-4">
                           {selectedDates.map((date) => (
                             <div key={date.toISOString()} className="bg-gray-50 p-3 rounded-md">
-                              <p className="font-medium text-sm text-gray-900 mb-2">
-                                {date.toLocaleDateString()}
-                              </p>
+                              <p className="font-medium text-sm text-gray-900 mb-2">{date.toLocaleDateString()}</p>
                               {venue?.bookingType === "HOURLY" && (
                                 <div>
                                   <button
@@ -757,10 +861,12 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                                             {time}
                                             <button
                                               onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSelectedTimes(prev => ({
+                                                e.stopPropagation()
+                                                setSelectedTimes((prev) => ({
                                                   ...prev,
-                                                  [date.toISOString()]: prev[date.toISOString()].filter(t => t !== time)
+                                                  [date.toISOString()]: prev[date.toISOString()].filter(
+                                                    (t) => t !== time,
+                                                  ),
                                                 }))
                                               }}
                                               className="ml-1 text-blue-600 hover:text-blue-800"
@@ -782,18 +888,15 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                       )}
                     </div>
                   </div>
-
                   <Button onClick={handleBookingClick} className="w-full" disabled={!mounted || !selectedDates.length}>
                     {isLoggedIn ? "Book Now" : "Book Now - Continue to Login"}
                   </Button>
-
                   <p className="text-xs text-gray-500 text-center leading-relaxed">
                     By clicking above button, you'll be redirected to{" "}
                     {isLoggedIn ? "the booking form" : "login or make an account if you don't have an account"}.
                   </p>
                 </CardContent>
               </Card>
-
               {/* Rating & Comments */}
               <Card className="shadow-sm">
                 <CardHeader>
@@ -832,7 +935,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                       <div className="text-center text-gray-500 py-4">No ratings yet</div>
                     )}
                   </div>
-
                   {/* Comment Form */}
                   <div>
                     <h4 className="font-medium mb-4 text-gray-900">Rate & Comment</h4>
@@ -845,15 +947,15 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                               key={star}
                               type="button"
                               onClick={() => setNewComment((prev) => ({ ...prev, rating: star }))}
-                              className={`text-2xl transition-colors ${newComment.rating >= star ? "text-yellow-400" : "text-gray-300 hover:text-yellow-400"
-                                }`}
+                              className={`text-2xl transition-colors ${
+                                newComment.rating >= star ? "text-yellow-400" : "text-gray-300 hover:text-yellow-400"
+                              }`}
                             >
                               ★
                             </button>
                           ))}
                         </div>
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium mb-1 text-gray-900">Your Name *</label>
                         <Input
@@ -864,7 +966,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                           required
                         />
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium mb-1 text-gray-900">Your Email *</label>
                         <Input
@@ -875,7 +976,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                           required
                         />
                       </div>
-
                       <div>
                         <label className="block text-sm font-medium mb-1 text-gray-900">Your Comment *</label>
                         <Textarea
@@ -886,7 +986,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                           required
                         />
                       </div>
-
                       <Button type="submit" className="w-full">
                         Submit Comment
                       </Button>
@@ -898,7 +997,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
       </main>
-
       {/* Fixed Book Now Button */}
       <div className="fixed bottom-6 right-6 z-50">
         <Button
@@ -909,18 +1007,14 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
           {isLoggedIn ? "Book Now" : "Book Now"}
         </Button>
       </div>
-
       {/* Add padding-bottom to account for fixed button */}
       <div className="pb-20"></div>
-
       {/* Time Selection Popup */}
       {showTimePopup.isOpen && showTimePopup.date && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">
-                Select Hours for {showTimePopup.date.toLocaleDateString()}
-              </h3>
+              <h3 className="text-lg font-semibold">Select Hours for {showTimePopup.date.toLocaleDateString()}</h3>
               <button
                 onClick={() => setShowTimePopup({ isOpen: false, date: null })}
                 className="text-gray-400 hover:text-gray-500"
@@ -928,44 +1022,40 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
             <div className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
               {generateTimeSlots().map((timeSlot) => {
                 const date = showTimePopup.date
                 if (!date) return null
-                
                 const dateStr = date.toISOString()
-                const dateOnlyStr = dateStr.split('T')[0]
-                const slotForDate = availabilitySlots.find(slot => slot.date === dateOnlyStr)
+                const dateOnlyStr = dateStr.split("T")[0]
+                const slotForDate = availabilitySlots.find((slot) => slot.date === dateOnlyStr)
                 const isBooked = slotForDate?.bookedHours?.includes(timeSlot)
                 const isSelected = selectedTimes[dateStr]?.includes(timeSlot)
-
                 return (
                   <button
                     key={timeSlot}
                     onClick={() => {
                       if (!isBooked && date) {
                         const dateStr = date.toISOString()
-                        setSelectedTimes(prev => {
+                        setSelectedTimes((prev) => {
                           const currentTimes = prev[dateStr] || []
                           const newTimes = currentTimes.includes(timeSlot)
-                            ? currentTimes.filter(t => t !== timeSlot)
+                            ? currentTimes.filter((t) => t !== timeSlot)
                             : [...currentTimes, timeSlot].sort()
-                          
                           return {
                             ...prev,
-                            [dateStr]: newTimes
+                            [dateStr]: newTimes,
                           }
                         })
                       }
                     }}
                     disabled={isBooked}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`px-3 py-2 rounded-md  text-sm font-medium transition-colors ${
                       isSelected
                         ? "bg-blue-600 text-white hover:bg-blue-700"
                         : isBooked
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-gray-50 text-gray-900 hover:bg-gray-100"
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          : "bg-gray-50 text-gray-900 hover:bg-gray-100"
                     }`}
                   >
                     {timeSlot}
@@ -973,7 +1063,6 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                 )
               })}
             </div>
-
             <div className="mt-6 flex justify-end space-x-2">
               <button
                 onClick={() => setShowTimePopup({ isOpen: false, date: null })}
