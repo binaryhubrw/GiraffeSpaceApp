@@ -89,33 +89,6 @@ export default function UserOrgDetailPage() {
     }
   }, [id, router, mounted])
 
-  const handleRequestAgain = async () => {
-    if (!organization) return
-    setUpdating(true)
-    try {
-      const res = await ApiService.updateOrganizationById(organization.organizationId, { status: "PENDING" })
-      if (res.success) {
-        toast.success("Request submitted, status set to PENDING")
-        setOrganization(prev => prev ? { ...prev, status: "PENDING" } : prev)
-        setResponseMessage("Request submitted, status set to PENDING")
-        setResponseType('success')
-        toast.success("Request submitted, status set to PENDING")
-      } else {
-        toast.error(res.error || "Failed to request")
-        setResponseMessage(res.error || "Failed to request")
-        setResponseType('error')
-        toast.error(res.error || "Failed to request")
-      }
-    } catch (err) {
-      toast.error("Failed to request")
-      setResponseMessage("Failed to request")
-      setResponseType('error')
-      toast.error("Failed to request")
-    } finally {
-      setUpdating(false)
-    }
-  }
-
   if (loading) return <LoadingSpinner />
   if (!organization) return null
   if (!mounted) return <LoadingSpinner />
@@ -162,12 +135,6 @@ export default function UserOrgDetailPage() {
               </div>
             </DialogContent>
           </Dialog>
-          {organization.status === 'REJECTED' && (
-            <Button variant="default" disabled={updating} onClick={handleRequestAgain}>
-              {updating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Request Again
-            </Button>
-          )}
           {organization.status === 'QUERY' && (
             <Button variant="default" disabled={updating} onClick={() => setEditOpen(true)}>
               <Edit className="w-4 h-4 mr-2" />

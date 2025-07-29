@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table"
 import { toast } from "sonner"
 import ApiService from "@/api/apiConfig"
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
@@ -75,6 +75,7 @@ interface Organization {
   postalCode: string | null
   stateProvince: string | null
   supportingDocument: string | null
+  supportingDocuments: string[] | null
   logo: string | null
   status: string
   isEnabled: boolean
@@ -197,6 +198,7 @@ export default function OrganizationDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [docOpen, setDocOpen] = useState(false)
+  const [openDoc, setOpenDoc] = useState<string | null>(null)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
   const [rejectionReason, setRejectionReason] = useState("")
   const [rejectLoading, setRejectLoading] = useState(false)
@@ -210,6 +212,12 @@ export default function OrganizationDetailPage() {
   const [queryReason, setQueryReason] = useState("");
   const [queryLoading, setQueryLoading] = useState(false);
   const [lastQueryMessage, setLastQueryMessage] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Clean and validate the ID
   const validateId = (rawId: string | string[] | undefined): string | null => {
@@ -369,6 +377,64 @@ export default function OrganizationDetailPage() {
     }
   };
 
+  const handleEnable = async () => {
+    if (!organization?.organizationId) return
+    setActionLoading(true)
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(
+        `https://giraffespacev2.onrender.com/api/v1/organizations/${organization.organizationId}/enable-status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+          }
+        }
+      )
+      const data = await response.json()
+      if (data.success) {
+        toast.success(data.message || "Organization enabled successfully.")
+        setOrganization((prev) => prev ? { ...prev, isEnabled: true } : prev)
+      } else {
+        toast.error(data.message || "Failed to enable organization.")
+      }
+    } catch (err) {
+      toast.error("Failed to enable organization.")
+    } finally {
+      setActionLoading(false)
+    }
+  };
+
+  const handleDisable = async () => {
+    if (!organization?.organizationId) return
+    setActionLoading(true)
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(
+        `https://giraffespacev2.onrender.com/api/v1/organizations/${organization.organizationId}/disable-status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+          }
+        }
+      )
+      const data = await response.json()
+      if (data.success) {
+        toast.success(data.message || "Organization disabled successfully.")
+        setOrganization((prev) => prev ? { ...prev, isEnabled: false } : prev)
+      } else {
+        toast.error(data.message || "Failed to disable organization.")
+      }
+    } catch (err) {
+      toast.error("Failed to disable organization.")
+    } finally {
+      setActionLoading(false)
+    }
+  };
+
   // Filter logic for organizations (if displaying a list, but here for detail page, we can use this for conditional rendering)
   const isIndependent = !organization?.organizationType || organization.organizationType.toLowerCase() === 'independent'
   const matchesStatus = statusFilter === 'all' || (organization?.status && organization.status.toLowerCase() === statusFilter)
@@ -377,10 +443,24 @@ export default function OrganizationDetailPage() {
     return <LoadingSpinner />
   }
 
-  if (error || !organization) {
+  if (!mounted) {
+    return <LoadingSpinner />
+  }
+
+  if (error) {
     return (
-      <ErrorState
-        error={error || 'Organization not found'}
+      <ErrorState 
+        error={error}
+        onRetry={() => window.location.reload()}
+        onBack={() => router.push("/admin/organization")}
+      />
+    )
+  }
+
+  if (!organization) {
+    return (
+      <ErrorState 
+        error="Organization not found"
         onRetry={() => window.location.reload()}
         onBack={() => router.push("/admin/organization")}
       />
@@ -477,6 +557,33 @@ export default function OrganizationDetailPage() {
                   {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 w-4 mr-2" />}
                   Reject
                 </Button>
+                {organization.isEnabled ? (
+                  <Button
+                    variant="outline"
+                    disabled={actionLoading}
+                    onClick={handleDisable}
+                    className={cn(
+                      "border-orange-500 text-orange-600 hover:bg-orange-50 transition-all duration-200",
+                      actionLoading && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+                    Disable
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    disabled={actionLoading}
+                    onClick={handleEnable}
+                    className={cn(
+                      "border-green-500 text-green-600 hover:bg-green-50 transition-all duration-200",
+                      actionLoading && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {actionLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                    Enable
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -546,65 +653,23 @@ export default function OrganizationDetailPage() {
                             const extension = doc.split('.').pop()?.toUpperCase() || 'FILE';
                             
                             return (
-                              <Dialog key={doc + idx}>
-                                <DialogTrigger asChild>
-                                  <button className="flex items-center gap-3 p-3 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors group min-w-0">
-                                    <div className="flex-shrink-0">
-                                      <FileText className="w-8 h-8 text-blue-600" />
-                                    </div>
-                                    <div className="min-w-0 text-left">
-                                      <p className="text-sm font-medium text-blue-700 group-hover:text-blue-800 truncate">
-                                        {filename}
-                                      </p>
-                                      <p className="text-xs text-gray-500">
-                                        {extension} • Click to view
-                                      </p>
-                                    </div>
-                                  </button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-6xl max-h-[90vh] p-0">
-                                  <div className="bg-white rounded-lg shadow-2xl w-full h-full flex flex-col overflow-hidden">
-                                    {/* Header bar */}
-                                    <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-                                      <div className="flex items-center gap-3">
-                                        <FileText className="w-6 h-6 text-blue-600" />
-                                        <h3 className="text-lg font-semibold text-gray-900">
-                                          {filename}
-                                        </h3>
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <a
-                                          href={doc}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                                        >
-                                          Open in new tab
-                                        </a>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Document viewer */}
-                                    <div className="flex-1 bg-gray-100 flex items-center justify-center">
-                                      {doc.endsWith('.pdf') ? (
-                                        <iframe 
-                                          src={doc} 
-                                          className="w-full h-full border-none" 
-                                          title="Supporting Document"
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center p-4">
-                                          <img 
-                                            src={doc} 
-                                            alt="Supporting Document" 
-                                            className="max-w-full max-h-full object-contain shadow-lg rounded"
-                                          />
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
+                              <button
+                                key={doc + idx}
+                                onClick={() => setOpenDoc(doc)}
+                                className="flex items-center gap-3 p-3 border rounded-lg hover:bg-blue-50 hover:border-blue-300 transition-colors group min-w-0"
+                              >
+                                <div className="flex-shrink-0">
+                                  <FileText className="w-8 h-8 text-blue-600" />
+                                </div>
+                                <div className="min-w-0 text-left">
+                                  <p className="text-sm font-medium text-blue-700 group-hover:text-blue-800 truncate">
+                                    {filename}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {extension} • Click to view
+                                  </p>
+                                </div>
+                              </button>
                             );
                           })}
                         </div>
@@ -736,7 +801,7 @@ export default function OrganizationDetailPage() {
                   <span>Team Members</span>
                   <Badge variant="secondary" className="ml-2">{organization.users?.length || 0}</Badge>
                 </div>
-                <button
+                {/* <button
                   className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg shadow-md hover:bg-blue-700 focus:bg-blue-700 focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 active:bg-blue-800 transition-all duration-200 ease-in-out transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => setAddManagerModalOpen(true)}
                   aria-label="Add new manager"
@@ -745,7 +810,7 @@ export default function OrganizationDetailPage() {
                     <PlusIcon className="w-5 h-5" />
                     Add Manager
                   </span>
-                </button>
+                </button> */}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -980,6 +1045,58 @@ export default function OrganizationDetailPage() {
               >
                 {inviteLoading ? "Sending..." : "Send Invitation"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {openDoc && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          {/* Google Drive-like modal */}
+          <div className="bg-white rounded-lg shadow-2xl w-full h-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Header bar */}
+            <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+              <div className="flex items-center gap-3">
+                <FileText className="w-6 h-6 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Supporting Document
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={openDoc}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                >
+                  Open in new tab
+                </a>
+                <button
+                  onClick={() => setOpenDoc(null)}
+                  className="p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
+                  aria-label="Close modal"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Document viewer */}
+            <div className="flex-1 bg-gray-100 flex items-center justify-center">
+              {openDoc.endsWith('.pdf') ? (
+                <iframe 
+                  src={openDoc} 
+                  className="w-full h-full border-none" 
+                  title="Supporting Document"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center p-4">
+                  <img 
+                    src={openDoc} 
+                    alt="Supporting Document" 
+                    className="max-w-full max-h-full object-contain shadow-lg rounded"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

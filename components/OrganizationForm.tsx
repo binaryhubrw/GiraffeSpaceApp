@@ -145,7 +145,16 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
       } else {
         // EDIT mode
         const jsonBody = {
-          ...formData,
+          organizationName: formData.organizationName,
+          description: formData.description,
+          contactEmail: formData.contactEmail,
+          contactPhone: formData.contactPhone,
+          address: formData.address,
+          organizationType: formData.organizationType,
+          city: formData.city,
+          country: formData.country,
+          postalCode: formData.postalCode,
+          stateProvince: formData.stateProvince,
           members: Number(formData.members) || 0,
           // Set status based on user role when creating
           ...(orgId ? {} : { status: user?.roles?.roleName === "ADMIN" ? "APPROVED" : "PENDING" }),
@@ -205,7 +214,8 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
         });
         if (!docRes.ok) {
           const errorData = await docRes.json().catch(() => ({}));
-          throw new Error(errorData.message || "Failed to update supporting document");
+          console.error("Supporting document error:", errorData);
+          throw new Error(errorData.message || `Failed to update supporting document. Status: ${docRes.status}`);
         }
       }
 

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { useRouter } from "next/navigation"
 import { 
   Eye, Edit, Trash2, Users, Building2, MapPin, Link2, Search, Plus,
@@ -48,6 +49,7 @@ interface Organization {
   address: string;
   organizationType: string;
   status: string;
+  isEnabled: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -66,31 +68,105 @@ export default function AdminOrganization() {
   const [error, setError] = useState<string | null>(null)
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [deleteOrgId, setDeleteOrgId] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
   const itemsPerPage = 5
 
+  // Prevent hydration mismatch
   useEffect(() => {
-    const fetchOrganizations = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const response = await ApiService.getAllOrganization()
-        if (response && response.success) {
-          setOrganizations(response.data || [])
-        } else {
-          setOrganizations([])
-          setError(response?.error || 'Failed to fetch organizations')
-        }
-      } catch (error) {
-        setOrganizations([])
-        setError('Failed to fetch organizations')
-        console.error('Error fetching organizations:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
+    setMounted(true)
+  }, [])
 
+  // Additional hydration protection
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setHydrated(true)
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [mounted])
+
+  const fetchOrganizations = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await ApiService.getAllOrganization()
+      if (response && response.success) {
+        setOrganizations(response.data || [])
+      } else {
+        setOrganizations([])
+        setError(response?.error || 'Failed to fetch organizations')
+      }
+    } catch (error) {
+      setOrganizations([])
+      setError('Failed to fetch organizations')
+      console.error('Error fetching organizations:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     fetchOrganizations()
   }, [])
+
+  const handleEnable = async (orgId: string) => {
+    setActionLoading(orgId);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}/enable-status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+          }
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message || "Organization enabled successfully.")
+        await fetchOrganizations(); // ✅ resync with backend
+      } else {
+        toast.error(data.message || "Failed to enable organization.");
+      }
+    } catch (err) {
+      console.error("Enable error:", err);
+      toast.error("Failed to enable organization.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDisable = async (orgId: string) => {
+    setActionLoading(orgId);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}/disable-status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+          }
+        }
+      );
+      const data = await response.json();
+      if (data.success) {
+        toast.success(data.message || "Organization disabled successfully.")
+        await fetchOrganizations(); // ✅ resync with backend
+      } else {
+        toast.error(data.message || "Failed to disable organization.");
+      }
+    } catch (err) {
+      console.error("Disable error:", err);
+      toast.error("Failed to disable organization.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const LoadingSpinner = () => (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
@@ -111,13 +187,25 @@ export default function AdminOrganization() {
     return <LoadingSpinner />
   }
 
+  if (!mounted || !hydrated) {
+    return <LoadingSpinner />
+  }
+
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="text-lg text-red-600 mb-4">{error}</div>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <div className="text-red-500 text-xl">⚠️</div>
+              <h3 className="font-semibold">Error Loading Organizations</h3>
+              <p className="text-sm text-gray-600">{error}</p>
+              <Button onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -131,6 +219,7 @@ export default function AdminOrganization() {
     address: org.address || '',
     organizationType: org.organizationType || 'Event Management',
     status: org.status || 'Active',
+    isEnabled: org.isEnabled ?? true, // Use nullish coalescing with true default
     createdAt: org.createdAt || new Date().toISOString(),
     updatedAt: org.updatedAt || new Date().toISOString()
   }))
@@ -375,13 +464,14 @@ export default function AdminOrganization() {
                           <TableHead>Type</TableHead>
                           <TableHead>Contact</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Enabled Status</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {paginatedOrganizations.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                            <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                               No organizations found
                             </TableCell>
                           </TableRow>
@@ -399,6 +489,42 @@ export default function AdminOrganization() {
                                 <Badge variant={org.status && org.status.toLowerCase() === "approved" ? "default" : org.status && org.status.toLowerCase() === "pending" ? "secondary" : org.status && org.status.toLowerCase() === "rejected" ? "destructive" : "outline"}>
                                   {org.status}
                                 </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center justify-center">
+                                  <button
+                                    onClick={() => {
+                                      const orgId = org.id || org.organizationId || '';
+                                      if (org.isEnabled) {
+                                        handleDisable(orgId);
+                                      } else {
+                                        handleEnable(orgId);
+                                      }
+                                    }}
+                                    disabled={actionLoading === (org.id || org.organizationId || '')}
+                                    className={`
+                                      relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+                                      ${org.isEnabled 
+                                        ? 'bg-green-600 hover:bg-green-700' 
+                                        : 'bg-gray-300 hover:bg-gray-400'
+                                      }
+                                      ${actionLoading === (org.id || org.organizationId || '') 
+                                        ? 'opacity-50 cursor-not-allowed' 
+                                        : 'cursor-pointer'
+                                      }
+                                    `}
+                                  >
+                                    <span
+                                      className={`
+                                        inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ease-in-out
+                                        ${org.isEnabled ? 'translate-x-6' : 'translate-x-1'}
+                                      `}
+                                    />
+                                  </button>
+                                  {actionLoading === (org.id || org.organizationId || '') && (
+                                    <div className="ml-2 w-4 h-4 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                                  )}
+                                </div>
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end space-x-2">
