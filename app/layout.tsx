@@ -7,6 +7,8 @@ import { Toaster } from "@/components/ui/sonner"
 import Script from 'next/script';
 import { AttendeeProvider } from "@/context/AttendeeContext";
 import { BookingProvider } from "@/contexts/booking-context";
+import { ServerErrorBoundary } from "@/components/ServerErrorBoundary";
+import { GlobalErrorHandler } from "@/components/GlobalErrorHandler";
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -29,7 +31,12 @@ export default function RootLayout({
         />
         <AuthProvider>
           <BookingProvider>
-            <AttendeeProvider>{children}</AttendeeProvider>
+            <AttendeeProvider>
+              <ServerErrorBoundary>
+                <GlobalErrorHandler />
+                {children}
+              </ServerErrorBoundary>
+            </AttendeeProvider>
           </BookingProvider>
         </AuthProvider>
         <Toaster />

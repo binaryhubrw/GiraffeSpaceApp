@@ -199,46 +199,46 @@ export default function PayVenueBooking() {
         
         // Fallback to mock data if context data is not available
         await new Promise((resolve) => setTimeout(resolve, 1000)) // Simulate loading
-        // Mock venue booking data
+// Mock venue booking data
         setBookingData({
-          bookingId: "fcdc9e82-b0f6-481b-b9e8-3cb77667a6e5",
-          eventId: "980ed166-1202-4807-839c-386212d75dbf",
-          venueId: "eda25e91-ff83-4cbb-8ef6-d90503eb77a2",
-          eventTitle: "Tech Innovation Summit 2025",
-          bookingDates: [{ date: "2025-08-30" }, { date: "2025-08-31" }],
-          bookingReason: "CONFERENCE",
-          venue: {
-            venueName: "Virunga Tents",
-            description: "Premium venue perfect for conferences, meetings, and corporate events with modern facilities",
-            capacity: 1002,
-            venueLocation: "Nyarugenge, Kigali",
-            mainPhotoUrl:
-              "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082307/venues/main_photos/y6tbsfzxqouvd3v8lmcq.jpg",
-            photoGallery: [
-              "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082309/venues/gallery/l3t9thji8ahdbh8kxmxu.jpg",
-              "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082310/venues/gallery/uo5frltdutjxbrwijgem.jpg",
-            ],
-            basePrice: 2500,
-            bookingType: "DAILY",
-            amenities: ["WiFi", "Projector", "Sound System", "Catering", "Parking", "AC"],
-          },
-          organizer: {
+  bookingId: "fcdc9e82-b0f6-481b-b9e8-3cb77667a6e5",
+  eventId: "980ed166-1202-4807-839c-386212d75dbf",
+  venueId: "eda25e91-ff83-4cbb-8ef6-d90503eb77a2",
+  eventTitle: "Tech Innovation Summit 2025",
+  bookingDates: [{ date: "2025-08-30" }, { date: "2025-08-31" }],
+  bookingReason: "CONFERENCE",
+  venue: {
+    venueName: "Virunga Tents",
+    description: "Premium venue perfect for conferences, meetings, and corporate events with modern facilities",
+    capacity: 1002,
+    venueLocation: "Nyarugenge, Kigali",
+    mainPhotoUrl:
+      "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082307/venues/main_photos/y6tbsfzxqouvd3v8lmcq.jpg",
+    photoGallery: [
+      "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082309/venues/gallery/l3t9thji8ahdbh8kxmxu.jpg",
+      "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082310/venues/gallery/uo5frltdutjxbrwijgem.jpg",
+    ],
+    basePrice: 2500,
+    bookingType: "DAILY",
+    amenities: ["WiFi", "Projector", "Sound System", "Catering", "Parking", "AC"],
+  },
+  organizer: {
             firstName: "John",
             lastName: "Doe",
             email: "john.doe@example.com",
             phoneNumber: "+1234567890",
             organization: "Tech Corp",
-          },
-          pricing: {
-            baseAmount: 5000, // 2 days × $2500
-            discountPercent: 10,
-            discountAmount: 500,
-            taxPercent: 18,
-            taxAmount: 810, // (5000 - 500) × 0.18
-            totalAmount: 5310,
-          },
-          bookingStatus: "PENDING_PAYMENT",
-          createdAt: "2025-07-22T23:41:22.379Z",
+  },
+  pricing: {
+    baseAmount: 5000, // 2 days × $2500
+    discountPercent: 10,
+    discountAmount: 500,
+    taxPercent: 18,
+    taxAmount: 810, // (5000 - 500) × 0.18
+    totalAmount: 5310,
+  },
+  bookingStatus: "PENDING_PAYMENT",
+  createdAt: "2025-07-22T23:41:22.379Z",
         })
       } catch (err) {
         setError("Failed to load booking data")
@@ -334,11 +334,11 @@ export default function PayVenueBooking() {
 
       // Call the API to process the payment
       const response = await ApiService.payEventBooking(bookingId, paymentData)
-      
+
       if (response.success) {
         toast.success("Payment processed successfully!")
-        setSuccess(true)
-        setCurrentStep(3)
+      setSuccess(true)
+      setCurrentStep(3)
       } else {
         const errorMessage = response.message || "Payment failed. Please try again."
         toast.error(errorMessage)

@@ -1361,7 +1361,64 @@ class ApiService {
     }
   } 
 
+  /**** get all ticket on event**** */
+  static async getAllEventTickets(eventId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/events/${eventId}/ticket-types`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching tickets for event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
 
+
+  /**** get active ticket type on event *** */
+  static async getActiveEventTickets(eventId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/events/${eventId}/ticket-types/active`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching active tickets for event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+
+
+  /*** purchase ticket on evente** */
+  static async purchaseEventTicket( ticketData: any): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/event/tickets/purchase`, ticketData, {
+        headers: this.getHeader(ticketData),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error purchasing event ticket:", error);
+      throw error;
+    }
+  }
+
+  /***** check and scann ticket***** */
+  static async checkAndScanTicket(ticketData: any): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/event/tickets/check-in`, ticketData, {
+        headers: this.getHeader(ticketData),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error checking and scanning ticket:", error);
+      throw error;
+    }
+  }
 
 
   // Fetch organizations for a specific user

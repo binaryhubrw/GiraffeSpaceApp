@@ -235,326 +235,526 @@ export default function EventSection() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className={`transform transition-all duration-1000 ease-out ${isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
-        {/* Remove old date filter buttons */}
-              {/* Dashboard Header */}
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-                <div>
-                  <h1 className="text-3xl font-bold mb-1">Organizer Dashboard</h1>
-                  <p className="text-gray-600">Manage your events and track performance</p>
-                </div>
+        {/* Dashboard Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8">
+          <div className="mb-4 md:mb-0">
+            <h1 className="text-2xl md:text-3xl font-bold mb-1">Organizer Dashboard</h1>
+            <p className="text-gray-600 text-sm md:text-base">Manage your events and track performance</p>
+          </div>
 
-                <div className="flex flex-col md:flex-row gap-4 mt-4 md:mt-0">
-                  <button
-                    className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                    onClick={() => router.push("/user-dashboard/events/create")}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Event
-                  </button>
-                </div>
+          <div className="w-full md:w-auto">
+            <button
+              className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 w-full md:w-auto"
+              onClick={() => router.push("/user-dashboard/events/create")}
+            >
+              <Plus className="h-4 w-4" />
+              Create Event
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Cards - Mobile Responsive Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-6 mb-6 md:mb-8">
+          <div className="border rounded-lg p-3 md:p-6 bg-white">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-600 text-xs md:text-sm mb-1">Total Events</p>
+                <h2 className="text-xl md:text-3xl font-bold">{stats.totalEvents}</h2>
+                <p className="text-gray-600 text-xs md:text-sm">{stats.totalEventsChange}</p>
               </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
-        <div className="border rounded-lg p-6 bg-white">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-600 text-sm mb-1">Total Events</p>
-              <h2 className="text-3xl font-bold">{stats.totalEvents}</h2>
-              <p className="text-gray-600 text-sm">{stats.totalEventsChange}</p>
+              <Calendar className="h-4 md:h-5 w-4 md:w-5 text-gray-400" />
             </div>
-            <Calendar className="h-5 w-5 text-gray-400" />
+          </div>
+          <div className="border rounded-lg p-3 md:p-6 bg-white">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-600 text-xs md:text-sm mb-1">Total Attendees</p>
+                <h2 className="text-xl md:text-3xl font-bold">{stats.totalAttendees}</h2>
+                <p className="text-gray-600 text-xs md:text-sm">{stats.totalAttendeesChange}</p>
+              </div>
+              <Users className="h-4 md:h-5 w-4 md:w-5 text-gray-400" />
+            </div>
+          </div>
+          <div className="border rounded-lg p-3 md:p-6 bg-white">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-600 text-xs md:text-sm mb-1">Venues Used</p>
+                <h2 className="text-xl md:text-3xl font-bold">{stats.venuesUsed}</h2>
+                <p className="text-gray-600 text-xs md:text-sm">{stats.venuesUsedChange}</p>
+              </div>
+              <MapPin className="h-4 md:h-5 w-4 md:w-5 text-gray-400" />
+            </div>
+          </div>
+          <div className="border rounded-lg p-3 md:p-6 bg-white">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-600 text-xs md:text-sm mb-1">Upcoming Events</p>
+                <h2 className="text-xl md:text-3xl font-bold">{stats.upcomingEvents}</h2>
+                <p className="text-gray-600 text-xs md:text-sm">{stats.upcomingEventsPeriod}</p>
+              </div>
+              <Clock className="h-4 md:h-5 w-4 md:w-5 text-gray-400" />
+            </div>
+          </div>
+          <div className="border rounded-lg p-3 md:p-6 bg-white">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-600 text-xs md:text-sm mb-1">Payable Events</p>
+                <h2 className="text-xl md:text-3xl font-bold">{stats.totalPayable}</h2>
+              </div>
+              <span className="inline-block bg-red-100 text-red-600 rounded-full px-2 md:px-3 py-1 text-xs font-semibold">Payable</span>
+            </div>
+          </div>
+          <div className="border rounded-lg p-3 md:p-6 bg-white">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-gray-600 text-xs md:text-sm mb-1">Free Events</p>
+                <h2 className="text-xl md:text-3xl font-bold">{stats.totalFree}</h2>
+              </div>
+              <span className="inline-block bg-green-100 text-green-600 rounded-full px-2 md:px-3 py-1 text-xs font-semibold">Free</span>
+            </div>
           </div>
         </div>
-        <div className="border rounded-lg p-6 bg-white">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-600 text-sm mb-1">Total Attendees</p>
-              <h2 className="text-3xl font-bold">{stats.totalAttendees}</h2>
-              <p className="text-gray-600 text-sm">{stats.totalAttendeesChange}</p>
-            </div>
-            <Users className="h-5 w-5 text-gray-400" />
-          </div>
-        </div>
-        <div className="border rounded-lg p-6 bg-white">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-600 text-sm mb-1">Venues Used</p>
-              <h2 className="text-3xl font-bold">{stats.venuesUsed}</h2>
-              <p className="text-gray-600 text-sm">{stats.venuesUsedChange}</p>
-            </div>
-            <MapPin className="h-5 w-5 text-gray-400" />
-          </div>
-        </div>
-        <div className="border rounded-lg p-6 bg-white">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-600 text-sm mb-1">Upcoming Events</p>
-              <h2 className="text-3xl font-bold">{stats.upcomingEvents}</h2>
-              <p className="text-gray-600 text-sm">{stats.upcomingEventsPeriod}</p>
-            </div>
-            <Clock className="h-5 w-5 text-gray-400" />
-          </div>
-        </div>
-        <div className="border rounded-lg p-6 bg-white">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-600 text-sm mb-1">Payable Events</p>
-              <h2 className="text-3xl font-bold">{stats.totalPayable}</h2>
-            </div>
-            <span className="inline-block bg-red-100 text-red-600 rounded-full px-3 py-1 text-xs font-semibold">Payable</span>
-          </div>
-        </div>
-        <div className="border rounded-lg p-6 bg-white">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-gray-600 text-sm mb-1">Free Entrance Events</p>
-              <h2 className="text-3xl font-bold">{stats.totalFree}</h2>
-            </div>
-            <span className="inline-block bg-green-100 text-green-600 rounded-full px-3 py-1 text-xs font-semibold">Free</span>
-          </div>
-        </div>
-      </div>
 
 
       <div className="bg-white">
-           {/* Tab Navigation */}
-      <div className="border-b mb-6 ml-3 mr-3 ">
-        <div className="flex -mb-px">
-          <button
-            className={`px-6 py-2 font-medium text-sm border-b-2 ${
-              activeTab === "my-events"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-            onClick={() => setActiveTab("my-events")}
-          >
-            My Events
-          </button>
-          <button
-            className={`px-6 py-2 font-medium text-sm border-b-2 ${
-              activeTab === "analytics"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-            onClick={() => setActiveTab("analytics")}
-          >
-            Analytics
-          </button>
+        {/* Tab Navigation - Mobile Responsive */}
+        <div className="border-b mb-4 md:mb-6 mx-3">
+          <div className="flex -mb-px overflow-x-auto">
+            <button
+              className={`px-4 md:px-6 py-2 font-medium text-sm border-b-2 whitespace-nowrap ${
+                activeTab === "my-events"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+              onClick={() => setActiveTab("my-events")}
+            >
+              My Events
+            </button>
+            <button
+              className={`px-4 md:px-6 py-2 font-medium text-sm border-b-2 whitespace-nowrap ${
+                activeTab === "analytics"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+              onClick={() => setActiveTab("analytics")}
+            >
+              Analytics
+            </button>
+          </div>
         </div>
-      </div>
 
-      {activeTab === "my-events" && (
-        <>
-          {/* Events Header */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4 ml-3 mr-3">
-            <h2 className="text-xl font-bold">Your Events</h2>
-            <div className="flex flex-col md:flex-row gap-2 md:gap-4 w-full md:w-auto">
-              {/* Search by event name */}
-              <Input
-                type="text"
-                placeholder="Search by event name..."
-                value={eventNameFilter}
-                onChange={(e) => {
-                  setEventNameFilter(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="w-full md:w-56"
-              />
-              {/* Filter by pay type */}
-              <select
-                value={payTypeFilter}
-                onChange={(e) => {
-                  setPayTypeFilter(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="border rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Types</option>
-                <option value="free">Free Entrance</option>
-                <option value="payable">Payable</option>
-              </select>
-              {/* Status filter dropdown (unchanged) */}
-              <div className="relative">
+        {activeTab === "my-events" && (
+          <>
+            {/* Events Header - Mobile Responsive */}
+            <div className="flex flex-col gap-4 mb-4 mx-3">
+              <h2 className="text-lg md:text-xl font-bold">Your Events</h2>
+              
+              {/* Mobile Filter Toggle */}
+              <div className="md:hidden">
                 <button
-                  className="flex items-center gap-2 border rounded-md px-4 py-2 text-gray-700 bg-white"
+                  className="flex items-center gap-2 border rounded-md px-3 py-2 text-gray-700 bg-white w-full"
                   onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
-                  type="button"
                 >
                   <Filter className="h-4 w-4" />
-                  <span>Status</span>
-                  <ChevronDown className="h-4 w-4" />
+                  <span>Filters</span>
+                  <ChevronDown className="h-4 w-4 ml-auto" />
                 </button>
-                {isStatusDropdownOpen && (
-                  <div className="absolute right-0 mt-1 w-48 bg-white border rounded-md shadow-lg z-10">
-                    <ul className="py-1">
-                      {["all", "published", "pending", "cancelled"].map((status) => (
-                        <li
-                          key={status}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm capitalize"
-                          onClick={() => {
-                            setStatusFilter(status)
-                            setIsStatusDropdownOpen(false)
-                            setCurrentPage(1)
-                          }}
-                        >
-                          {status.charAt(0).toUpperCase() + status.slice(1)}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
-              {/* Date Filter Dropdown */}
-              <select
-                value={dateFilter}
-                onChange={e => setDateFilter(e.target.value)}
-                className="border rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Dates</option>
-                <option value="today">Today</option>
-                <option value="thisWeek">This Week</option>
-                <option value="thisMonth">This Month</option>
-                <option value="custom">Custom</option>
-              </select>
-              {dateFilter === "custom" && (
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="date"
-                    value={customStartDate}
-                    onChange={e => setCustomStartDate(e.target.value)}
-                    className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
+              {/* Mobile Filters Panel */}
+              {isStatusDropdownOpen && (
+                <div className="md:hidden space-y-3 p-4 bg-gray-50 rounded-lg">
+                  <Input
+                    type="text"
+                    placeholder="Search by event name..."
+                    value={eventNameFilter}
+                    onChange={(e) => {
+                      setEventNameFilter(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="w-full"
                   />
-                  <span className="text-gray-500">to</span>
-                  <input
-                    type="date"
-                    value={customEndDate}
-                    onChange={e => setCustomEndDate(e.target.value)}
-                    className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  <select
+                    value={payTypeFilter}
+                    onChange={(e) => {
+                      setPayTypeFilter(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="border rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="free">Free Entrance</option>
+                    <option value="payable">Payable</option>
+                  </select>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => {
+                      setStatusFilter(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="border rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="published">Published</option>
+                    <option value="pending">Pending</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  <select
+                    value={dateFilter}
+                    onChange={e => setDateFilter(e.target.value)}
+                    className="border rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                  >
+                    <option value="all">All Dates</option>
+                    <option value="today">Today</option>
+                    <option value="thisWeek">This Week</option>
+                    <option value="thisMonth">This Month</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                  {dateFilter === "custom" && (
+                    <div className="space-y-2">
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={e => setCustomStartDate(e.target.value)}
+                        className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
+                      />
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={e => setCustomEndDate(e.target.value)}
+                        className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
+                      />
+                    </div>
+                  )}
                 </div>
+              )}
+
+              {/* Desktop Filters */}
+              <div className="hidden md:flex md:items-center md:justify-between gap-4 w-full">
+                <div className="flex flex-col md:flex-row gap-2 md:gap-4 w-full md:w-auto">
+                  {/* Search by event name */}
+                  <Input
+                    type="text"
+                    placeholder="Search by event name..."
+                    value={eventNameFilter}
+                    onChange={(e) => {
+                      setEventNameFilter(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="w-full md:w-56"
+                  />
+                  {/* Filter by pay type */}
+                  <select
+                    value={payTypeFilter}
+                    onChange={(e) => {
+                      setPayTypeFilter(e.target.value)
+                      setCurrentPage(1)
+                    }}
+                    className="border rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="free">Free Entrance</option>
+                    <option value="payable">Payable</option>
+                  </select>
+                  {/* Status filter dropdown */}
+                  <div className="relative">
+                    <button
+                      className="flex items-center gap-2 border rounded-md px-4 py-2 text-gray-700 bg-white"
+                      onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+                      type="button"
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span>Status</span>
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                    {isStatusDropdownOpen && (
+                      <div className="absolute right-0 mt-1 w-48 bg-white border rounded-md shadow-lg z-10">
+                        <ul className="py-1">
+                          {["all", "published", "pending", "cancelled"].map((status) => (
+                            <li
+                              key={status}
+                              className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm capitalize"
+                              onClick={() => {
+                                setStatusFilter(status)
+                                setIsStatusDropdownOpen(false)
+                                setCurrentPage(1)
+                              }}
+                            >
+                              {status.charAt(0).toUpperCase() + status.slice(1)}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                  {/* Date Filter Dropdown */}
+                  <select
+                    value={dateFilter}
+                    onChange={e => setDateFilter(e.target.value)}
+                    className="border rounded-md px-3 py-2 text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Dates</option>
+                    <option value="today">Today</option>
+                    <option value="thisWeek">This Week</option>
+                    <option value="thisMonth">This Month</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                  {dateFilter === "custom" && (
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={e => setCustomStartDate(e.target.value)}
+                        className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <span className="text-gray-500">to</span>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={e => setCustomEndDate(e.target.value)}
+                        className="px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          {/* Events Table - Mobile Responsive */}
+          <div className="mx-3">
+            {/* Desktop Table */}
+            <div className="hidden md:block border rounded-lg overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Venue</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Registrations</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedEvents.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-12">
+                        <div className="flex flex-col items-center">
+                          <Calendar className="h-12 w-12 text-gray-300 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-1">No events found</h3>
+                          <p className="text-gray-500 mb-4">
+                            {statusFilter !== "all"
+                              ? `You don't have any ${statusFilter.toLowerCase()} events.`
+                              : "You haven't created any events yet."}
+                          </p>
+                          <button
+                            onClick={() => router.push("/manage/events/create")}
+                            className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Create New Event
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedEvents.map((event) => (
+                      <TableRow key={event.eventId}>
+                        <TableCell className="font-medium">{event.eventName}</TableCell>
+                        <TableCell>
+                          {event.bookingDates && event.bookingDates.length > 0 ? (
+                            <div className="space-y-1">
+                              {event.bookingDates.map((date: any, index: number) => (
+                                <div key={index} className="text-sm">
+                                  {new Date(date.date).toLocaleDateString()}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            "No dates"
+                          )}
+                        </TableCell>
+                        <TableCell>{event.venueBookings && event.venueBookings[0] && event.venueBookings[0].venue ? event.venueBookings[0].venue.venueName : ""}</TableCell>
+                        <TableCell>{event.eventType}</TableCell>
+                        <TableCell>{event.maxAttendees}</TableCell>
+                        <TableCell>
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              event.eventStatus === "APPROVED"
+                                ? "bg-green-100 text-green-800"
+                                : event.eventStatus === "DRAFT"
+                                ? "bg-gray-100 text-gray-800"
+                                : event.eventStatus === "PUBLISHED"
+                                ? "bg-blue-100 text-blue-800"
+                                : event.eventStatus === "PENDING"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : event.eventStatus === "PENDING_PUBLICATION"
+                                ? "bg-orange-100 text-orange-800"
+                                : event.eventStatus === "CANCELLED"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {event.eventStatus === "APPROVED" ? "APPROVED" : 
+                             event.eventStatus === "DRAFT" ? "DRAFT" : 
+                             event.eventStatus}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Link href={`/user-dashboard/events/${event.eventId}`} className="inline-block text-blue-600 hover:text-blue-800">
+                            <Eye className="h-5 w-5" aria-label="View" />
+                          </Link>
+                          <Link href={`/user-dashboard/events/${event.eventId}/edit`} className="inline-block text-gray-600 hover:text-gray-900">
+                            <Pencil className="h-5 w-5" aria-label="Edit" />
+                          </Link>
+                          {canRequestPublication(event.eventStatus) && event.eventStatus !== "APPROVED" && (
+                            <button
+                              onClick={() => setShowPublishRequestId(event.eventId)}
+                              className="inline-block text-green-600 hover:text-green-800 transition-colors"
+                              title="Request Publication - Submit event for admin review"
+                            >
+                              <Send className="h-5 w-5" aria-label="Request Publication" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setShowCancelId(event.eventId)}
+                            className="inline-block text-yellow-600 hover:text-yellow-800"
+                            title="Cancel Event"
+                            disabled={event.eventStatus === "CANCELLED"}
+                          >
+                            <XCircle className="h-5 w-5" aria-label="Cancel Event" />
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Card Layout */}
+            <div className="md:hidden space-y-4">
+              {paginatedEvents.length === 0 ? (
+                <div className="text-center py-12">
+                  <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">No events found</h3>
+                  <p className="text-gray-500 mb-4">
+                    {statusFilter !== "all"
+                      ? `You don't have any ${statusFilter.toLowerCase()} events.`
+                      : "You haven't created any events yet."}
+                  </p>
+                  <button
+                    onClick={() => router.push("/manage/events/create")}
+                    className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 mx-auto"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create New Event
+                  </button>
+                </div>
+              ) : (
+                paginatedEvents.map((event) => (
+                  <div key={event.eventId} className="border rounded-lg p-4 bg-white shadow-sm">
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="font-semibold text-gray-900 text-lg">{event.eventName}</h3>
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          event.eventStatus === "APPROVED"
+                            ? "bg-green-100 text-green-800"
+                            : event.eventStatus === "DRAFT"
+                            ? "bg-gray-100 text-gray-800"
+                            : event.eventStatus === "PUBLISHED"
+                            ? "bg-blue-100 text-blue-800"
+                            : event.eventStatus === "PENDING"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : event.eventStatus === "PENDING_PUBLICATION"
+                            ? "bg-orange-100 text-orange-800"
+                            : event.eventStatus === "CANCELLED"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {event.eventStatus === "APPROVED" ? "APPROVED" : 
+                         event.eventStatus === "DRAFT" ? "DRAFT" : 
+                         event.eventStatus}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        <span>
+                          {event.bookingDates && event.bookingDates.length > 0 ? (
+                            event.bookingDates.map((date: any, index: number) => (
+                              <span key={index}>
+                                {new Date(date.date).toLocaleDateString()}
+                                {index < event.bookingDates.length - 1 ? ", " : ""}
+                              </span>
+                            ))
+                          ) : (
+                            "No dates"
+                          )}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        <span>{event.venueBookings && event.venueBookings[0] && event.venueBookings[0].venue ? event.venueBookings[0].venue.venueName : "No venue"}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        <span>Capacity: {event.maxAttendees}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Type:</span>
+                        <span>{event.eventType}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
+                      <Link 
+                        href={`/user-dashboard/events/${event.eventId}`} 
+                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Link>
+                      <Link 
+                        href={`/user-dashboard/events/${event.eventId}/edit`} 
+                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Link>
+                      {canRequestPublication(event.eventStatus) && event.eventStatus !== "APPROVED" && (
+                        <button
+                          onClick={() => setShowPublishRequestId(event.eventId)}
+                          className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
+                          title="Request Publication"
+                        >
+                          <Send className="h-4 w-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setShowCancelId(event.eventId)}
+                        className="p-2 text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 rounded"
+                        title="Cancel Event"
+                        disabled={event.eventStatus === "CANCELLED"}
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>
-          {/* Events Table (shadcn) */}
-          <div className="border rounded-lg overflow-x-auto ml-3 mr-3">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Event</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Venue</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Registrations</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedEvents.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12">
-                      <div className="flex flex-col items-center">
-                        <Calendar className="h-12 w-12 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-1">No events found</h3>
-                        <p className="text-gray-500 mb-4">
-                          {statusFilter !== "all"
-                            ? `You don't have any ${statusFilter.toLowerCase()} events.`
-                            : "You haven't created any events yet."}
-                        </p>
-                        <button
-                          onClick={() => router.push("/manage/events/create")}
-                          className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Create New Event
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedEvents.map((event) => (
-                    <TableRow key={event.eventId}>
-                      <TableCell>{event.eventName}</TableCell>
-                      <TableCell>
-                        {event.bookingDates && event.bookingDates.length > 0 ? (
-                          <div className="space-y-1">
-                            {event.bookingDates.map((date: any, index: number) => (
-                              <div key={index} className="text-sm">
-                                {new Date(date.date).toLocaleDateString()}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          "No dates"
-                        )}
-                      </TableCell>
-                      <TableCell>{event.venueBookings && event.venueBookings[0] && event.venueBookings[0].venue ? event.venueBookings[0].venue.venueName : ""}</TableCell>
-                      <TableCell>{event.eventType}</TableCell>
-                      <TableCell>{event.maxAttendees}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            event.eventStatus === "APPROVED"
-                              ? "bg-green-100 text-green-800"
-                              : event.eventStatus === "DRAFT"
-                              ? "bg-gray-100 text-gray-800"
-                              : event.eventStatus === "PUBLISHED"
-                              ? "bg-blue-100 text-blue-800"
-                              : event.eventStatus === "PENDING"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : event.eventStatus === "PENDING_PUBLICATION"
-                              ? "bg-orange-100 text-orange-800"
-                              : event.eventStatus === "CANCELLED"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {event.eventStatus === "APPROVED" ? "APPROVED" : 
-                           event.eventStatus === "DRAFT" ? "DRAFT" : 
-                           event.eventStatus}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Link href={`/user-dashboard/events/${event.eventId}`} className="inline-block text-blue-600 hover:text-blue-800">
-                          <Eye className="h-5 w-5" aria-label="View" />
-                        </Link>
-                        <Link href={`/user-dashboard/events/${event.eventId}/edit`} className="inline-block text-gray-600 hover:text-gray-900">
-                          <Pencil className="h-5 w-5" aria-label="Edit" />
-                        </Link>
-                        {/* Publish Request Button - only show for events that are not published and not approved */}
-                        {canRequestPublication(event.eventStatus) && event.eventStatus !== "APPROVED" && (
-                          <button
-                            onClick={() => setShowPublishRequestId(event.eventId)}
-                            className="inline-block text-green-600 hover:text-green-800 transition-colors"
-                            title="Request Publication - Submit event for admin review"
-                          >
-                            <Send className="h-5 w-5" aria-label="Request Publication" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setShowCancelId(event.eventId)}
-                          className="inline-block text-yellow-600 hover:text-yellow-800"
-                          title="Cancel Event"
-                          disabled={event.eventStatus === "CANCELLED"}
-                        >
-                          <XCircle className="h-5 w-5" aria-label="Cancel Event" />
-                        </button>
-                       
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          {/* Pagination */}
+          {/* Pagination - Mobile Responsive */}
           {totalPages > 1 && (
-            <div className="mt-6 ml-3 mr-3">
+            <div className="mt-6 mx-3">
               <Pagination>
-                <PaginationContent>
+                <PaginationContent className="flex flex-wrap justify-center gap-1 md:gap-2">
                   <PaginationItem>
                     <PaginationPrevious
                       href="#"
@@ -563,22 +763,46 @@ export default function EventSection() {
                         setCurrentPage((p) => Math.max(1, p - 1))
                       }}
                       aria-disabled={currentPage === 1}
+                      className="text-sm md:text-base"
                     />
                   </PaginationItem>
-                  {Array.from({ length: totalPages }, (_, i) => (
-                    <PaginationItem key={i}>
-                      <PaginationLink
-                        href="#"
-                        isActive={currentPage === i + 1}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          setCurrentPage(i + 1)
-                        }}
-                      >
-                        {i + 1}
-                      </PaginationLink>
-                    </PaginationItem>
-                  ))}
+                  
+                  {/* Show limited page numbers on mobile */}
+                  {Array.from({ length: totalPages }, (_, i) => {
+                    const pageNumber = i + 1
+                    const isVisible = 
+                      pageNumber === 1 || 
+                      pageNumber === totalPages || 
+                      (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                    
+                    if (!isVisible) {
+                      if (pageNumber === currentPage - 2 || pageNumber === currentPage + 2) {
+                        return (
+                          <PaginationItem key={`ellipsis-${pageNumber}`}>
+                            <span className="px-2 py-1 text-gray-500">...</span>
+                          </PaginationItem>
+                        )
+                      }
+                      return null
+                    }
+                    
+                    return (
+                      <PaginationItem key={pageNumber}>
+                        <PaginationLink
+                          href="#"
+                          isActive={currentPage === pageNumber}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setCurrentPage(pageNumber)
+                          }}
+                          className="text-sm md:text-base min-w-[2rem] md:min-w-[2.5rem]"
+                        >
+                          {pageNumber}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  })}
+                  
                   <PaginationItem>
                     <PaginationNext
                       href="#"
@@ -587,10 +811,16 @@ export default function EventSection() {
                         setCurrentPage((p) => Math.min(totalPages, p + 1))
                       }}
                       aria-disabled={currentPage === totalPages}
+                      className="text-sm md:text-base"
                     />
                   </PaginationItem>
                 </PaginationContent>
               </Pagination>
+              
+              {/* Mobile page info */}
+              <div className="md:hidden text-center mt-2 text-sm text-gray-500">
+                Page {currentPage} of {totalPages}
+              </div>
             </div>
           )}
           {/* Cancel Event Dialog */}
