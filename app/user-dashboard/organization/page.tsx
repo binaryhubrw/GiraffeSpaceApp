@@ -235,12 +235,7 @@ export default function UserOrganizationsPage() {
               <Building2 className="h-5 w-5" />
               Organization Details
             </span>
-            {!organization && !showForm && (
-              <Button size="sm" onClick={() => setShowForm(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create Organization
-              </Button>
-            )}
+            {/* Removed the duplicate Create Organization button here */}
           </CardTitle>
         </CardHeader>
         <CardContent>

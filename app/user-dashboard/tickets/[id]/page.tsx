@@ -360,7 +360,7 @@ export default function TicketDetailPage() {
                     <Info className="h-4 w-4 text-gray-500" />
                     <span>Method: {ticket.payment.paymentMethod}</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">{ticket.payment.notes}</p>
+                  {/* <p className="text-xs text-muted-foreground mt-2">{ticket.payment.notes}</p> */}
                 </div>
               )}
             </div>
