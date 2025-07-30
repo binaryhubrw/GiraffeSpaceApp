@@ -43,6 +43,7 @@ import {
   Settings,
   Copy,
   ExternalLink,
+  Camera,
 } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -381,8 +382,10 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                 Export Data
               </Button>
               <Button variant="outline" size="sm">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Analytics
+                <Link href={`/events/ticket-scann`} className="flex items-center gap-1">
+                  <Camera className="h-4 w-4 mr-2" />
+                Scann tickets
+                </Link>
               </Button>
               <Button asChild>
                 <Link href={`/events/${eventId}/tickets/create`}>

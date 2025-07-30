@@ -1406,6 +1406,20 @@ class ApiService {
     }
   }
 
+  /***** check and scann ticket***** */
+  static async checkAndScanTicket(ticketData: any): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/event/tickets/check-in`, ticketData, {
+        headers: this.getHeader(ticketData),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error checking and scanning ticket:", error);
+      throw error;
+    }
+  }
+
 
   // Fetch organizations for a specific user
   static async getOrganizationsByUserId(userId: string): Promise<any[]> {
