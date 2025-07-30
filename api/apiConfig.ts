@@ -1361,6 +1361,20 @@ class ApiService {
     }
   } 
 
+  /**** get all ticket on event**** */
+  static async getAllEventTickets(eventId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/events/${eventId}/ticket-types`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching tickets for event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
 
 
 
