@@ -744,33 +744,9 @@ export default function TicketScanner({ eventId }: TicketScannerProps) {
                 </p>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h4 className="font-medium text-yellow-900 mb-2">What happens next:</h4>
-                <ol className="text-sm text-yellow-800 space-y-1">
-                  <li>1. Click "Request Permission" below</li>
-                  <li>2. Your browser will show a permission popup</li>
-                  <li>3. Click "Allow" in the popup</li>
-                  <li>4. The camera will start automatically</li>
-                </ol>
-              </div>
+             
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-medium text-blue-900 mb-2">Browser-specific instructions:</h4>
-                <div className="text-sm text-blue-800 space-y-2">
-                  <div>
-                    <strong>Chrome/Edge:</strong> Look for camera icon in address bar
-                  </div>
-                  <div>
-                    <strong>Firefox:</strong> Camera icon appears in address bar
-                  </div>
-                  <div>
-                    <strong>Safari:</strong> Camera icon in address bar or system dialog
-                  </div>
-                  <div>
-                    <strong>Mobile:</strong> System permission dialog will appear
-                  </div>
-                </div>
-              </div>
+              
 
               <div className="flex gap-2">
                 <Button onClick={handlePermissionGranted} className="flex-1">
