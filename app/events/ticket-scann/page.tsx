@@ -55,6 +55,13 @@ export default function TicketScanner({ eventId }: TicketScannerProps) {
   const streamRef = useRef<MediaStream | null>(null)
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Monitor video element availability
+  useEffect(() => {
+    if (isScanning && videoRef.current) {
+      console.log("Video element is now available for scanning")
+    }
+  }, [isScanning, videoRef.current])
+
   useEffect(() => {
     // Check if camera is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -66,7 +73,20 @@ export default function TicketScanner({ eventId }: TicketScannerProps) {
     // Check if we already have permission
     checkExistingPermission()
 
+    // Ensure video element is properly initialized when component mounts
+    const initializeVideoElement = () => {
+      if (videoRef.current) {
+        console.log("Video element initialized")
+        videoRef.current.playsInline = true
+        videoRef.current.muted = true
+      }
+    }
+
+    // Initialize video element after component mounts
+    const timer = setTimeout(initializeVideoElement, 100)
+
     return () => {
+      clearTimeout(timer)
       stopScanning()
     }
   }, [])
@@ -144,36 +164,75 @@ export default function TicketScanner({ eventId }: TicketScannerProps) {
         return
       }
 
-      if (!videoRef.current) {
-        console.error("Video element not found")
-        stream.getTracks().forEach(track => track.stop())
-        return
-      }
-
-      streamRef.current = stream
-      videoRef.current.srcObject = stream
+      // Set scanning state first to ensure video element is rendered
       setIsScanning(true)
 
-      videoRef.current.onloadedmetadata = () => {
-        console.log("Video metadata loaded, starting playback")
-        videoRef.current?.play().catch(error => {
-          console.error("Failed to play video:", error)
-          toast.error("Failed to start camera feed")
-          stopScanning()
-        })
-        startQRDetection()
+      // Wait for the next render cycle to ensure video element is in DOM
+      await new Promise(resolve => setTimeout(resolve, 100))
+
+      if (!videoRef.current) {
+        console.error("Video element not found - waiting for render")
+        // Wait a bit more and try again
+        await new Promise(resolve => setTimeout(resolve, 200))
+        
+        if (!videoRef.current) {
+          console.error("Video element still not found after waiting")
+          stream.getTracks().forEach(track => track.stop())
+          setIsScanning(false)
+          toast.error("Failed to initialize camera. Please try again.")
+          return
+        }
       }
 
-      videoRef.current.onerror = (error) => {
-        console.error("Video error:", error)
-        toast.error("Camera feed error occurred")
-        stopScanning()
-      }
+      // Ensure video element has proper attributes
+      const video = videoRef.current
+      video.playsInline = true
+      video.muted = true
+      video.autoplay = true
+
+      streamRef.current = stream
+      video.srcObject = stream
+      
+      // Wait for video to be ready
+      await new Promise((resolve, reject) => {
+        if (!video) {
+          reject(new Error("Video element not available"))
+          return
+        }
+        
+        const handleLoadedMetadata = () => {
+          console.log("Video metadata loaded, starting playback")
+          video.play().catch(error => {
+            console.error("Failed to play video:", error)
+            toast.error("Failed to start camera feed")
+            stopScanning()
+            reject(error)
+          })
+          startQRDetection()
+          resolve(true)
+        }
+
+        const handleError = (error: any) => {
+          console.error("Video error:", error)
+          toast.error("Camera feed error occurred")
+          stopScanning()
+          reject(error)
+        }
+
+        video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true })
+        video.addEventListener('error', handleError, { once: true })
+
+        // Set a timeout in case the video never loads
+        setTimeout(() => {
+          reject(new Error("Video failed to load within timeout"))
+        }, 5000)
+      })
 
     } catch (error: any) {
       console.error("Error starting scanning:", error)
       toast.error("Failed to start camera scanning: " + (error.message || "Unknown error"))
       setHasPermission(false)
+      setIsScanning(false)
     }
   }
 
@@ -227,43 +286,40 @@ export default function TicketScanner({ eventId }: TicketScannerProps) {
     try {
       console.log("Processing QR code data:", qrData)
 
-      let decodedData: TicketData
+      // The QR code data is already the token we need to send
+      // It's a base64 encoded JSON string that contains the ticket information
+      let qrCodeData = qrData
 
-      // Try to parse as base64 first, then as direct JSON
+      // Validate that we have QR data
+      if (!qrCodeData || qrCodeData.trim() === '') {
+        throw new Error("Empty QR code data")
+      }
+
+      // Try to decode the base64 to see if it's valid JSON (for validation purposes)
       try {
-        // Attempt to decode as base64
-        const decodedString = atob(qrData)
-        decodedData = JSON.parse(decodedString) as TicketData
-      } catch (base64Error) {
-        // If base64 fails, try parsing as direct JSON
-        try {
-          decodedData = JSON.parse(qrData) as TicketData
-        } catch (jsonError) {
-          // If both fail, treat as direct token/uniqueHash
-          decodedData = {
-            registrationId: "",
-            userId: "",
-            eventId: eventId || "",
-            timestamp: new Date().toISOString(),
-            uniqueHash: qrData // Use the QR data directly as uniqueHash
-          }
+        const decodedString = atob(qrCodeData)
+        const decodedData = JSON.parse(decodedString)
+        console.log("Decoded QR data:", decodedData)
+        
+        // Validate the decoded data structure
+        if (!decodedData.uniqueHash) {
+          throw new Error("Invalid ticket data: missing uniqueHash in decoded data")
         }
-      }
-      
-      console.log("Decoded ticket data:", decodedData)
-
-      // Validate the decoded data
-      if (!decodedData.uniqueHash) {
-        throw new Error("Invalid ticket data: missing uniqueHash")
+      } catch (decodeError) {
+        console.warn("Could not decode QR data as base64 JSON, but continuing with raw data:", decodeError)
+        // If we can't decode it, we'll still try to use the raw data
+        // This handles cases where the QR code might contain the token directly
       }
 
-      // Call check-in API
-      await checkInTicket(decodedData)
+      // Call check-in API with the QR code data as the token
+      await checkInTicket(qrCodeData)
     } catch (error: any) {
       console.error("Error processing QR code:", error)
       
-      const errorMessage = error.message === "Invalid ticket data: missing uniqueHash" 
-        ? "Invalid QR code format" 
+      const errorMessage = error.message === "Empty QR code data" 
+        ? "Empty QR code detected" 
+        : error.message === "Invalid ticket data: missing uniqueHash in decoded data"
+        ? "Invalid ticket format"
         : "Failed to process QR code"
       
       setScanResult({
@@ -278,12 +334,12 @@ export default function TicketScanner({ eventId }: TicketScannerProps) {
     }
   }
 
-  const checkInTicket = async (ticketData: TicketData) => {
+  const checkInTicket = async (qrCodeData: string) => {
     try {
       // Prepare the request body for the API
       const requestBody = {
-        qrCodeData: ticketData.uniqueHash, // Pass the uniqueHash as qrCodeData (token)
-        eventId: eventId || ticketData.eventId
+        qrCodeData: qrCodeData, // The base64 encoded token from QR code
+        eventId: eventId || "" // Optional: eventId if available
       }
 
       console.log("Sending ticket scan request:", requestBody)
@@ -327,6 +383,20 @@ export default function TicketScanner({ eventId }: TicketScannerProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString()
   }
+
+  // Development helper function to test QR code processing
+  const testQRCodeProcessing = (testQRData: string) => {
+    console.log("Testing QR code processing with:", testQRData)
+    processQRCode(testQRData)
+  }
+
+  // Example test QR code (for development only)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      // Uncomment the line below to test with sample QR data
+      // testQRCodeProcessing("eyJyZWdpc3RyYXRpb25JZCI6IjM2Mzc2NGI1LTA5MTYtNDdkZi04ZWI1LTRjMmNhMWMxMDY4YiIsInVzZXJJZCI6IjIyOGEzM2EwLTg5ZmItNDJjYi05NTA5LTBlOTZjN2YwNWExMiIsImV2ZW50SWQiOiJjY2VjNTNkNy1lYjc3LTRjMDYtOTM3Yi0zYjIwYjgwMTcxNGMiLCJ0aW1lc3RhbXAiOiIyMDI1LTA3LTMwVDAxOjQwOjEyLjcxMVoiLCJ1bmlxdWVIYXNoIjoiZjhjZGUyNTEtMTkyYi00ZDlkLTljNTAtYWU0NzZjMjllMTBiIn0=")
+    }
+  }, [])
 
   const handleStartScanning = () => {
     // Check if camera is supported first
@@ -461,7 +531,14 @@ export default function TicketScanner({ eventId }: TicketScannerProps) {
             {isScanning && (
               <div className="space-y-4">
                 <div className="relative">
-                  <video ref={videoRef} className="w-full rounded-lg" playsInline muted />
+                  <video 
+                    ref={videoRef} 
+                    className="w-full rounded-lg" 
+                    playsInline 
+                    muted 
+                    autoPlay
+                    style={{ minHeight: '300px' }}
+                  />
                   <canvas ref={canvasRef} className="hidden" />
 
                   {/* Scanning overlay */}
