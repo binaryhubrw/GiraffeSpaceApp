@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,6 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Calendar, Plus, X, MapPin, Loader2, Check, Ticket, DollarSign, Save, Eye, Settings, Info } from "lucide-react"
 import Image from "next/image"
+import ApiService from "@/api/apiConfig"
+import { toast } from "sonner"
 
 interface EventData {
   eventId: string
@@ -48,47 +51,23 @@ interface TicketType {
   specialInstructions: string
 }
 
-interface CreateTicketFormProps {
-  eventId: string
-}
-
-// Mock event data
-const mockEventData: EventData = {
-  eventId: "ccec53d7-eb77-4c06-937b-3b20b801714c",
-  eventName: "iwacu muzika",
-  eventType: "PARTY",
-  eventPhoto: "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753799162/events/photos/ofs29hfkvinl013s3tb6.jpg",
-  bookingDates: [{ date: "2025-10-12" }, { date: "2025-10-13" }],
-  maxAttendees: 9999,
-  eventStatus: "APPROVED",
-  venues: [
-    {
-      venueName: "Akagera Tents",
-      venueLocation: "59 KN 7 Ave, Kigali, Rwanda",
-      capacity: 10000,
-    },
-  ],
-}
-
 const ticketCategories = [
-  "GENERAL_ADMISSION",
-  "VIP",
-  "PREMIUM",
+ 
   "EARLY_BIRD",
   "STUDENT",
   "GROUP",
   "CORPORATE",
-  "SPONSOR",
+  
 ]
 
 const currencies = [
   { code: "USD", symbol: "$", name: "US Dollar" },
-  { code: "RWF", symbol: "₣", name: "Rwandan Franc" },
+  { code: "RWF", symbol: "RWF", name: "Rwandan Franc" },
   { code: "EUR", symbol: "€", name: "Euro" },
-  { code: "GBP", symbol: "£", name: "British Pound" },
+  
 ]
 
-const ageRestrictions = ["NO_RESTRICTION", "18_PLUS", "21_PLUS", "FAMILY_FRIENDLY", "CHILDREN_ONLY", "SENIOR_DISCOUNT"]
+const ageRestrictions = ["NO_RESTRICTION", "18_PLUS"]
 
 const steps = [
   { id: 1, title: "Basic Info", icon: Info },
@@ -97,7 +76,10 @@ const steps = [
   { id: 4, title: "Review", icon: Eye },
 ]
 
-export default function CreateTicketForm({ eventId }: CreateTicketFormProps) {
+export default function CreateTicketForm() {
+  const params = useParams()
+  const eventId = params.id as string
+  
   const [eventData, setEventData] = useState<EventData | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -110,7 +92,7 @@ export default function CreateTicketForm({ eventId }: CreateTicketFormProps) {
       name: "",
       description: "",
       price: 0,
-      currency: "USD",
+      currency: "RWF",
       quantity: 100,
       maxPerPerson: 5,
       saleStartDate: "",
@@ -133,25 +115,51 @@ export default function CreateTicketForm({ eventId }: CreateTicketFormProps) {
     const fetchEventData = async () => {
       try {
         setLoading(true)
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        setEventData(mockEventData)
+        console.log("Fetching event data for ID:", eventId)
+        
+        // Call the actual API instead of using mock data
+        const response = await ApiService.getEventById(eventId)
+        console.log("API Response:", response)
+        
+        if (response.success && response.data) {
+          const event = response.data
+          setEventData({
+            eventId: event.eventId,
+            eventName: event.eventName,
+            eventType: event.eventType,
+            eventPhoto: event.eventPhoto || "",
+            bookingDates: event.bookingDates || [],
+            maxAttendees: event.maxAttendees || 0,
+            eventStatus: event.eventStatus,
+            venues: event.venueBookings?.map((booking: any) => ({
+              venueName: booking.venue?.venueName || "Unknown Venue",
+              venueLocation: booking.venue?.venueLocation || "Unknown Location",
+              capacity: booking.venue?.capacity || 0,
+            })) || [],
+          })
 
-        // Set default sale dates based on event dates
-        const eventStartDate = mockEventData.bookingDates[0].date
-        const saleStartDate = new Date()
-        const saleEndDate = new Date(eventStartDate)
-        saleEndDate.setDate(saleEndDate.getDate() - 1) // End sales 1 day before event
+          // Set default sale dates based on event dates
+          if (event.bookingDates && event.bookingDates.length > 0) {
+            const eventStartDate = event.bookingDates[0].date
+            const saleStartDate = new Date()
+            const saleEndDate = new Date(eventStartDate)
+            saleEndDate.setDate(saleEndDate.getDate() - 1) // End sales 1 day before event
 
-        setTicketTypes((prev) =>
-          prev.map((ticket) => ({
-            ...ticket,
-            saleStartDate: saleStartDate.toISOString().split("T")[0],
-            saleEndDate: saleEndDate.toISOString().split("T")[0],
-          })),
-        )
+            setTicketTypes((prev) =>
+              prev.map((ticket) => ({
+                ...ticket,
+                saleStartDate: saleStartDate.toISOString().split("T")[0],
+                saleEndDate: saleEndDate.toISOString().split("T")[0],
+              })),
+            )
+          }
+        } else {
+          console.error("Failed to fetch event data:", response)
+          toast.error("Failed to load event details")
+        }
       } catch (err) {
         console.error("Error fetching event data:", err)
+        toast.error("Error loading event details")
       } finally {
         setLoading(false)
       }
@@ -308,12 +316,17 @@ export default function CreateTicketForm({ eventId }: CreateTicketFormProps) {
 
       console.log("Creating tickets:", ticketData)
 
-      // Simulate API call
+      // TODO: Replace with actual API call when the endpoint is available
+      // const response = await ApiService.createEventTickets(ticketData)
+      
+      // For now, simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
+      toast.success(`Tickets ${isDraft ? 'saved as draft' : 'created'} successfully!`)
       setSuccess(true)
     } catch (err) {
       console.error("Error creating tickets:", err)
+      toast.error("Failed to create tickets. Please try again.")
     } finally {
       setSubmitting(false)
     }
@@ -330,13 +343,35 @@ export default function CreateTicketForm({ eventId }: CreateTicketFormProps) {
     )
   }
 
+  if (!eventId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-gray-600">Event ID not found</p>
+          <Button onClick={() => window.history.back()}>Go Back</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!eventData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-gray-600">Event not found or failed to load</p>
+          <Button onClick={() => window.history.back()}>Go Back</Button>
+        </div>
+      </div>
+    )
+  }
+
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 flex items-center justify-center">
         <Card className="max-w-md w-full mx-4">
           <CardContent className="p-8 text-center space-y-4">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <Check className="h-8 w-8 text-green-600" />
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
+              <Check className="h-8 w-8 text-blue-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900">Tickets Created Successfully!</h2>
             <p className="text-gray-600">
@@ -849,6 +884,12 @@ export default function CreateTicketForm({ eventId }: CreateTicketFormProps) {
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <div className="text-center mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <Button variant="outline" onClick={() => window.history.back()} className="bg-transparent">
+              ← Back to Event
+            </Button>
+            <div></div> {/* Spacer */}
+          </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Event Tickets</h1>
           <p className="text-gray-600">Set up ticket types for your event</p>
         </div>
