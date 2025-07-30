@@ -406,7 +406,7 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-2xl font-bold text-green-600">${totalRevenue.toLocaleString()}</p>
+                  <p className="text-[10px] font-bold text-green-600">{totalRevenue.toLocaleString()} Rwf</p>
                 </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
                   <DollarSign className="h-6 w-6 text-green-600" />
@@ -519,9 +519,9 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                       <Badge variant={getStatusBadgeVariant(ticket.status)}>{ticket.status}</Badge>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className={getCategoryColor(ticket.categoryDiscounts && Object.keys(ticket.categoryDiscounts).length > 0 ? Object.keys(ticket.categoryDiscounts)[0] : "GENERAL_ADMISSION")}>
+                      {/* <Badge className={getCategoryColor(ticket.categoryDiscounts && Object.keys(ticket.categoryDiscounts).length > 0 ? Object.keys(ticket.categoryDiscounts)[0] : "GENERAL_ADMISSION")}>
                         {getCategoryName(ticket)}
-                      </Badge>
+                      </Badge> */}
                       {ticket.isRefundable && (
                         <Badge variant="outline" className="text-xs">
                           Refundable
@@ -531,7 +531,7 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-green-600">
+                      <div className="text-sm font-bold text-green-600">
                         {currencies.find((c) => c.code === ticket.currency)?.symbol}
                         {Number.parseFloat(ticket.price).toFixed(2)}
                       </div>
@@ -548,14 +548,7 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                           <Edit className="h-4 w-4 mr-2" />
                           Edit Ticket
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Copy className="h-4 w-4 mr-2" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          View Public Page
-                        </DropdownMenuItem>
+                       
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           className="text-red-600"
@@ -596,7 +589,7 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                 {/* Stats Grid */}
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <div className="text-lg font-bold text-green-600">${(Number.parseFloat(ticket.price) * ticket.quantitySold).toLocaleString()}</div>
+                    <div className="text-[10px] font-bold text-green-600">{(Number.parseFloat(ticket.price) * ticket.quantitySold).toLocaleString()} RWF</div>
                     <div className="text-xs text-gray-500">Revenue</div>
                   </div>
                   <div>

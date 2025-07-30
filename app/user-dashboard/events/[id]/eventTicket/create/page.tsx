@@ -41,13 +41,8 @@ interface TicketType {
   saleStartDate: string
   saleEndDate: string
   isActive: boolean
+  bookingDate: string
   benefits: string[]
-  categoryDiscounts: {
-    [key: string]: {
-      percent: number
-      description: string
-    }
-  }
   isRefundable: boolean
   refundPolicy: string
   transferable: boolean
@@ -56,27 +51,17 @@ interface TicketType {
   specialInstructions: string
 }
 
-const ticketCategories = [
- 
-  "CHILDREEN",
-  "STUDENT",
-  "GROUP",
-  "CORPORATE",
-  
-]
-
 const currencies = [
   { code: "USD", symbol: "$", name: "US Dollar" },
   { code: "RWF", symbol: "RWF", name: "Rwandan Franc" },
   { code: "EUR", symbol: "€", name: "Euro" },
-  
 ]
 
 const ageRestrictions = ["NO_RESTRICTION", "18_PLUS"]
 
 const steps = [
   { id: 1, title: "Basic Info", icon: Info },
-  { id: 2, title: "Category & Pricing", icon: DollarSign },
+  { id: 2, title: "Pricing & Sales", icon: DollarSign },
   { id: 3, title: "Settings", icon: Settings },
   { id: 4, title: "Review", icon: Eye },
 ]
@@ -103,8 +88,8 @@ export default function CreateTicketForm() {
       saleStartDate: "",
       saleEndDate: "",
       isActive: true,
+      bookingDate: "", // Added bookingDate
       benefits: [""],
-      categoryDiscounts: {},
       isRefundable: true,
       refundPolicy: "",
       transferable: true,
@@ -115,8 +100,6 @@ export default function CreateTicketForm() {
   ])
 
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [customDiscountCategories, setCustomDiscountCategories] = useState<string[]>([])
-  const [newCategoryInput, setNewCategoryInput] = useState("")
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -157,6 +140,7 @@ export default function CreateTicketForm() {
                 ...ticket,
                 saleStartDate: saleStartDate.toISOString().split("T")[0],
                 saleEndDate: saleEndDate.toISOString().split("T")[0],
+                bookingDate: event.bookingDates[0].date, // Set default booking date
               })),
             )
           }
@@ -214,6 +198,7 @@ export default function CreateTicketForm() {
     const defaultSaleEnd = eventData?.bookingDates[0]
       ? new Date(new Date(eventData.bookingDates[0].date).getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
       : ""
+    const defaultBookingDate = eventData?.bookingDates[0]?.date || ""
 
     setTicketTypes([
       ...ticketTypes,
@@ -227,8 +212,8 @@ export default function CreateTicketForm() {
         saleStartDate: defaultSaleStart,
         saleEndDate: defaultSaleEnd,
         isActive: true,
+        bookingDate: defaultBookingDate, // Set default booking date
         benefits: [""],
-        categoryDiscounts: {},
         isRefundable: true,
         refundPolicy: "",
         transferable: true,
@@ -246,57 +231,6 @@ export default function CreateTicketForm() {
     }
   }
 
-  const addCategoryDiscount = (ticketIndex: number, category: string) => {
-    const newTickets = [...ticketTypes]
-    newTickets[ticketIndex].categoryDiscounts[category] = {
-      percent: 0,
-      description: ""
-    }
-    setTicketTypes(newTickets)
-  }
-
-  const removeCategoryDiscount = (ticketIndex: number, category: string) => {
-    const newTickets = [...ticketTypes]
-    delete newTickets[ticketIndex].categoryDiscounts[category]
-    setTicketTypes(newTickets)
-  }
-
-  const updateCategoryDiscount = (ticketIndex: number, category: string, field: 'percent' | 'description', value: string | number) => {
-    const newTickets = [...ticketTypes]
-    newTickets[ticketIndex].categoryDiscounts[category] = {
-      ...newTickets[ticketIndex].categoryDiscounts[category],
-      [field]: value
-    }
-    setTicketTypes(newTickets)
-  }
-
-  const addCustomDiscountCategory = () => {
-    if (newCategoryInput.trim() && !customDiscountCategories.includes(newCategoryInput.trim())) {
-      setCustomDiscountCategories([...customDiscountCategories, newCategoryInput.trim()])
-      setNewCategoryInput("")
-    }
-  }
-
-  const removeCustomDiscountCategory = (category: string) => {
-    setCustomDiscountCategories(customDiscountCategories.filter(cat => cat !== category))
-    
-    // Also remove this category from all ticket types if it exists
-    const newTickets = ticketTypes.map(ticket => {
-      const newDiscounts = { ...ticket.categoryDiscounts }
-      delete newDiscounts[category]
-      return {
-        ...ticket,
-        categoryDiscounts: newDiscounts
-      }
-    })
-    setTicketTypes(newTickets)
-  }
-
-  // Get all available categories (predefined + custom)
-  const getAllAvailableCategories = () => {
-    return [...ticketCategories, ...customDiscountCategories]
-  }
-
   const validateCurrentStep = () => {
     const newErrors: Record<string, string> = {}
 
@@ -308,6 +242,9 @@ export default function CreateTicketForm() {
           }
           if (!ticket.description.trim()) {
             newErrors[`ticket-${index}-description`] = "Description is required"
+          }
+          if (!ticket.bookingDate) {
+            newErrors[`ticket-${index}-bookingDate`] = "Event date is required"
           }
           break
         case 2:
@@ -329,15 +266,6 @@ export default function CreateTicketForm() {
           if (ticket.saleStartDate && ticket.saleEndDate && ticket.saleStartDate >= ticket.saleEndDate) {
             newErrors[`ticket-${index}-saleEndDate`] = "Sale end date must be after start date"
           }
-          // Validate category discounts
-          Object.entries(ticket.categoryDiscounts).forEach(([category, discount]) => {
-            if (discount.percent < 0 || discount.percent > 100) {
-              newErrors[`ticket-${index}-discount-${category}-percent`] = "Discount percentage must be between 0 and 100"
-            }
-            if (!discount.description.trim()) {
-              newErrors[`ticket-${index}-discount-${category}-description`] = "Discount description is required"
-            }
-          })
           break
         case 3:
           if (ticket.isRefundable && !ticket.refundPolicy.trim()) {
@@ -379,7 +307,7 @@ export default function CreateTicketForm() {
         isPubliclyAvailable: ticket.isActive,
         maxPerPerson: ticket.maxPerPerson,
         isActive: ticket.isActive,
-        categoryDiscounts: ticket.categoryDiscounts,
+        validForDate: ticket.bookingDate, // Add the selected booking date
         isRefundable: ticket.isRefundable,
         transferable: ticket.transferable,
         ageRestriction: ticket.ageRestriction,
@@ -521,7 +449,38 @@ export default function CreateTicketForm() {
                       )}
                     </div>
 
-                    
+                    {/* Booking Date Selector */}
+                    {eventData && eventData.bookingDates.length > 0 && (
+                      <div>
+                        <Label htmlFor={`bookingDate-${index}`}>Event Date *</Label>
+                        <Select
+                          value={ticket.bookingDate}
+                          onValueChange={(value) => handleTicketChange(index, "bookingDate", value)}
+                        >
+                          <SelectTrigger className={`mt-1 ${errors[`ticket-${index}-bookingDate`] ? "border-red-500" : ""}`}>
+                            <SelectValue placeholder="Select event date..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {eventData.bookingDates.map((bookingDate) => (
+                              <SelectItem key={bookingDate.date} value={bookingDate.date}>
+                                {new Date(bookingDate.date).toLocaleDateString('en-US', {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric'
+                                })}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors[`ticket-${index}-bookingDate`] && (
+                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-bookingDate`]}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          Select which event date this ticket is valid for
+                        </p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -623,136 +582,6 @@ export default function CreateTicketForm() {
                       </div>
                     </div>
 
-                    {/* Category Discounts */}
-                    <div>
-                      <Label>Category Discounts</Label>
-                      <p className="text-sm text-gray-600 mb-3">Set special discounts for different categories</p>
-                      
-                      {/* Add Custom Category */}
-                      <div className="mb-4 p-4 border rounded-lg bg-blue-50">
-                        <Label className="text-sm font-medium text-blue-900 mb-2">Add Custom Discount Category</Label>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            value={newCategoryInput}
-                            onChange={(e) => setNewCategoryInput(e.target.value)}
-                            placeholder="e.g., SENIOR_CITIZEN, MILITARY, TEACHER"
-                            className="flex-1"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault()
-                                addCustomDiscountCategory()
-                              }
-                            }}
-                          />
-                          <Button 
-                            onClick={addCustomDiscountCategory}
-                            disabled={!newCategoryInput.trim()}
-                            size="sm"
-                          >
-                            Add
-                          </Button>
-                        </div>
-                        <p className="text-xs text-blue-700 mt-1">
-                          Press Enter or click Add to create a new discount category
-                        </p>
-                      </div>
-
-                      {/* Custom Categories List */}
-                      {customDiscountCategories.length > 0 && (
-                        <div className="mb-4">
-                          <Label className="text-sm font-medium mb-2">Custom Categories:</Label>
-                          <div className="flex flex-wrap gap-2">
-                            {customDiscountCategories.map((category) => (
-                              <Badge 
-                                key={category} 
-                                variant="outline" 
-                                className="flex items-center gap-1 bg-blue-100 text-blue-800 border-blue-300"
-                              >
-                                {category.replace(/_/g, " ")}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeCustomDiscountCategory(category)}
-                                  className="h-4 w-4 p-0 text-blue-600 hover:text-blue-800"
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="space-y-4">
-                        
-                        {Object.entries(ticket.categoryDiscounts).map(([category, discount]) => (
-                          
-                          <div key={category} className="p-4 border rounded-lg bg-gray-50">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-medium">{category.replace(/_/g, " ")}</h4>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => removeCategoryDiscount(index, category)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <Label htmlFor={`discount-percent-${index}-${category}`}>Discount Percentage (%)</Label>
-                                <Input
-                                  id={`discount-percent-${index}-${category}`}
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={discount.percent}
-                                  onChange={(e) => updateCategoryDiscount(index, category, 'percent', Number.parseInt(e.target.value) || 0)}
-                                  className={`mt-1 ${errors[`ticket-${index}-discount-${category}-percent`] ? "border-red-500" : ""}`}
-                                />
-                                {errors[`ticket-${index}-discount-${category}-percent`] && (
-                                  <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-discount-${category}-percent`]}</p>
-                                )}
-                              </div>
-                              <div>
-                                <Label htmlFor={`discount-description-${index}-${category}`}>Description</Label>
-                                <Input
-                                  id={`discount-description-${index}-${category}`}
-                                  value={discount.description}
-                                  onChange={(e) => updateCategoryDiscount(index, category, 'description', e.target.value)}
-                                  placeholder="e.g., 30% off for corporate clients"
-                                  className={`mt-1 ${errors[`ticket-${index}-discount-${category}-description`] ? "border-red-500" : ""}`}
-                                />
-                                {errors[`ticket-${index}-discount-${category}-description`] && (
-                                  <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-discount-${category}-description`]}</p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        
-                        {/* Add Category Discount */}
-                        <label className="text-sm font-medium m-2">Select Discount Category*</label>
-                        <div className="flex items-center gap-2">
-                          <Select onValueChange={(value) => addCategoryDiscount(index, value)}>
-                            <SelectTrigger className="flex-1">
-                              <SelectValue placeholder="Add discount for category..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {getAllAvailableCategories()
-                                .filter(category => !ticket.categoryDiscounts[category])
-                                .map((category) => (
-                                  <SelectItem key={category} value={category}>
-                                    {category.replace(/_/g, " ")}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </div>
-
                     {/* Sales Period */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -840,16 +669,7 @@ export default function CreateTicketForm() {
                           />
                         </div>
 
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">Requires Approval</Label>
-                            <p className="text-xs text-gray-600">Manual approval needed</p>
-                          </div>
-                          <Switch
-                            checked={ticket.requiresApproval}
-                            onCheckedChange={(checked) => handleTicketChange(index, "requiresApproval", checked)}
-                          />
-                        </div>
+                       
                       </div>
 
                       <div className="space-y-4">
@@ -990,38 +810,7 @@ export default function CreateTicketForm() {
                       </div>
                     )}
 
-                    {Object.keys(ticket.categoryDiscounts).length > 0 && (
-                      <div className="mb-4">
-                        <h4 className="font-medium mb-2">Category Discounts:</h4>
-                        <div className="space-y-2">
-                          {Object.entries(ticket.categoryDiscounts).map(([category, discount]) => {
-                            const isCustomCategory = customDiscountCategories.includes(category)
-                            return (
-                              <div key={category} className={`p-3 rounded-lg ${isCustomCategory ? 'bg-blue-50' : 'bg-green-50'}`}>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className={`font-medium ${isCustomCategory ? 'text-blue-900' : 'text-green-900'}`}>
-                                      {category.replace(/_/g, " ")}
-                                    </span>
-                                    {isCustomCategory && (
-                                      <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
-                                        Custom
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <Badge variant="outline" className={`${isCustomCategory ? 'text-blue-700 border-blue-300' : 'text-green-700 border-green-300'}`}>
-                                    {discount.percent}% off
-                                  </Badge>
-                                </div>
-                                <p className={`text-sm mt-1 ${isCustomCategory ? 'text-blue-700' : 'text-green-700'}`}>
-                                  {discount.description}
-                                </p>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
+                    {/* Category Discounts section removed as per edit hint */}
 
                     {ticket.specialInstructions && (
                       <div className="p-3 bg-blue-50 rounded-lg">

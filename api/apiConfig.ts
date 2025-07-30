@@ -1393,9 +1393,9 @@ class ApiService {
 
 
   /*** purchase ticket on evente** */
-  static async purchaseEventTicket(eventId: string, ticketData: any): Promise<any> {
+  static async purchaseEventTicket( ticketData: any): Promise<any> {
     try {
-      const response = await axios.post(`${this.BASE_URL}/events/${eventId}/ticket-purchase`, ticketData, {
+      const response = await axios.post(`${this.BASE_URL}/event/tickets/purchase`, ticketData, {
         headers: this.getHeader(ticketData),
         withCredentials: true,
       });
