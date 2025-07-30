@@ -9,7 +9,6 @@ import { Eye, Loader2 } from "lucide-react"
 import { isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
 import { useAuth } from "@/contexts/auth-context" // Assuming this context is available
 import { toast } from "sonner" // Assuming sonner is configured
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useRouter } from "next/navigation"
 
 interface Ticket {
@@ -25,10 +24,10 @@ interface Ticket {
   totalCost: string
   registrationDate: string
   attendedDate: string
-  paymentStatus: string
+  paymentStatus: string // Still in interface, but not displayed in table
   qrCode: string
   buyerId: string
-  attended?: boolean // Add the new field
+  attended?: boolean // This field is now used for filtering and display
   payment: {
     paymentId: string
     amountPaid: string
@@ -46,13 +45,10 @@ export default function TicketsSection() {
   const [ticketsPage, setTicketsPage] = useState(1)
   const itemsPerPage = 5
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all") // Re-added statusFilter state
   const [dateFilter, setDateFilter] = useState("all")
   const [customStartDate, setCustomStartDate] = useState("")
   const [customEndDate, setCustomEndDate] = useState("")
-
-  const [showQrModal, setShowQrModal] = useState(false)
-  const [currentQrCode, setCurrentQrCode] = useState<string | null>(null)
 
   const { user } = useAuth() // Get user from auth context
   const router = useRouter()
@@ -76,6 +72,12 @@ export default function TicketsSection() {
             Authorization: `Bearer ${token}`,
           },
         })
+        console.log("Raw API Response:", response); // Log the full response object
+        if (!response.ok) {
+          // If response is not OK, try to read it as text to get more error details
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, Details: ${errorText}`);
+        }
         const data = await response.json()
         if (data.success) {
           setTickets(data.data)
@@ -99,14 +101,22 @@ export default function TicketsSection() {
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 
-  const filteredTickets = tickets.filter(ticket => {
+  const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch =
       ticket.eventName.toLowerCase().includes(search.toLowerCase()) ||
       ticket.registrationId.toLowerCase().includes(search.toLowerCase()) ||
       ticket.venueName.toLowerCase().includes(search.toLowerCase()) ||
       ticket.ticketTypeName.toLowerCase().includes(search.toLowerCase())
 
-    const matchesStatus = statusFilter === "all" || statusFilter === "" ? true : ticket.attended === (statusFilter === "inactive")
+    // Re-added matchesStatus logic based on 'attended'
+    const matchesStatus =
+      statusFilter === "all"
+        ? true // Display all tickets if "all" is selected
+        : statusFilter === "active"
+          ? ticket.attended === false || ticket.attended === undefined || ticket.attended === null // Active if attended is false, undefined, or null
+          : statusFilter === "inactive"
+            ? ticket.attended === true // Inactive only if attended is true
+            : true // Fallback, should not be reached with defined options
 
     let matchesDate = true
     const attendedDate = parseISO(ticket.attendedDate) // Use attendedDate for filtering
@@ -128,13 +138,8 @@ export default function TicketsSection() {
         matchesDate = true
       }
     }
-    return matchesSearch && matchesStatus && matchesDate
+    return matchesSearch && matchesStatus && matchesDate // Filter by search, status, and date
   })
-
-  const handleViewQr = (qrCodeUrl: string) => {
-    setCurrentQrCode(qrCodeUrl)
-    setShowQrModal(true)
-  }
 
   if (loading) {
     return (
@@ -170,17 +175,17 @@ export default function TicketsSection() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full md:w-64"
               />
+              {/* Re-added the Select component for status filter */}
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full md:w-48">
                   <SelectValue placeholder="All Ticket Statuses" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Ticket Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="active">Upcoming (Not Attended)</SelectItem>
+                  <SelectItem value="inactive">Attended (Inactive)</SelectItem>
                 </SelectContent>
               </Select>
-
               <Select value={dateFilter} onValueChange={setDateFilter}>
                 <SelectTrigger className="w-full md:w-48">
                   <SelectValue placeholder="All Dates" />
@@ -193,7 +198,6 @@ export default function TicketsSection() {
                   <SelectItem value="custom">Custom</SelectItem>
                 </SelectContent>
               </Select>
-
               {dateFilter === "custom" && (
                 <div className="flex flex-col sm:flex-row gap-2 items-center w-full md:w-auto">
                   <Input
@@ -236,7 +240,7 @@ export default function TicketsSection() {
                       Cost
                     </th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                      Ticket Status {/* Changed from Payment Status */}
+                      Ticket Status {/* Changed to Ticket Status */}
                     </th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
                       Actions
@@ -258,10 +262,10 @@ export default function TicketsSection() {
                       <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
                         {ticket.venueName}
                         {ticket.venueGoogleMapsLink && (
-                          <a 
-                            href={ticket.venueGoogleMapsLink} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                          <a
+                            href={ticket.venueGoogleMapsLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="ml-2 text-blue-600 hover:underline text-xs"
                           >
                             Map
@@ -284,24 +288,29 @@ export default function TicketsSection() {
                       </td>
                       <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
                         <span
-                          className={`px-3 py-1 text-xs font-semibold rounded-full 
-                            ${ticket.attended === true ? 'bg-red-100 text-red-800' : // Inactive if attended is true
-                              ticket.attended === false ? 'bg-green-100 text-green-800' : // Active if attended is false
-                              'bg-gray-100 text-gray-800' // Default or N/A
-                            }`}>
-                          {ticket.attended === true ? 'Inactive' : 
-                            ticket.attended === false ? 'Active' : 
-                            'N/A'}
+                          className={`px-3 py-1 text-xs font-semibold rounded-full
+                            ${
+                              ticket.attended === true
+                                ? "bg-red-100 text-red-800" // Inactive if attended is true
+                                : ticket.attended === false || ticket.attended === undefined || ticket.attended === null
+                                  ? "bg-green-100 text-green-800" // Active if attended is false, undefined, or null
+                                  : "bg-gray-100 text-gray-800" // Default or N/A
+                            }`}
+                        >
+                          {ticket.attended === true
+                            ? "Inactive"
+                            : ticket.attended === false || ticket.attended === undefined || ticket.attended === null
+                              ? "Active"
+                              : "N/A"}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
                         <div className="flex space-x-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => {
-                              sessionStorage.setItem('currentTicketDetail', JSON.stringify(ticket));
-                              router.push(`/user-dashboard/tickets/${ticket.registrationId}`);
+                              router.push(`/user-dashboard/tickets/${ticket.registrationId}`)
                             }}
                           >
                             <Eye className="h-4 w-4 mr-1" /> View Details
@@ -338,21 +347,6 @@ export default function TicketsSection() {
           </CardContent>
         </Card>
       </div>
-
-      {/* QR Code Dialog */}
-      {showQrModal && currentQrCode && (
-        <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Your Ticket QR Code</DialogTitle>
-              <DialogDescription>Scan this QR code at the event entrance.</DialogDescription>
-            </DialogHeader>
-            <div className="flex justify-center p-4">
-              <img src={currentQrCode || "/placeholder.svg"} alt="QR Code" className="w-64 h-64 object-contain" />
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   )
 }

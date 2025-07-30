@@ -10,6 +10,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { toast } from "sonner"
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { useAuth } from "@/contexts/auth-context"
+
+interface TicketTypeDetails {
+  ticketTypeId: string
+  name: string
+  price: string
+  quantityAvailable: number
+  quantitySold: number
+  currency: string
+  description: string
+  saleStartsAt: string
+  saleEndsAt: string
+  isPubliclyAvailable: boolean
+  maxPerPerson: number
+  isActive: boolean
+  categoryDiscounts: any | null
+  isRefundable: boolean
+  refundPolicy: any | null
+  transferable: boolean
+  ageRestriction: string
+  specialInstructions: string
+  status: string
+}
 
 interface Ticket {
   registrationId: string
@@ -17,6 +40,7 @@ interface Ticket {
   ticketTypeName: string
   eventId: string
   eventName: string
+  eventPhoto: string | null; // Add this new field
   venueId: string
   venueName: string
   venueGoogleMapsLink: string
@@ -28,6 +52,7 @@ interface Ticket {
   qrCode: string
   buyerId: string
   attended?: boolean
+  ticketTypeDetails: TicketTypeDetails; // Add this new field
   payment: {
     paymentId: string
     amountPaid: string
@@ -41,6 +66,7 @@ interface Ticket {
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const { user } = useAuth() // Get user from auth context
 
   const [ticket, setTicket] = useState<Ticket | null>(null)
   const [loading, setLoading] = useState(true)
@@ -49,31 +75,47 @@ export default function TicketDetailPage() {
   const [showQrCodeContent, setShowQrCodeContent] = useState(false)
 
   useEffect(() => {
-    setLoading(true)
-    setError(null)
-    try {
-      const storedTicket = sessionStorage.getItem('currentTicketDetail')
-      if (storedTicket) {
-        const parsedTicket: Ticket = JSON.parse(storedTicket)
-        if (parsedTicket.registrationId === id) {
-          setTicket(parsedTicket)
-          setShowQrCodeContent(parsedTicket.attended === false)
+    const fetchTicketDetails = async () => {
+      if (!user?.userId || !user?.token) {
+        setError("User not authenticated.")
+        setLoading(false)
+        return
+      }
+      setLoading(true)
+      setError(null)
+      try {
+        // Use the same endpoint as the parent page to fetch all user tickets
+        const response = await fetch(`https://giraffespacev2.onrender.com/api/v1/event/tickets/user/${user.userId}`, {
+          headers: {
+            Authorization: `Bearer ${user.token}`,
+          },
+        })
+        const data = await response.json()
+
+        if (data.success && Array.isArray(data.data)) {
+          // Find the specific ticket by ID from the fetched list
+          const foundTicket = data.data.find((t: any) => t.registrationId === id);
+          if (foundTicket) {
+            setTicket(foundTicket)
+            setShowQrCodeContent(foundTicket.attended === false)
+          } else {
+            setError("Ticket not found for this user.")
+            setTicket(null)
+          }
         } else {
-          setError("Mismatched ticket ID or data not found.")
+          setError(data.message || "Failed to fetch tickets or no data returned.")
           setTicket(null)
         }
-      } else {
-        setError("Ticket data not found in session. Please go back to the tickets list and try again.")
+      } catch (err: any) {
+        console.error("Fetch error:", err)
+        setError(err.message || "An unexpected error occurred.")
         setTicket(null)
+      } finally {
+        setLoading(false)
       }
-    } catch (err: any) {
-      console.error("Error parsing stored ticket data:", err)
-      setError(err.message || "An error occurred while loading ticket data.")
-      setTicket(null)
-    } finally {
-      setLoading(false)
     }
-  }, [id])
+    fetchTicketDetails()
+  }, [id, user?.userId, user?.token])
 
   const generateFriendlyTicketId = (uuid: string): string => {
     const cleanedId = uuid.replace(/-/g, '');
@@ -109,6 +151,18 @@ export default function TicketDetailPage() {
       title.style.color = '#333333';
       printContent.appendChild(title);
 
+      // Add event photo to PDF if available
+      if (ticket.eventPhoto) {
+        const eventPhoto = document.createElement('img');
+        eventPhoto.src = ticket.eventPhoto;
+        eventPhoto.alt = 'Event Photo';
+        eventPhoto.style.maxWidth = '150mm'; // Adjust as needed
+        eventPhoto.style.height = 'auto';
+        eventPhoto.style.display = 'block';
+        eventPhoto.style.margin = '10px auto';
+        printContent.appendChild(eventPhoto);
+      }
+      
       const qrImage = document.createElement('img');
       qrImage.src = ticket.qrCode;
       qrImage.alt = 'QR Code';
@@ -240,6 +294,18 @@ export default function TicketDetailPage() {
               <CalendarIcon className="h-5 w-5 text-gray-500" /> Event Information
             </h3>
             <div className="grid grid-cols-1 gap-3">
+              {ticket.eventPhoto && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Event Photo</p>
+                  <Image
+                    src={ticket.eventPhoto}
+                    alt="Event Photo"
+                    width={200}
+                    height={150}
+                    className="object-cover rounded-md mt-1"
+                  />
+                </div>
+              )}
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Event Name</p>
                 <p className="font-semibold">{ticket.eventName}</p>
@@ -268,7 +334,7 @@ export default function TicketDetailPage() {
           {/* Section 2: Ticket & Cost Info */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-gray-500" /> Pricing & Quantity
+              <span>Pricing & Quantity</span>
             </h3>
             <div className="grid grid-cols-1 gap-3">
               <div>
@@ -295,16 +361,15 @@ export default function TicketDetailPage() {
           {/* Section 3: QR Code & Payment Status */}
           <div className="space-y-4 lg:col-span-1">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              {/* Removed QrCode icon */}
-              <span>Payment</span> {/* Changed text to Payment */}
+              <span>Payment</span>
             </h3>
             <div className="space-y-3">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Ticket Status</p>
                 <span className={`px-3 py-1 text-xs font-semibold rounded-full 
-                  ${ticket.attended === true ? 'bg-red-100 text-red-800' : // Inactive if attended is true
-                    ticket.attended === false ? 'bg-green-100 text-green-800' : // Active if attended is false
-                    'bg-gray-100 text-gray-800' // Default or N/A
+                  ${ticket.attended === true ? 'bg-red-100 text-red-800' : 
+                    ticket.attended === false ? 'bg-green-100 text-green-800' : 
+                    'bg-gray-100 text-gray-800' 
                   }`}>
                   {ticket.attended === true ? 'Inactive' : 
                     ticket.attended === false ? 'Active' : 
@@ -336,7 +401,6 @@ export default function TicketDetailPage() {
               ) : (
                 // Inactive ticket: No QR code, only a message.
                 <div className="flex flex-col items-center justify-center bg-muted p-4 rounded-lg shadow-inner text-center">
-                  {/* <p className="text-sm text-muted-foreground mb-4">QR Code is not applicable for inactive tickets.</p> */}
                 </div>
               )}
               {/* Download QR Code as PDF button for active tickets */}
@@ -360,11 +424,50 @@ export default function TicketDetailPage() {
                     <Info className="h-4 w-4 text-gray-500" />
                     <span>Method: {ticket.payment.paymentMethod}</span>
                   </div>
-                  {/* <p className="text-xs text-muted-foreground mt-2">{ticket.payment.notes}</p> */}
+                  <p className="text-xs text-muted-foreground mt-2">{ticket.payment.notes}</p>
                 </div>
               )}
             </div>
           </div>
+
+          {/* Section 4: Ticket Type Details */}
+          {ticket.ticketTypeDetails && (
+            <div className="space-y-4 lg:col-span-3">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Info className="h-5 w-5 text-gray-500" /> Ticket Type Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Description:</p>
+                  <p>{ticket.ticketTypeDetails.description || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Sale Starts:</p>
+                  <p>{formatDate(ticket.ticketTypeDetails.saleStartsAt) || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Sale Ends:</p>
+                  <p>{formatDate(ticket.ticketTypeDetails.saleEndsAt) || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Age Restriction:</p>
+                  <p>{ticket.ticketTypeDetails.ageRestriction || 'NO_RESTRICTION'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Refundable:</p>
+                  <p>{ticket.ticketTypeDetails.isRefundable ? 'Yes' : 'No'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Transferable:</p>
+                  <p>{ticket.ticketTypeDetails.transferable ? 'Yes' : 'No'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Special Instructions:</p>
+                  <p>{ticket.ticketTypeDetails.specialInstructions || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -382,7 +485,7 @@ export default function TicketDetailPage() {
             <p className="font-medium">{ticket.buyerId}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">Registration Date:</p>
+            <p className="text-muted-foreground">Verification Date:</p>
             <p className="font-medium">{formatDate(ticket.registrationDate)}</p>
           </div>
         </CardContent>
