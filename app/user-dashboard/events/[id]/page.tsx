@@ -33,6 +33,7 @@ import {
   PaginationNext,
 } from "@/components/ui/pagination"
 import ApiService from "@/api/apiConfig"
+import EventTicketsManagement from "./event-tickets-management"
 
 
 export default function EventDetails({ params }: { params: { id: string } }) {
@@ -424,8 +425,10 @@ export default function EventDetails({ params }: { params: { id: string } }) {
             {activeTab === "attendees" && (
               <div className="text-center text-gray-500 py-8">No attendees data available.</div>
             )}
+
+            {/* tickets tab section */}
             {activeTab === "tickets" && (
-              <div className="text-center text-gray-500 py-8">No tickets data available.</div>
+              <EventTicketsManagement eventId={id as string} />
             )}
           </div>
         </div>

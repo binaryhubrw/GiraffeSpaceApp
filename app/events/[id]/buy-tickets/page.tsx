@@ -54,13 +54,33 @@ interface EventData {
 }
 
 interface TicketType {
-  id: string
+  ticketTypeId: string
+  eventId: string
   name: string
   description: string
-  price: number
-  maxQuantity: number
-  availableQuantity: number
-  benefits: string[]
+  price: string
+  quantityAvailable: number
+  quantitySold: number
+  currency: string
+  saleStartsAt: string
+  saleEndsAt: string
+  createdAt: string
+  updatedAt: string
+  isPubliclyAvailable: boolean
+  maxPerPerson: number
+  isActive: boolean
+  categoryDiscounts: {
+    [key: string]: {
+      percent: number
+      description: string
+    }
+  } | null
+  isRefundable: boolean
+  refundPolicy: string | null
+  transferable: boolean
+  ageRestriction: string
+  specialInstructions: string | null
+  status: string
 }
 
 interface PaymentMethod {
@@ -71,47 +91,13 @@ interface PaymentMethod {
 }
 
 interface BuyerInfo {
-  firstName: string
-  lastName: string
-  email: string
-  phoneNumber: string
-  organization?: string
+  recipientEmail: string
+  attendeeNames: string[]
 }
 
 interface BuyTicketProps {
   eventId: string
 }
-
-// Mock ticket types
-const mockTicketTypes: TicketType[] = [
-  {
-    id: "early-bird",
-    name: "Early Bird",
-    description: "Limited time offer with exclusive benefits",
-    price: 50,
-    maxQuantity: 5,
-    availableQuantity: 25,
-    benefits: ["Priority seating", "Welcome kit", "Networking session access"],
-  },
-  {
-    id: "regular",
-    name: "Regular",
-    description: "Standard event access",
-    price: 75,
-    maxQuantity: 10,
-    availableQuantity: 150,
-    benefits: ["Event access", "Lunch included", "Certificate"],
-  },
-  {
-    id: "vip",
-    name: "VIP",
-    description: "Premium experience with exclusive perks",
-    price: 150,
-    maxQuantity: 3,
-    availableQuantity: 10,
-    benefits: ["Front row seating", "Meet & greet", "Premium lunch", "Exclusive swag", "Photo opportunity"],
-  },
-]
 
 const paymentMethods: PaymentMethod[] = [
   { id: "card", type: "card", name: "Credit/Debit Card", icon: "💳" },
@@ -123,6 +109,7 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
   const params = useParams();
   const eventId = (propEventId || params.id) as string;
   const [eventData, setEventData] = useState<EventData | null>(null)
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([])
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -133,13 +120,11 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
   const [selectedTickets, setSelectedTickets] = useState<Record<string, number>>({})
   const { attendees: registeredAttendees } = useAttendee();
   const [buyerInfo, setBuyerInfo] = useState<BuyerInfo>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phoneNumber: "",
-    organization: "",
+    recipientEmail: "",
+    attendeeNames: [],
   })
   const [paymentMethod, setPaymentMethod] = useState<string>("")
+  const [mobileMoneyAmount, setMobileMoneyAmount] = useState<number>(0)
   const [cardDetails, setCardDetails] = useState({
     cardNumber: "",
     expiryDate: "",
@@ -149,20 +134,32 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
   const [specialRequests, setSpecialRequests] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const [assignToRegistered, setAssignToRegistered] = useState(false)
-  const [ticketAssignments, setTicketAssignments] = useState<Record<string, string>>({})
-
   useEffect(() => {
     const fetchEventData = async () => {
       try {
         setLoading(true)
-        const response = await ApiService.getPubulishedEventById(eventId)
-        if (response.success) {
-          setEventData(response.data)
+        setError(null)
+
+        // Fetch both event data and active tickets
+        const [eventResponse, ticketsResponse] = await Promise.all([
+          ApiService.getPubulishedEventById(eventId),
+          ApiService.getActiveEventTickets(eventId)
+        ])
+
+        if (eventResponse.success && eventResponse.data) {
+          setEventData(eventResponse.data)
         } else {
           setError("Failed to load event data")
         }
+
+        if (ticketsResponse.success && ticketsResponse.data) {
+          setTicketTypes(ticketsResponse.data)
+        } else {
+          console.error("Failed to fetch tickets:", ticketsResponse)
+          // Don't set error here as event might still be valid without tickets
+        }
       } catch (err) {
+        console.error("Error fetching data:", err)
         setError("An error occurred while loading the event")
       } finally {
         setLoading(false)
@@ -180,37 +177,28 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
   useEffect(() => {
     if (registeredAttendees && registeredAttendees.length > 0) {
       setBuyerInfo({
-        firstName: registeredAttendees[0].firstName || "",
-        lastName: registeredAttendees[0].lastName || "",
-        email: registeredAttendees[0].email || "",
-        phoneNumber: registeredAttendees[0].phoneNumber || "",
-        organization: registeredAttendees[0].organization || "",
+        recipientEmail: registeredAttendees[0].email || "",
+        attendeeNames: [registeredAttendees[0].firstName || "", registeredAttendees[0].lastName || ""],
       });
     }
   }, [registeredAttendees]);
 
   const handleTicketQuantityChange = (ticketId: string, quantity: number) => {
-    const ticket = mockTicketTypes.find((t) => t.id === ticketId)
+    const ticket = ticketTypes.find((t) => t.ticketTypeId === ticketId)
     if (!ticket) return
 
-    const newQuantity = Math.max(0, Math.min(quantity, ticket.maxQuantity, ticket.availableQuantity))
+    const newQuantity = Math.max(0, Math.min(quantity, ticket.quantityAvailable, ticket.maxPerPerson))
     setSelectedTickets((prev) => ({
       ...prev,
       [ticketId]: newQuantity,
     }))
-  }
 
-  const handleTicketAssignment = (ticketIndex: string, attendeeId: string) => {
-    setTicketAssignments((prev) => ({
+    // Update attendee names array based on total tickets
+    const newTotalTickets = Object.values({ ...selectedTickets, [ticketId]: newQuantity }).reduce((sum, qty) => sum + qty, 0)
+    setBuyerInfo(prev => ({
       ...prev,
-      [ticketIndex]: attendeeId,
+      attendeeNames: Array.from({ length: newTotalTickets }, (_, i) => prev.attendeeNames[i] || '')
     }))
-  }
-
-  const getUnassignedTickets = () => {
-    const totalTickets = getTotalTickets()
-    const assignedTickets = Object.keys(ticketAssignments).length
-    return totalTickets - assignedTickets
   }
 
   const getTotalTickets = () => {
@@ -219,9 +207,24 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
 
   const getTotalPrice = () => {
     return Object.entries(selectedTickets).reduce((total, [ticketId, quantity]) => {
-      const ticket = mockTicketTypes.find((t) => t.id === ticketId)
-      return total + (ticket ? ticket.price * quantity : 0)
+      const ticket = ticketTypes.find((t) => t.ticketTypeId === ticketId)
+      return total + (ticket ? Number.parseFloat(ticket.price) * quantity : 0)
     }, 0)
+  }
+
+  // Helper function to get currency from selected tickets
+  const getSelectedTicketCurrency = () => {
+    const selectedTicketIds = Object.keys(selectedTickets).filter(id => selectedTickets[id] > 0)
+    if (selectedTicketIds.length === 0) return "USD"
+    
+    const firstTicket = ticketTypes.find(t => t.ticketTypeId === selectedTicketIds[0])
+    return firstTicket?.currency || "USD"
+  }
+
+  // Helper function to format currency
+  const formatCurrency = (amount: number, currency: string) => {
+    const symbol = currency === "USD" ? "$" : currency === "RWF" ? "RWF " : currency
+    return `${symbol}${amount.toFixed(2)}`
   }
 
   const validateStep = (step: number) => {
@@ -234,15 +237,21 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
         }
         break
       case 2:
-        if (!buyerInfo.firstName.trim()) newErrors.firstName = "First name is required"
-        if (!buyerInfo.lastName.trim()) newErrors.lastName = "Last name is required"
-        if (!buyerInfo.email.trim()) newErrors.email = "Email is required"
-        else if (!/\S+@\S+\.\S+/.test(buyerInfo.email)) newErrors.email = "Please enter a valid email"
-        if (!buyerInfo.phoneNumber.trim()) newErrors.phoneNumber = "Phone number is required"
-
-        // Validate ticket assignments if assigning to registered attendees
-        if (assignToRegistered && getUnassignedTickets() > 0) {
-          newErrors.ticketAssignments = "Please assign all tickets to registered attendees"
+        if (!buyerInfo.recipientEmail.trim()) newErrors.recipientEmail = "Recipient email is required"
+        else if (!/\S+@\S+\.\S+/.test(buyerInfo.recipientEmail)) newErrors.recipientEmail = "Please enter a valid recipient email"
+        
+        // Validate attendee names
+        const totalTickets = getTotalTickets()
+        if (totalTickets > 0) {
+          if (!buyerInfo.attendeeNames || buyerInfo.attendeeNames.length !== totalTickets) {
+            newErrors.attendeeNames = `Please provide ${totalTickets} attendee name${totalTickets > 1 ? 's' : ''}`
+          } else {
+            buyerInfo.attendeeNames.forEach((name, index) => {
+              if (!name.trim()) {
+                newErrors[`attendeeName${index}`] = `Attendee ${index + 1} name is required`
+              }
+            })
+          }
         }
         break
       case 3:
@@ -252,6 +261,12 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
           if (!cardDetails.expiryDate.trim()) newErrors.expiryDate = "Expiry date is required"
           if (!cardDetails.cvv.trim()) newErrors.cvv = "CVV is required"
           if (!cardDetails.cardholderName.trim()) newErrors.cardholderName = "Cardholder name is required"
+        }
+        if (paymentMethod === "mobile") {
+          if (mobileMoneyAmount <= 0) newErrors.mobileMoneyAmount = "Please enter the amount to be paid"
+          else if (mobileMoneyAmount < getTotalPrice()) {
+            newErrors.mobileMoneyAmount = `Amount must be at least ${formatCurrency(getTotalPrice(), getSelectedTicketCurrency())}`
+          }
         }
         break
     }
@@ -276,26 +291,33 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
     setProcessing(true)
 
     try {
+      // Create ticketsToPurchase array with ticketTypeId and attendeeName
+      const ticketsToPurchase = Object.entries(selectedTickets)
+        .filter(([_, quantity]) => quantity > 0)
+        .flatMap(([ticketId, quantity]) => {
+          const ticket = ticketTypes.find((t) => t.ticketTypeId === ticketId)
+          if (!ticket) return []
+          
+          // Get attendee names for this ticket type
+          const startIndex = Object.entries(selectedTickets)
+            .filter(([id, qty]) => id < ticketId && qty > 0)
+            .reduce((sum, [_, qty]) => sum + qty, 0)
+          
+          return Array.from({ length: quantity }, (_, index) => ({
+            ticketTypeId: ticketId,
+            attendeeName: buyerInfo.attendeeNames[startIndex + index] || `Attendee ${startIndex + index + 1}`
+          }))
+        })
+
       const purchaseData = {
         eventId,
-        buyerId: registeredAttendees[0]?.id || "mock_buyer_id", // Use first attendee's ID or a mock
-        tickets: Object.entries(selectedTickets)
-          .filter(([_, quantity]) => quantity > 0)
-          .map(([ticketId, quantity]) => ({
-            ticketTypeId: ticketId,
-            quantity,
-            price: mockTicketTypes.find((t) => t.id === ticketId)?.price || 0,
-          })),
-        buyerInfo,
+        ticketsToPurchase,
+        recipientEmail: buyerInfo.recipientEmail,
         paymentMethod,
-        paymentDetails: paymentMethod === "card" ? cardDetails : {},
+        paymentDetails: paymentMethod === "card" ? cardDetails : 
+                       paymentMethod === "mobile" ? { amount: mobileMoneyAmount } : {},
         specialRequests,
         totalAmount: getTotalPrice(),
-        assignmentMethod: assignToRegistered ? "registered" : "new_profiles",
-        ticketAssignments: assignToRegistered ? ticketAssignments : {},
-        registeredAttendees: assignToRegistered
-          ? registeredAttendees.filter((a) => Object.values(ticketAssignments).includes(a.id))
-          : [],
       }
 
       console.log("Processing purchase:", purchaseData)
@@ -309,6 +331,13 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
     } finally {
       setProcessing(false)
     }
+  }
+
+  const handleAttendeeNameChange = (index: number, name: string) => {
+    setBuyerInfo(prev => ({
+      ...prev,
+      attendeeNames: prev.attendeeNames.map((n, i) => i === index ? name : n)
+    }))
   }
 
   if (loading) {
@@ -343,7 +372,7 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
         <Card className="max-w-md w-full mx-4">
           <CardContent className="p-8 text-center space-y-4">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-              <Check className="h-8 w-8 text-green-600" />
+              <Check className="h-8 w-8 text-blue-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900">Payment Successful!</h2>
             <p className="text-gray-600">
@@ -352,7 +381,7 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
             </p>
             <div className="p-4 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-600">Total Paid</p>
-              <p className="text-2xl font-bold text-green-600">${getTotalPrice()}</p>
+              <p className="text-2xl font-bold text-blue-600">${getTotalPrice()}</p>
             </div>
             <div className="space-y-2">
               <Button className="w-full" onClick={() => window.history.back()}>
@@ -379,62 +408,127 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
             </div>
 
             <div className="space-y-4">
-              {mockTicketTypes.map((ticket) => (
-                <Card key={ticket.id} className="border-2 hover:border-green-300 transition-colors">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-lg font-semibold">{ticket.name}</h3>
-                          {ticket.id === "early-bird" && <Badge className="bg-orange-500">Limited Time</Badge>}
-                          {ticket.id === "vip" && <Badge className="bg-purple-500">Premium</Badge>}
-                        </div>
-                        <p className="text-gray-600 mb-3">{ticket.description}</p>
-                        <div className="space-y-1">
-                          {ticket.benefits.map((benefit, index) => (
-                            <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
-                              <Check className="h-3 w-3 text-green-500" />
-                              <span>{benefit}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mt-3 flex items-center gap-4 text-sm text-gray-500">
-                          <span>Available: {ticket.availableQuantity}</span>
-                          <span>Max per person: {ticket.maxQuantity}</span>
-                        </div>
-                      </div>
-                      <div className="text-right space-y-3">
-                        <div>
-                          <div className="text-2xl font-bold text-green-600">${ticket.price}</div>
-                          <div className="text-sm text-gray-500">per ticket</div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleTicketQuantityChange(ticket.id, (selectedTickets[ticket.id] || 0) - 1)}
-                            disabled={!selectedTickets[ticket.id]}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center font-medium">{selectedTickets[ticket.id] || 0}</span>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleTicketQuantityChange(ticket.id, (selectedTickets[ticket.id] || 0) + 1)}
-                            disabled={
-                              (selectedTickets[ticket.id] || 0) >= ticket.maxQuantity ||
-                              (selectedTickets[ticket.id] || 0) >= ticket.availableQuantity
-                            }
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+              {loading ? (
+                <Card className="border-2 border-gray-200">
+                  <CardContent className="p-6 text-center">
+                    <Loader2 className="h-8 w-8 mx-auto animate-spin text-blue-600 mb-4" />
+                    <p className="text-gray-600">Loading available tickets...</p>
                   </CardContent>
                 </Card>
-              ))}
+              ) : (
+                <>
+                  {/* Discount Information Banner */}
+                  {ticketTypes.some(ticket => ticket.categoryDiscounts && Object.keys(ticket.categoryDiscounts).length > 0) && (
+                    <Card className="border-2 border-blue-200 bg-blue-50">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Star className="h-5 w-5 text-blue-600" />
+                          <h3 className="font-semibold text-blue-800">Special Discounts Available!</h3>
+                        </div>
+                        <div className="text-sm text-blue-700">
+                          <p>This event offers special discounts for certain categories. Check each ticket type for available discounts.</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {ticketTypes
+                    .filter(ticket => ticket.isActive && ticket.isPubliclyAvailable)
+                    .map((ticket) => (
+                      <Card key={ticket.ticketTypeId} className="border-2 hover:border-blue-300 transition-colors">
+                        <CardContent className="p-6">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="text-lg font-semibold">{ticket.name}</h3>
+                                {ticket.isPubliclyAvailable && <Badge className="bg-blue-500">Available</Badge>}
+                                {!ticket.isPubliclyAvailable && <Badge className="bg-red-500">Sold Out</Badge>}
+                              </div>
+                              <p className="text-gray-600 mb-3">{ticket.description}</p>
+                              <div className="space-y-1">
+                                {ticket.specialInstructions && (
+                                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <AlertCircle className="h-3 w-3 text-red-500" />
+                                    <span>{ticket.specialInstructions}</span>
+                                  </div>
+                                )}
+                                {ticket.categoryDiscounts && Object.keys(ticket.categoryDiscounts).length > 0 && (
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2 text-sm text-blue-600">
+                                      <Star className="h-3 w-3" />
+                                      <span className="font-medium">Category Discounts Available:</span>
+                                    </div>
+                                    {Object.entries(ticket.categoryDiscounts).map(([category, discount]) => (
+                                      <div key={category} className="ml-5 flex items-center gap-2 text-sm">
+                                        <Badge variant="outline" className="text-xs bg-green-50 text-blue-700 border-blue-200">
+                                          {discount.percent}% off
+                                        </Badge>
+                                        <span className="text-gray-600">
+                                          {category.replace(/_/g, " ")} - {discount.description}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {ticket.isRefundable && (
+                                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                                    <Check className="h-3 w-3" />
+                                    <span>Refundable</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="mt-3 flex items-center gap-4 text-sm text-gray-500">
+                                <span>Available: {ticket.quantityAvailable}</span>
+                                <span>Max per person: {ticket.maxPerPerson}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-blue-600">
+                                {ticket.currency === "USD" ? "$" : ticket.currency === "RWF" ? "RWF " : ticket.currency}
+                                {Number.parseFloat(ticket.price).toFixed(2)}
+                              </div>
+                              <div className="text-sm text-gray-500">per ticket</div>
+                              <div className="flex items-center gap-2 mt-3">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleTicketQuantityChange(ticket.ticketTypeId, (selectedTickets[ticket.ticketTypeId] || 0) - 1)}
+                                  disabled={!selectedTickets[ticket.ticketTypeId]}
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="w-8 text-center font-medium">{selectedTickets[ticket.ticketTypeId] || 0}</span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleTicketQuantityChange(ticket.ticketTypeId, (selectedTickets[ticket.ticketTypeId] || 0) + 1)}
+                                  disabled={
+                                    (selectedTickets[ticket.ticketTypeId] || 0) >= ticket.maxPerPerson ||
+                                    (selectedTickets[ticket.ticketTypeId] || 0) >= ticket.quantityAvailable
+                                  }
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+
+                    {ticketTypes.filter(ticket => ticket.isActive && ticket.isPubliclyAvailable).length === 0 && (
+                      <Card className="border-2 border-gray-200">
+                        <CardContent className="p-6 text-center">
+                          <Ticket className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Tickets Available</h3>
+                          <p className="text-gray-600">
+                            There are currently no tickets available for this event. Please check back later or contact the event organizer.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </>
+                )}
             </div>
 
             {errors.tickets && <p className="text-sm text-red-500 text-center">{errors.tickets}</p>}
@@ -445,212 +539,36 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
         return (
           <div className="space-y-6">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">Buyer & Ticket Assignment</h2>
-              <p className="text-gray-600">Provide buyer details and assign tickets to attendees</p>
+              <h2 className="text-2xl font-bold text-gray-900">Attendee Information</h2>
+              <p className="text-gray-600">Provide attendee names and recipient email for tickets</p>
             </div>
 
-            {/* Buyer Information */}
+            {/* Recipient Email */}
             <Card className="border-2">
               <CardHeader>
-                <CardTitle>Buyer Information</CardTitle>
+                <CardTitle>Recipient Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center gap-3 mb-3">
-                    <Avatar>
-                      <AvatarFallback>
-                        {buyerInfo.firstName[0]}
-                        {buyerInfo.lastName[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h4 className="font-medium text-blue-900">
-                        {buyerInfo.firstName} {buyerInfo.lastName}
-                      </h4>
-                      <p className="text-sm text-blue-700">{buyerInfo.email}</p>
-                    </div>
-                  </div>
+                  <h4 className="font-medium text-blue-900 mb-2">Ticket Delivery</h4>
                   <p className="text-sm text-blue-800">
-                    Purchasing tickets as the buyer. You can edit your information below.
+                    All tickets will be sent to the email address you provide below.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input
-                      id="firstName"
-                      value={buyerInfo.firstName}
-                      onChange={(e) => setBuyerInfo((prev) => ({ ...prev, firstName: e.target.value }))}
-                      className={`mt-1 ${errors.firstName ? "border-red-500" : ""}`}
-                    />
-                    {errors.firstName && <p className="text-sm text-red-500 mt-1">{errors.firstName}</p>}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="lastName">Last Name *</Label>
-                    <Input
-                      id="lastName"
-                      value={buyerInfo.lastName}
-                      onChange={(e) => setBuyerInfo((prev) => ({ ...prev, lastName: e.target.value }))}
-                      className={`mt-1 ${errors.lastName ? "border-red-500" : ""}`}
-                    />
-                    {errors.lastName && <p className="text-sm text-red-500 mt-1">{errors.lastName}</p>}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="email">Email Address *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={buyerInfo.email}
-                      onChange={(e) => setBuyerInfo((prev) => ({ ...prev, email: e.target.value }))}
-                      className={`mt-1 ${errors.email ? "border-red-500" : ""}`}
-                    />
-                    {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email}</p>}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="phoneNumber">Phone Number *</Label>
-                    <Input
-                      id="phoneNumber"
-                      value={buyerInfo.phoneNumber}
-                      onChange={(e) => setBuyerInfo((prev) => ({ ...prev, phoneNumber: e.target.value }))}
-                      className={`mt-1 ${errors.phoneNumber ? "border-red-500" : ""}`}
-                    />
-                    {errors.phoneNumber && <p className="text-sm text-red-500 mt-1">{errors.phoneNumber}</p>}
-                  </div>
-                </div>
-
                 <div>
-                  <Label htmlFor="organization">Organization (Optional)</Label>
+                  <Label htmlFor="recipientEmail">Recipient Email *</Label>
                   <Input
-                    id="organization"
-                    value={buyerInfo.organization}
-                    onChange={(e) => setBuyerInfo((prev) => ({ ...prev, organization: e.target.value }))}
-                    className="mt-1"
+                    id="recipientEmail"
+                    type="email"
+                    value={buyerInfo.recipientEmail}
+                    onChange={(e) => setBuyerInfo((prev) => ({ ...prev, recipientEmail: e.target.value }))}
+                    placeholder="Email where tickets will be sent"
+                    className={`mt-1 ${errors.recipientEmail ? "border-red-500" : ""}`}
                   />
+                  {errors.recipientEmail && <p className="text-sm text-red-500 mt-1">{errors.recipientEmail}</p>}
+                  <p className="text-xs text-gray-500 mt-1">All tickets will be sent to this email address</p>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Ticket Assignment */}
-            <Card className="border-2">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Assign Tickets to Attendees</span>
-                  <Badge variant="outline">{getTotalTickets()} tickets to assign</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="space-y-1">
-                    <Label className="text-base font-medium">Assignment Method</Label>
-                    <p className="text-sm text-gray-600">
-                      {assignToRegistered ? "Assign to registered attendees" : "Create new attendee profiles"}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <span className={`text-sm ${assignToRegistered ? "text-gray-500" : "font-medium"}`}>
-                      New Profiles
-                    </span>
-                    <Switch checked={assignToRegistered} onCheckedChange={setAssignToRegistered} />
-                    <span className={`text-sm ${!assignToRegistered ? "text-gray-500" : "font-medium"}`}>
-                      Registered
-                    </span>
-                  </div>
-                </div>
-
-                {assignToRegistered ? (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <h4 className="font-medium text-green-900 mb-2">Registered Attendees Available</h4>
-                      <p className="text-sm text-green-800">
-                        {registeredAttendees.length} attendees are registered for this event. Assign your{" "}
-                        {getTotalTickets()} tickets to them.
-                      </p>
-                    </div>
-
-                    {/* Generate ticket assignment rows based on purchased tickets */}
-                    {Object.entries(selectedTickets)
-                      .filter(([_, quantity]) => quantity > 0)
-                      .flatMap(([ticketId, quantity]) => {
-                        const ticket = mockTicketTypes.find((t) => t.id === ticketId)
-                        return Array.from({ length: quantity }, (_, index) => ({
-                          ticketId,
-                          ticketName: ticket?.name || "",
-                          ticketIndex: `${ticketId}-${index}`,
-                        }))
-                      })
-                      .map((ticketInfo, index) => (
-                        <Card key={ticketInfo.ticketIndex} className="border border-gray-200">
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h4 className="font-medium">Ticket #{index + 1}</h4>
-                                <p className="text-sm text-gray-600">{ticketInfo.ticketName}</p>
-                              </div>
-                              <div className="w-64">
-                                <Label>Assign to Registered Attendee</Label>
-                                <select
-                                  className="w-full mt-1 p-2 border border-gray-300 rounded-md"
-                                  value={ticketAssignments[ticketInfo.ticketIndex] || ""}
-                                  onChange={(e) => handleTicketAssignment(ticketInfo.ticketIndex, e.target.value)}
-                                >
-                                  <option value="">Select attendee...</option>
-                                  {registeredAttendees
-                                    .filter(
-                                      (attendee) =>
-                                        !Object.values(ticketAssignments).includes(attendee.id) ||
-                                        ticketAssignments[ticketInfo.ticketIndex] === attendee.id,
-                                    )
-                                    .map((attendee) => (
-                                      <option key={attendee.id} value={attendee.id}>
-                                        {attendee.firstName} {attendee.lastName} ({attendee.email})
-                                      </option>
-                                    ))}
-                                </select>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-
-                    {getUnassignedTickets() > 0 && (
-                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-sm text-yellow-800">
-                          <strong>{getUnassignedTickets()} tickets</strong> still need to be assigned to attendees.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <h4 className="font-medium text-blue-900 mb-2">Create New Attendee Profiles</h4>
-                      <p className="text-sm text-blue-800">
-                        New attendee profiles will be created for each ticket. They can register separately later.
-                      </p>
-                    </div>
-
-                    {Object.entries(selectedTickets)
-                      .filter(([_, quantity]) => quantity > 0)
-                      .map(([ticketId, quantity]) => {
-                        const ticket = mockTicketTypes.find((t) => t.id === ticketId)
-                        return (
-                          <div key={ticketId} className="p-4 border border-gray-200 rounded-lg">
-                            <h4 className="font-medium mb-2">{ticket?.name} Tickets</h4>
-                            <p className="text-sm text-gray-600">
-                              {quantity} ticket{quantity > 1 ? "s" : ""} will be created. Attendees can claim and
-                              register using the ticket codes sent to your email.
-                            </p>
-                          </div>
-                        )
-                      })}
-                  </div>
-                )}
 
                 <div>
                   <Label htmlFor="specialRequests">Special Requests (Optional)</Label>
@@ -658,13 +576,53 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                     id="specialRequests"
                     value={specialRequests}
                     onChange={(e) => setSpecialRequests(e.target.value)}
-                    placeholder="Any special requests for the assigned attendees..."
+                    placeholder="Any special requests or notes..."
                     rows={3}
                     className="mt-1"
                   />
                 </div>
               </CardContent>
             </Card>
+
+            {/* Attendee Names */}
+            {getTotalTickets() > 0 && (
+              <Card className="border-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Attendee Names</span>
+                    <Badge variant="outline">{getTotalTickets()} attendee{getTotalTickets() > 1 ? 's' : ''}</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="font-medium text-blue-900 mb-2">Provide Attendee Names</h4>
+                    <p className="text-sm text-blue-800">
+                      Please provide the full name for each person who will attend the event. These names will be printed on the tickets.
+                    </p>
+                  </div>
+
+                  {buyerInfo.attendeeNames.map((name, index) => (
+                    <div key={index}>
+                      <Label htmlFor={`attendeeName${index}`}>Attendee {index + 1} Full Name *</Label>
+                      <Input
+                        id={`attendeeName${index}`}
+                        value={name}
+                        onChange={(e) => handleAttendeeNameChange(index, e.target.value)}
+                        placeholder={`Enter full name for attendee ${index + 1}`}
+                        className={`mt-1 ${errors[`attendeeName${index}`] ? "border-red-500" : ""}`}
+                      />
+                      {errors[`attendeeName${index}`] && (
+                        <p className="text-sm text-red-500 mt-1">{errors[`attendeeName${index}`]}</p>
+                      )}
+                    </div>
+                  ))}
+
+                  {errors.attendeeNames && (
+                    <p className="text-sm text-red-500">{errors.attendeeNames}</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         )
 
@@ -684,7 +642,7 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                     <Card
                       key={method.id}
                       className={`cursor-pointer border-2 transition-colors ${
-                        paymentMethod === method.id ? "border-green-500 bg-green-50" : "hover:border-gray-300"
+                        paymentMethod === method.id ? "border-blue-500 bg-blue-50" : "hover:border-gray-300"
                       }`}
                       onClick={() => setPaymentMethod(method.id)}
                     >
@@ -761,12 +719,39 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
 
               {paymentMethod === "mobile" && (
                 <Card className="border-2">
-                  <CardContent className="p-6 text-center">
-                    <div className="text-4xl mb-4">📱</div>
-                    <h3 className="font-semibold mb-2">Mobile Money Payment</h3>
-                    <p className="text-gray-600 text-sm">
-                      You will receive a prompt on your mobile device to complete the payment.
-                    </p>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <span className="text-2xl">📱</span>
+                      Mobile Money Payment
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="font-medium text-blue-900 mb-2">Mobile Money Payment</h4>
+                      <p className="text-sm text-blue-800">
+                        You will receive a prompt on your mobile device to complete the payment.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="mobileMoneyAmount">Amount to Pay *</Label>
+                      <Input
+                        id="mobileMoneyAmount"
+                        type="number"
+                        min={getTotalPrice()}
+                        step="0.01"
+                        value={mobileMoneyAmount}
+                        onChange={(e) => setMobileMoneyAmount(Number.parseFloat(e.target.value) || 0)}
+                        placeholder={`Enter amount (minimum ${formatCurrency(getTotalPrice(), getSelectedTicketCurrency())})`}
+                        className={`mt-1 ${errors.mobileMoneyAmount ? "border-red-500" : ""}`}
+                      />
+                      {errors.mobileMoneyAmount && (
+                        <p className="text-sm text-red-500 mt-1">{errors.mobileMoneyAmount}</p>
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Total ticket cost: {formatCurrency(getTotalPrice(), getSelectedTicketCurrency())}
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -784,7 +769,7 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
               )}
 
               <div className="flex items-center gap-2 p-4 bg-gray-50 rounded-lg">
-                <Shield className="h-5 w-5 text-green-600" />
+                <Shield className="h-5 w-5 text-blue-600" />
                 <span className="text-sm text-gray-700">Your payment information is secure and encrypted</span>
               </div>
             </div>
@@ -932,7 +917,7 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                   {Object.entries(selectedTickets)
                     .filter(([_, quantity]) => quantity > 0)
                     .map(([ticketId, quantity]) => {
-                      const ticket = mockTicketTypes.find((t) => t.id === ticketId)
+                      const ticket = ticketTypes.find((t) => t.ticketTypeId === ticketId)
                       if (!ticket) return null
 
                       return (
@@ -940,10 +925,23 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                           <div>
                             <div className="font-medium">{ticket.name}</div>
                             <div className="text-sm text-gray-500">
-                              ${ticket.price} × {quantity}
+                              {formatCurrency(Number.parseFloat(ticket.price), ticket.currency)} × {quantity}
                             </div>
+                            {ticket.categoryDiscounts && Object.keys(ticket.categoryDiscounts).length > 0 && (
+                              <div className="text-xs text-blue-600 mt-1">
+                                <span className="font-medium">Discounts: </span>
+                                {Object.entries(ticket.categoryDiscounts).map(([category, discount], index) => (
+                                  <span key={category}>
+                                    {index > 0 && ", "}
+                                    {category.replace(/_/g, " ")} ({discount.percent}% off)
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          <div className="font-semibold">${ticket.price * quantity}</div>
+                          <div className="font-semibold">
+                            {formatCurrency(Number.parseFloat(ticket.price) * quantity, ticket.currency)}
+                          </div>
                         </div>
                       )
                     })}
@@ -951,9 +949,11 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                   {getTotalTickets() > 0 && (
                     <>
                       <Separator />
-                      <div className="flex justify-between items-center text-lg font-bold">
-                        <span>Total</span>
-                        <span className="text-blue-600">${getTotalPrice()}</span>
+                      <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                        <span className="text-lg font-medium">Total Amount:</span>
+                        <p className="text-2xl font-bold text-blue-600">
+                          {formatCurrency(getTotalPrice(), getSelectedTicketCurrency())}
+                        </p>
                       </div>
                     </>
                   )}
@@ -962,34 +962,59 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                     <>
                       <Separator />
                       <div className="space-y-2">
-                        <div className="font-medium text-sm">Ticket Assignment</div>
-                        {assignToRegistered ? (
-                          <div className="text-sm text-gray-600">
-                            <div className="flex justify-between">
-                              <span>Method:</span>
-                              <span>Registered Attendees</span>
+                        <div className="font-medium text-sm">Attendee Information</div>
+                        <div className="text-sm text-gray-600">
+                          <div className="flex justify-between">
+                            <span>Recipient Email:</span>
+                            <span className="text-blue-600">{buyerInfo.recipientEmail || "Not provided"}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Total Attendees:</span>
+                            <span>{getTotalTickets()}</span>
+                          </div>
+                          {buyerInfo.attendeeNames.length > 0 && (
+                            <div className="mt-2">
+                              <span className="text-xs text-gray-500">Attendee Names:</span>
+                              <div className="text-xs text-gray-600 mt-1">
+                                {buyerInfo.attendeeNames.map((name, index) => (
+                                  <div key={index} className="flex justify-between">
+                                    <span>Attendee {index + 1}:</span>
+                                    <span>{name || "Not provided"}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {getTotalTickets() > 0 && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        <div className="font-medium text-sm">Payment Information</div>
+                        <div className="text-sm text-gray-600">
+                          <div className="flex justify-between">
+                            <span>Method:</span>
+                            <span className="capitalize">{paymentMethod || "Not selected"}</span>
+                          </div>
+                          {paymentMethod === "mobile" && mobileMoneyAmount > 0 && (
                             <div className="flex justify-between">
-                              <span>Assigned:</span>
-                              <span>
-                                {Object.keys(ticketAssignments).length}/{getTotalTickets()}
+                              <span>Amount to Pay:</span>
+                              <span className="font-medium text-blue-600">
+                                {formatCurrency(mobileMoneyAmount, getSelectedTicketCurrency())}
                               </span>
                             </div>
-                            {getUnassignedTickets() > 0 && (
-                              <div className="text-yellow-600 text-xs mt-1">
-                                {getUnassignedTickets()} tickets need assignment
-                              </div>
-                            )}
+                          )}
+                          <div className="flex justify-between">
+                            <span>Total Cost:</span>
+                            <span className="font-medium">
+                              {formatCurrency(getTotalPrice(), getSelectedTicketCurrency())}
+                            </span>
                           </div>
-                        ) : (
-                          <div className="text-sm text-gray-600">
-                            <div className="flex justify-between">
-                              <span>Method:</span>
-                              <span>New Profiles</span>
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">Attendees will register separately</div>
-                          </div>
-                        )}
+                        </div>
                       </div>
                     </>
                   )}
@@ -1011,7 +1036,7 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Shield className="h-4 w-4 text-green-600" />
+                    <Shield className="h-4 w-4 text-blue-600" />
                     <span className="font-medium text-sm">Secure Payment</span>
                   </div>
                   <p className="text-xs text-gray-600">
@@ -1027,3 +1052,5 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
     </div>
   )
 }
+
+

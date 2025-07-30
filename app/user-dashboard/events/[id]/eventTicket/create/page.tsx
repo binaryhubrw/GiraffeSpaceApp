@@ -42,7 +42,12 @@ interface TicketType {
   saleEndDate: string
   isActive: boolean
   benefits: string[]
-  category: string
+  categoryDiscounts: {
+    [key: string]: {
+      percent: number
+      description: string
+    }
+  }
   isRefundable: boolean
   refundPolicy: string
   transferable: boolean
@@ -53,7 +58,7 @@ interface TicketType {
 
 const ticketCategories = [
  
-  "EARLY_BIRD",
+  "CHILDREEN",
   "STUDENT",
   "GROUP",
   "CORPORATE",
@@ -71,7 +76,7 @@ const ageRestrictions = ["NO_RESTRICTION", "18_PLUS"]
 
 const steps = [
   { id: 1, title: "Basic Info", icon: Info },
-  { id: 2, title: "Pricing & Sales", icon: DollarSign },
+  { id: 2, title: "Category & Pricing", icon: DollarSign },
   { id: 3, title: "Settings", icon: Settings },
   { id: 4, title: "Review", icon: Eye },
 ]
@@ -99,7 +104,7 @@ export default function CreateTicketForm() {
       saleEndDate: "",
       isActive: true,
       benefits: [""],
-      category: "GENERAL_ADMISSION",
+      categoryDiscounts: {},
       isRefundable: true,
       refundPolicy: "",
       transferable: true,
@@ -110,6 +115,8 @@ export default function CreateTicketForm() {
   ])
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [customDiscountCategories, setCustomDiscountCategories] = useState<string[]>([])
+  const [newCategoryInput, setNewCategoryInput] = useState("")
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -214,14 +221,14 @@ export default function CreateTicketForm() {
         name: "",
         description: "",
         price: 0,
-        currency: "USD",
+        currency: "RWF",
         quantity: 100,
         maxPerPerson: 5,
         saleStartDate: defaultSaleStart,
         saleEndDate: defaultSaleEnd,
         isActive: true,
         benefits: [""],
-        category: "GENERAL_ADMISSION",
+        categoryDiscounts: {},
         isRefundable: true,
         refundPolicy: "",
         transferable: true,
@@ -239,6 +246,57 @@ export default function CreateTicketForm() {
     }
   }
 
+  const addCategoryDiscount = (ticketIndex: number, category: string) => {
+    const newTickets = [...ticketTypes]
+    newTickets[ticketIndex].categoryDiscounts[category] = {
+      percent: 0,
+      description: ""
+    }
+    setTicketTypes(newTickets)
+  }
+
+  const removeCategoryDiscount = (ticketIndex: number, category: string) => {
+    const newTickets = [...ticketTypes]
+    delete newTickets[ticketIndex].categoryDiscounts[category]
+    setTicketTypes(newTickets)
+  }
+
+  const updateCategoryDiscount = (ticketIndex: number, category: string, field: 'percent' | 'description', value: string | number) => {
+    const newTickets = [...ticketTypes]
+    newTickets[ticketIndex].categoryDiscounts[category] = {
+      ...newTickets[ticketIndex].categoryDiscounts[category],
+      [field]: value
+    }
+    setTicketTypes(newTickets)
+  }
+
+  const addCustomDiscountCategory = () => {
+    if (newCategoryInput.trim() && !customDiscountCategories.includes(newCategoryInput.trim())) {
+      setCustomDiscountCategories([...customDiscountCategories, newCategoryInput.trim()])
+      setNewCategoryInput("")
+    }
+  }
+
+  const removeCustomDiscountCategory = (category: string) => {
+    setCustomDiscountCategories(customDiscountCategories.filter(cat => cat !== category))
+    
+    // Also remove this category from all ticket types if it exists
+    const newTickets = ticketTypes.map(ticket => {
+      const newDiscounts = { ...ticket.categoryDiscounts }
+      delete newDiscounts[category]
+      return {
+        ...ticket,
+        categoryDiscounts: newDiscounts
+      }
+    })
+    setTicketTypes(newTickets)
+  }
+
+  // Get all available categories (predefined + custom)
+  const getAllAvailableCategories = () => {
+    return [...ticketCategories, ...customDiscountCategories]
+  }
+
   const validateCurrentStep = () => {
     const newErrors: Record<string, string> = {}
 
@@ -250,9 +308,6 @@ export default function CreateTicketForm() {
           }
           if (!ticket.description.trim()) {
             newErrors[`ticket-${index}-description`] = "Description is required"
-          }
-          if (!ticket.category) {
-            newErrors[`ticket-${index}-category`] = "Category is required"
           }
           break
         case 2:
@@ -274,6 +329,15 @@ export default function CreateTicketForm() {
           if (ticket.saleStartDate && ticket.saleEndDate && ticket.saleStartDate >= ticket.saleEndDate) {
             newErrors[`ticket-${index}-saleEndDate`] = "Sale end date must be after start date"
           }
+          // Validate category discounts
+          Object.entries(ticket.categoryDiscounts).forEach(([category, discount]) => {
+            if (discount.percent < 0 || discount.percent > 100) {
+              newErrors[`ticket-${index}-discount-${category}-percent`] = "Discount percentage must be between 0 and 100"
+            }
+            if (!discount.description.trim()) {
+              newErrors[`ticket-${index}-discount-${category}-description`] = "Discount description is required"
+            }
+          })
           break
         case 3:
           if (ticket.isRefundable && !ticket.refundPolicy.trim()) {
@@ -303,30 +367,42 @@ export default function CreateTicketForm() {
     setSubmitting(true)
 
     try {
-      const ticketData = {
-        eventId,
-        ticketTypes: ticketTypes.map((ticket) => ({
-          ...ticket,
-          benefits: ticket.benefits.filter((benefit) => benefit.trim()),
-          status: isDraft ? "DRAFT" : "ACTIVE",
-        })),
-        createdBy: "admin-user-id", // Replace with actual admin ID
-        createdAt: new Date().toISOString(),
-      }
+      // Format ticket data according to API expectations
+      const formattedTickets = ticketTypes.map((ticket) => ({
+        name: ticket.name,
+        price: ticket.price,
+        quantityAvailable: ticket.quantity,
+        currency: ticket.currency,
+        description: ticket.description,
+        saleStartsAt: new Date(ticket.saleStartDate + 'T09:00:00Z').toISOString(),
+        saleEndsAt: new Date(ticket.saleEndDate + 'T17:00:00Z').toISOString(),
+        isPubliclyAvailable: ticket.isActive,
+        maxPerPerson: ticket.maxPerPerson,
+        isActive: ticket.isActive,
+        categoryDiscounts: ticket.categoryDiscounts,
+        isRefundable: ticket.isRefundable,
+        transferable: ticket.transferable,
+        ageRestriction: ticket.ageRestriction,
+        specialInstructions: ticket.specialInstructions || undefined,
+        status: isDraft ? "DRAFT" : "ACTIVE"
+      }))
 
-      console.log("Creating tickets:", ticketData)
+      console.log("Creating tickets with formatted data:", formattedTickets)
 
-      // TODO: Replace with actual API call when the endpoint is available
-      // const response = await ApiService.createEventTickets(ticketData)
+      // Call the actual API
+      const response = await ApiService.createEventTicket(eventId, formattedTickets)
+      console.log("created event Response:", response)  ;
       
-      // For now, simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      toast.success(`Tickets ${isDraft ? 'saved as draft' : 'created'} successfully!`)
-      setSuccess(true)
-    } catch (err) {
+      if (response.success) {
+        toast.success(`Tickets ${isDraft ? 'saved as draft' : 'created'} successfully!`)
+        setSuccess(true)
+      } else {
+        throw new Error(response.message || "Failed to create tickets")
+      }
+    } catch (err: any) {
       console.error("Error creating tickets:", err)
-      toast.error("Failed to create tickets. Please try again.")
+      const errorMessage = err?.response?.data?.message || err?.message || "Failed to create tickets. Please try again."
+      toast.error(errorMessage)
     } finally {
       setSubmitting(false)
     }
@@ -416,48 +492,22 @@ export default function CreateTicketForm() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor={`name-${index}`}>Ticket Name *</Label>
-                        <Input
-                          id={`name-${index}`}
-                          value={ticket.name}
-                          onChange={(e) => handleTicketChange(index, "name", e.target.value)}
-                          placeholder="e.g., General Admission, VIP, Early Bird"
-                          className={`mt-1 ${errors[`ticket-${index}-name`] ? "border-red-500" : ""}`}
-                        />
-                        {errors[`ticket-${index}-name`] && (
-                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-name`]}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <Label htmlFor={`category-${index}`}>Category *</Label>
-                        <Select
-                          value={ticket.category}
-                          onValueChange={(value) => handleTicketChange(index, "category", value)}
-                        >
-                          <SelectTrigger
-                            className={`mt-1 ${errors[`ticket-${index}-category`] ? "border-red-500" : ""}`}
-                          >
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ticketCategories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category.replace(/_/g, " ")}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errors[`ticket-${index}-category`] && (
-                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-category`]}</p>
-                        )}
-                      </div>
+                    <div>
+                      <Label htmlFor={`name-${index}`}>Ticket Name *</Label>
+                      <Input
+                        id={`name-${index}`}
+                        value={ticket.name}
+                        onChange={(e) => handleTicketChange(index, "name", e.target.value)}
+                        placeholder="e.g., SKY BOX, VIP, VVIP"
+                        className={`mt-1 ${errors[`ticket-${index}-name`] ? "border-red-500" : ""}`}
+                      />
+                      {errors[`ticket-${index}-name`] && (
+                        <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-name`]}</p>
+                      )}
                     </div>
 
                     <div>
-                      <Label htmlFor={`description-${index}`}>Description *</Label>
+                      <Label htmlFor={`description-${index}`}>Description & Ticket Benefits *</Label>
                       <Textarea
                         id={`description-${index}`}
                         value={ticket.description}
@@ -471,35 +521,7 @@ export default function CreateTicketForm() {
                       )}
                     </div>
 
-                    <div>
-                      <Label>Ticket Benefits</Label>
-                      <div className="mt-2 space-y-2">
-                        {ticket.benefits.map((benefit, benefitIndex) => (
-                          <div key={benefitIndex} className="flex items-center gap-2">
-                            <Input
-                              value={benefit}
-                              onChange={(e) => handleBenefitChange(index, benefitIndex, e.target.value)}
-                              placeholder="e.g., Access to main event, Welcome drink"
-                              className="flex-1"
-                            />
-                            {ticket.benefits.length > 1 && (
-                              <Button variant="outline" size="sm" onClick={() => removeBenefit(index, benefitIndex)}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => addBenefit(index)}
-                          className="w-full border-dashed bg-transparent"
-                        >
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Benefit
-                        </Button>
-                      </div>
-                    </div>
+                    
                   </CardContent>
                 </Card>
               ))}
@@ -530,7 +552,9 @@ export default function CreateTicketForm() {
                   <CardHeader className="pb-4">
                     <CardTitle className="text-lg">{ticket.name || `Ticket Type ${index + 1}`}</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-6">
+                    
+                    {/* Pricing Section */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <Label htmlFor={`price-${index}`}>Price *</Label>
@@ -599,6 +623,137 @@ export default function CreateTicketForm() {
                       </div>
                     </div>
 
+                    {/* Category Discounts */}
+                    <div>
+                      <Label>Category Discounts</Label>
+                      <p className="text-sm text-gray-600 mb-3">Set special discounts for different categories</p>
+                      
+                      {/* Add Custom Category */}
+                      <div className="mb-4 p-4 border rounded-lg bg-blue-50">
+                        <Label className="text-sm font-medium text-blue-900 mb-2">Add Custom Discount Category</Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            value={newCategoryInput}
+                            onChange={(e) => setNewCategoryInput(e.target.value)}
+                            placeholder="e.g., SENIOR_CITIZEN, MILITARY, TEACHER"
+                            className="flex-1"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                addCustomDiscountCategory()
+                              }
+                            }}
+                          />
+                          <Button 
+                            onClick={addCustomDiscountCategory}
+                            disabled={!newCategoryInput.trim()}
+                            size="sm"
+                          >
+                            Add
+                          </Button>
+                        </div>
+                        <p className="text-xs text-blue-700 mt-1">
+                          Press Enter or click Add to create a new discount category
+                        </p>
+                      </div>
+
+                      {/* Custom Categories List */}
+                      {customDiscountCategories.length > 0 && (
+                        <div className="mb-4">
+                          <Label className="text-sm font-medium mb-2">Custom Categories:</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {customDiscountCategories.map((category) => (
+                              <Badge 
+                                key={category} 
+                                variant="outline" 
+                                className="flex items-center gap-1 bg-blue-100 text-blue-800 border-blue-300"
+                              >
+                                {category.replace(/_/g, " ")}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeCustomDiscountCategory(category)}
+                                  className="h-4 w-4 p-0 text-blue-600 hover:text-blue-800"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-4">
+                        
+                        {Object.entries(ticket.categoryDiscounts).map(([category, discount]) => (
+                          
+                          <div key={category} className="p-4 border rounded-lg bg-gray-50">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium">{category.replace(/_/g, " ")}</h4>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => removeCategoryDiscount(index, category)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label htmlFor={`discount-percent-${index}-${category}`}>Discount Percentage (%)</Label>
+                                <Input
+                                  id={`discount-percent-${index}-${category}`}
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={discount.percent}
+                                  onChange={(e) => updateCategoryDiscount(index, category, 'percent', Number.parseInt(e.target.value) || 0)}
+                                  className={`mt-1 ${errors[`ticket-${index}-discount-${category}-percent`] ? "border-red-500" : ""}`}
+                                />
+                                {errors[`ticket-${index}-discount-${category}-percent`] && (
+                                  <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-discount-${category}-percent`]}</p>
+                                )}
+                              </div>
+                              <div>
+                                <Label htmlFor={`discount-description-${index}-${category}`}>Description</Label>
+                                <Input
+                                  id={`discount-description-${index}-${category}`}
+                                  value={discount.description}
+                                  onChange={(e) => updateCategoryDiscount(index, category, 'description', e.target.value)}
+                                  placeholder="e.g., 30% off for corporate clients"
+                                  className={`mt-1 ${errors[`ticket-${index}-discount-${category}-description`] ? "border-red-500" : ""}`}
+                                />
+                                {errors[`ticket-${index}-discount-${category}-description`] && (
+                                  <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-discount-${category}-description`]}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        
+                        {/* Add Category Discount */}
+                        <label className="text-sm font-medium m-2">Select Discount Category*</label>
+                        <div className="flex items-center gap-2">
+                          <Select onValueChange={(value) => addCategoryDiscount(index, value)}>
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Add discount for category..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getAllAvailableCategories()
+                                .filter(category => !ticket.categoryDiscounts[category])
+                                .map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category.replace(/_/g, " ")}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sales Period */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor={`saleStartDate-${index}`}>Sale Start Date *</Label>
@@ -770,7 +925,6 @@ export default function CreateTicketForm() {
                       <div>
                         <h3 className="text-xl font-bold">{ticket.name}</h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline">{ticket.category.replace(/_/g, " ")}</Badge>
                           <Badge variant={ticket.isActive ? "default" : "secondary"}>
                             {ticket.isActive ? "Active" : "Inactive"}
                           </Badge>
@@ -833,6 +987,39 @@ export default function CreateTicketForm() {
                               </li>
                             ))}
                         </ul>
+                      </div>
+                    )}
+
+                    {Object.keys(ticket.categoryDiscounts).length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="font-medium mb-2">Category Discounts:</h4>
+                        <div className="space-y-2">
+                          {Object.entries(ticket.categoryDiscounts).map(([category, discount]) => {
+                            const isCustomCategory = customDiscountCategories.includes(category)
+                            return (
+                              <div key={category} className={`p-3 rounded-lg ${isCustomCategory ? 'bg-blue-50' : 'bg-green-50'}`}>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`font-medium ${isCustomCategory ? 'text-blue-900' : 'text-green-900'}`}>
+                                      {category.replace(/_/g, " ")}
+                                    </span>
+                                    {isCustomCategory && (
+                                      <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
+                                        Custom
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <Badge variant="outline" className={`${isCustomCategory ? 'text-blue-700 border-blue-300' : 'text-green-700 border-green-300'}`}>
+                                    {discount.percent}% off
+                                  </Badge>
+                                </div>
+                                <p className={`text-sm mt-1 ${isCustomCategory ? 'text-blue-700' : 'text-green-700'}`}>
+                                  {discount.description}
+                                </p>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     )}
 
