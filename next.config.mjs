@@ -9,6 +9,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  transpilePackages: ['date-fns'], // Add this line to transpile date-fns
 }
 
 export default nextConfig

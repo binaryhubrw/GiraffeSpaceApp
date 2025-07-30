@@ -8,13 +8,14 @@ import ApiService from "@/api/apiConfig";
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Eye, User } from "lucide-react";
 import OrganizationForm from "@/components/OrganizationForm";
 import { useToast } from "@/hooks/use-toast";
 
 type Organization = {
   organizationName: string;
-  organizationType: string;
+  organizationType: string | null;
   description: string;
   contactEmail: string;
   contactPhone: string;
@@ -23,6 +24,8 @@ type Organization = {
   country: string;
   postalCode: string;
   stateProvince: string;
+  status?: string;
+  isEnabled?: boolean;
 };
 
 export default function MyOrganizationsPage() {
@@ -110,6 +113,8 @@ export default function MyOrganizationsPage() {
                             <th className="text-left py-4 px-6 font-medium text-gray-900">Organizatio</th>
                             <th className="text-left py-4 px-6 font-medium text-gray-900">Description</th>
                             <th className="text-left py-4 px-6 font-medium text-gray-900">Type</th>
+                            <th className="text-left py-4 px-6 font-medium text-gray-900">Status</th>
+                            <th className="text-left py-4 px-6 font-medium text-gray-900">Enabled Status</th>
                             <th className="text-left py-4 px-6 font-medium text-gray-900">Actions</th>
                           </tr>
                         </thead>
@@ -124,6 +129,24 @@ export default function MyOrganizationsPage() {
                               </td>
                               <td className="py-4 px-6 text-sm text-gray-600">{org.description || '-'}</td>
                               <td className="py-4 px-6 text-sm text-gray-600">{org.organizationType || '-'}</td>
+                              <td className="py-4 px-6">
+                                <Badge variant={
+                                  org.status && org.status.toLowerCase() === "approved" ? "default" : 
+                                  org.status && org.status.toLowerCase() === "pending" ? "secondary" : 
+                                  org.status && org.status.toLowerCase() === "rejected" ? "destructive" : 
+                                  org.status && org.status.toLowerCase() === "query" ? "outline" :
+                                  "outline"
+                                }>
+                                  {org.status || 'N/A'}
+                                </Badge>
+                              </td>
+                              <td className="py-4 px-6">
+                                <Badge variant={
+                                  org.isEnabled ? "default" : "secondary"
+                                }>
+                                  {org.isEnabled ? "Enabled" : "Disabled"}
+                                </Badge>
+                              </td>
                               <td className="py-4 px-6">
                                 <div className="flex space-x-2">
                                   <Link
