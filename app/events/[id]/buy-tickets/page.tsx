@@ -329,7 +329,7 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
       const response = await ApiService.purchaseEventTicket(purchaseData)
       
       if (response.success) {
-        toast.success("Tickets purchased successfully!")
+        toast.success("Tickets purchased successfully!, check your email to see your ticket")
         setSuccess(true)
       } else {
         throw new Error(response.message || "Failed to purchase tickets")

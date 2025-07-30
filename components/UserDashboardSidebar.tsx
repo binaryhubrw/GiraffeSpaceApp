@@ -4,19 +4,31 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Ticket, CheckCircle, Building2, Calendar } from "lucide-react"
 
-export function UserDashboardSidebar() {
+interface UserDashboardSidebarProps {
+  onClose?: () => void
+}
+
+export function UserDashboardSidebar({ onClose }: UserDashboardSidebarProps) {
   const pathname = usePathname()
 
   const isActive = (path: string) => {
     return pathname.startsWith(path)
   }
 
+  const handleLinkClick = () => {
+    // Close mobile sidebar when a link is clicked
+    if (onClose) {
+      onClose()
+    }
+  }
+
   return (
-    <div className="fixed top-16 left-0 h-[calc(100vh-64px)] bg-white border-r border-gray-200 flex-shrink-0 z-20">
-      <div className="p-6">
+    <div className="h-full bg-white flex-shrink-0">
+      <div className="p-4 md:p-6">
         <nav className="space-y-2">
           <Link 
             href="/user-dashboard" 
+            onClick={handleLinkClick}
             className={`w-full flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
               isActive("/user-dashboard") && !isActive("/user-dashboard/tickets") && !isActive("/user-dashboard/attended-event") && !isActive("/user-dashboard/organization") && !isActive("/user-dashboard/events")
                 ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
@@ -28,6 +40,7 @@ export function UserDashboardSidebar() {
           </Link>
           <Link 
             href="/user-dashboard/tickets" 
+            onClick={handleLinkClick}
             className={`w-full flex items-center gap-2 px-0 py-2 text-sm font-medium rounded-md transition-colors ${
               isActive("/user-dashboard/tickets")
                 ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
@@ -39,6 +52,7 @@ export function UserDashboardSidebar() {
           </Link>
           <Link 
             href="/user-dashboard/attended-event" 
+            onClick={handleLinkClick}
             className={`w-full flex items-center gap-2 px-0 py-2 text-sm font-medium rounded-md transition-colors ${
               isActive("/user-dashboard/attended-event")
                 ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
@@ -50,6 +64,7 @@ export function UserDashboardSidebar() {
           </Link>
           <Link 
             href="/user-dashboard/organization" 
+            onClick={handleLinkClick}
             className={`w-full flex items-center gap-2 px-0 py-2 text-sm font-medium rounded-md transition-colors ${
               isActive("/user-dashboard/organization")
                 ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
@@ -61,6 +76,7 @@ export function UserDashboardSidebar() {
           </Link>
           <Link 
             href="/user-dashboard/events" 
+            onClick={handleLinkClick}
             className={`w-full flex items-center  gap-2 px-0 py-2 text-sm font-medium rounded-md transition-colors ${
               isActive("/user-dashboard/events")
                 ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"

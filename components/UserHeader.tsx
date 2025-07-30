@@ -2,12 +2,16 @@
 
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { ChevronDown, LogOut } from "lucide-react"
+import { ChevronDown, LogOut, Menu } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { Button } from "./button"
 
-export function UserHeader() {
+interface UserHeaderProps {
+  onMenuToggle?: () => void
+}
+
+export function UserHeader({ onMenuToggle }: UserHeaderProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const { isLoggedIn, user, logout } = useAuth()
@@ -44,15 +48,26 @@ export function UserHeader() {
   return (
     <header className="fixed top-0 h-16 left-0 w-full z-30 border-b bg-white">
       <div className="w-full">
-        <div className="px-6 py-3 w-full flex justify-between">
-          {/* Left: Logo and App Name */}
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8">
-              <img src="/logo.png" alt="GiraffeSpace" className="w-full h-full object-cover" />
+        <div className="px-4 md:px-6 py-3 w-full flex justify-between items-center">
+          {/* Left: Mobile Menu Button and Logo */}
+          <div className="flex items-center space-x-3">
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={onMenuToggle}
+              className="md:hidden p-2 hover:bg-gray-100 rounded-md"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            
+            {/* Logo and App Name */}
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8">
+                <img src="/logo.png" alt="GiraffeSpace" className="w-full h-full object-cover" />
+              </div>
+              <Link href="/" className="font-bold text-lg md:text-xl">
+                GiraffeSpace
+              </Link>
             </div>
-            <Link href="/" className="font-bold text-xl">
-              GiraffeSpace
-            </Link>
           </div>
 
           {/* Right: User or Auth */}

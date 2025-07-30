@@ -368,26 +368,26 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header - Mobile Responsive */}
       <div className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
+        <div className="container mx-auto px-4 md:px-6 py-4 md:py-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Ticket Management</h1>
-              <p className="text-gray-600 mt-1">Manage tickets for {eventData.eventName}</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Ticket Management</h1>
+              <p className="text-gray-600 mt-1 text-sm md:text-base">Manage tickets for {eventData.eventName}</p>
             </div>
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="sm">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 <Download className="h-4 w-4 mr-2" />
                 Export Data
               </Button>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
                 <Link href={`/events/ticket-scann`} className="flex items-center gap-1">
                   <Camera className="h-4 w-4 mr-2" />
-                Scann tickets
+                  Scan Tickets
                 </Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="w-full sm:w-auto">
                 <Link href={`/events/${eventId}/tickets/create`}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Ticket
@@ -399,76 +399,76 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
       </div>
 
       {/* Event Summary */}
-      <div className="container mx-auto px-6 py-6">
+      <div className="container mx-auto px-4 md:px-6 py-4 md:py-6">
        
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        {/* Stats Cards - Mobile Responsive */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-6">
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="text-[10px] font-bold text-green-600">{totalRevenue.toLocaleString()} Rwf</p>
+                  <p className="text-xs md:text-sm font-medium text-gray-600">Total Revenue</p>
+                  <p className="text-lg md:text-[4px] sm:text-[8px]  text-green-600">{totalRevenue.toLocaleString()} Rwf</p>
                 </div>
-                <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
-                  <DollarSign className="h-6 w-6 text-green-600" />
+                <div className="h-8 w-8 md:h-12 md:w-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <DollarSign className="h-4 w-4 md:h-6 md:w-6 text-green-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Tickets Sold</p>
-                  <p className="text-2xl font-bold text-blue-600">{totalTicketsSold.toLocaleString()}</p>
+                  <p className="text-xs md:text-sm font-medium text-gray-600">Tickets Sold</p>
+                  <p className="text-lg md:text-2xl font-bold text-blue-600">{totalTicketsSold.toLocaleString()}</p>
                   <p className="text-xs text-gray-500">of {totalTicketsAvailable.toLocaleString()}</p>
                 </div>
-                <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Ticket className="h-6 w-6 text-blue-600" />
+                <div className="h-8 w-8 md:h-12 md:w-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Ticket className="h-4 w-4 md:h-6 md:w-6 text-blue-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Conversion Rate</p>
-                  <p className="text-2xl font-bold text-purple-600">{averageConversionRate.toFixed(1)}%</p>
+                  <p className="text-xs md:text-sm font-medium text-gray-600">Conversion Rate</p>
+                  <p className="text-lg md:text-2xl font-bold text-purple-600">{averageConversionRate.toFixed(1)}%</p>
                 </div>
-                <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-purple-600" />
+                <div className="h-8 w-8 md:h-12 md:w-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="h-4 w-4 md:h-6 md:w-6 text-purple-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
+            <CardContent className="p-3 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Tickets</p>
-                  <p className="text-2xl font-bold text-orange-600">{ticketTypes.filter((t) => t.isActive).length}</p>
+                  <p className="text-xs md:text-sm font-medium text-gray-600">Active Tickets</p>
+                  <p className="text-lg md:text-2xl font-bold text-orange-600">{ticketTypes.filter((t) => t.isActive).length}</p>
                   <p className="text-xs text-gray-500">of {ticketTypes.length} total</p>
                 </div>
-                <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                  <Users className="h-6 w-6 text-orange-600" />
+                <div className="h-8 w-8 md:h-12 md:w-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Users className="h-4 w-4 md:h-6 md:w-6 text-orange-600" />
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Filters */}
+        {/* Filters - Mobile Responsive */}
         <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
+          <CardContent className="p-4 md:p-6">
+            <div className="flex flex-col gap-4">
               <div className="flex-1">
-                <Label htmlFor="search">Search Tickets</Label>
+                <Label htmlFor="search" className="text-sm md:text-base">Search Tickets</Label>
                 <Input
                   id="search"
                   placeholder="Search by name or description..."
@@ -477,54 +477,55 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                   className="mt-1"
                 />
               </div>
-              <div>
-                <Label htmlFor="status-filter">Status</Label>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="mt-1 w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="category-filter">Category</Label>
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="mt-1 w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {getAllCategories(ticketTypes).map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category.replace(/_/g, " ")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="status-filter" className="text-sm md:text-base">Status</Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="category-filter" className="text-sm md:text-base">Category</Label>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="mt-1 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {getAllCategories(ticketTypes).map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category.replace(/_/g, " ")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Tickets Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tickets Grid - Mobile Responsive */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {filteredTickets.map((ticket) => (
             <Card key={ticket.ticketTypeId} className="border-2 hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-4">
+              <CardHeader className="pb-3 md:pb-4">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CardTitle className="text-lg">{ticket.name}</CardTitle>
-                      <Badge variant={getStatusBadgeVariant(ticket.status)}>{ticket.status}</Badge>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                      <CardTitle className="text-base md:text-lg truncate">{ticket.name}</CardTitle>
+                      <Badge variant={getStatusBadgeVariant(ticket.status)} className="w-fit text-xs">
+                        {ticket.status}
+                      </Badge>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {/* <Badge className={getCategoryColor(ticket.categoryDiscounts && Object.keys(ticket.categoryDiscounts).length > 0 ? Object.keys(ticket.categoryDiscounts)[0] : "GENERAL_ADMISSION")}>
-                        {getCategoryName(ticket)}
-                      </Badge> */}
+                    <div className="flex flex-wrap items-center gap-2">
                       {ticket.isRefundable && (
                         <Badge variant="outline" className="text-xs">
                           Refundable
@@ -532,9 +533,9 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 ml-2">
                     <div className="text-right">
-                      <div className="text-sm font-bold text-green-600">
+                      <div className="text-sm md:text-base font-bold text-green-600">
                         {currencies.find((c) => c.code === ticket.currency)?.symbol}
                         {Number.parseFloat(ticket.price).toFixed(2)}
                       </div>
@@ -542,7 +543,7 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -566,14 +567,14 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-gray-600 text-sm">{ticket.description}</p>
+              <CardContent className="space-y-3 md:space-y-4">
+                <p className="text-gray-600 text-sm line-clamp-2">{ticket.description}</p>
 
                 {/* Sales Progress */}
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-gray-600">Sales Progress</span>
-                    <span className="font-medium">
+                    <span className="font-medium text-xs md:text-sm">
                       {ticket.quantitySold} / {ticket.quantityAvailable} sold
                     </span>
                   </div>
@@ -589,18 +590,22 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                   </div>
                 </div>
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-3 gap-4 text-center">
+                {/* Stats Grid - Mobile Responsive */}
+                <div className="grid grid-cols-3 gap-2 md:gap-4 text-center">
                   <div>
-                    <div className="text-[10px] font-bold text-green-600">{(Number.parseFloat(ticket.price) * ticket.quantitySold).toLocaleString()} RWF</div>
+                    <div className="text-sm md:text-base font-bold text-green-600">
+                      {(Number.parseFloat(ticket.price) * ticket.quantitySold).toLocaleString()} RWF
+                    </div>
                     <div className="text-xs text-gray-500">Revenue</div>
                   </div>
                   <div>
-                    <div className="text-lg font-bold text-blue-600">{((ticket.quantitySold / ticket.quantityAvailable) * 100).toFixed(1)}%</div>
+                    <div className="text-base md:text-lg font-bold text-blue-600">
+                      {((ticket.quantitySold / ticket.quantityAvailable) * 100).toFixed(1)}%
+                    </div>
                     <div className="text-xs text-gray-500">Conversion</div>
                   </div>
                   <div>
-                    <div className="text-lg font-bold text-purple-600">{ticket.maxPerPerson}</div>
+                    <div className="text-base md:text-lg font-bold text-purple-600">{ticket.maxPerPerson}</div>
                     <div className="text-xs text-gray-500">Max/Person</div>
                   </div>
                 </div>
@@ -615,21 +620,21 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                           <Badge variant="outline" className="text-xs">
                             {value.percent}% off
                           </Badge>
-                          <span className="text-gray-600">{value.description}</span>
+                          <span className="text-gray-600 truncate">{value.description}</span>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Sale Period */}
-                <div className="flex justify-between text-xs text-gray-500">
+                {/* Sale Period - Mobile Responsive */}
+                <div className="flex flex-col sm:flex-row sm:justify-between text-xs text-gray-500 gap-1">
                   <span>Sale: {new Date(ticket.saleStartsAt).toLocaleDateString()}</span>
                   <span>Until: {new Date(ticket.saleEndsAt).toLocaleDateString()}</span>
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center justify-between pt-2 border-t">
+                {/* Actions - Mobile Responsive */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t">
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={ticket.isActive}
@@ -639,7 +644,12 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                     <Label className="text-sm">{ticket.isActive ? "Active" : "Inactive"}</Label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEditTicket(ticket)}>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleEditTicket(ticket)}
+                      className="flex-1 sm:flex-none"
+                    >
                       <Settings className="h-3 w-3 mr-1" />
                       Manage
                     </Button>
@@ -658,10 +668,10 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
 
         {filteredTickets.length === 0 && (
           <Card>
-            <CardContent className="p-12 text-center">
+            <CardContent className="p-8 md:p-12 text-center">
               <Ticket className="h-12 w-12 mx-auto text-gray-400 mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No tickets found</h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 mb-4 text-sm md:text-base">
                 {ticketTypes.length === 0
                   ? "You haven't created any tickets yet."
                   : "No tickets match your current filters."}
@@ -679,25 +689,26 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
         )}
       </div>
 
-      {/* Edit Dialog */}
+      {/* Edit Dialog - Mobile Responsive */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md mx-4 md:mx-auto">
           <DialogHeader>
-            <DialogTitle>Edit Ticket</DialogTitle>
-            <DialogDescription>Make changes to your ticket type</DialogDescription>
+            <DialogTitle className="text-lg md:text-xl">Edit Ticket</DialogTitle>
+            <DialogDescription className="text-sm md:text-base">Make changes to your ticket type</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="edit-name">Ticket Name</Label>
+              <Label htmlFor="edit-name" className="text-sm md:text-base">Ticket Name</Label>
               <Input
                 id="edit-name"
                 value={editForm.name}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
                 className="mt-1"
+                placeholder="Enter ticket name"
               />
             </div>
             <div>
-              <Label htmlFor="edit-price">Price</Label>
+              <Label htmlFor="edit-price" className="text-sm md:text-base">Price</Label>
               <Input
                 id="edit-price"
                 type="number"
@@ -706,10 +717,11 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                 value={editForm.price}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, price: Number.parseFloat(e.target.value) || 0 }))}
                 className="mt-1"
+                placeholder="0.00"
               />
             </div>
             <div>
-              <Label htmlFor="edit-quantity">Quantity</Label>
+              <Label htmlFor="edit-quantity" className="text-sm md:text-base">Quantity</Label>
               <Input
                 id="edit-quantity"
                 type="number"
@@ -717,22 +729,31 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                 value={editForm.quantity}
                 onChange={(e) => setEditForm((prev) => ({ ...prev, quantity: Number.parseInt(e.target.value) || 0 }))}
                 className="mt-1"
+                placeholder="Enter quantity"
               />
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 pt-2">
               <Switch
                 id="edit-active"
                 checked={editForm.isActive}
                 onCheckedChange={(checked) => setEditForm((prev) => ({ ...prev, isActive: checked }))}
               />
-              <Label htmlFor="edit-active">Active</Label>
+              <Label htmlFor="edit-active" className="text-sm md:text-base">Active</Label>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setEditDialogOpen(false)}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button onClick={handleSaveEdit} disabled={actionLoading === editingTicket?.ticketTypeId}>
+            <Button 
+              onClick={handleSaveEdit} 
+              disabled={actionLoading === editingTicket?.ticketTypeId}
+              className="w-full sm:w-auto"
+            >
               {actionLoading === editingTicket?.ticketTypeId ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
