@@ -72,23 +72,38 @@ export default function TicketsSection() {
             Authorization: `Bearer ${token}`,
           },
         })
-        console.log("Raw API Response:", response); // Log the full response object
+
         if (!response.ok) {
-          // If response is not OK, try to read it as text to get more error details
           const errorText = await response.text();
-          throw new Error(`HTTP error! status: ${response.status}, Details: ${errorText}`);
+          try {
+            const errorData = JSON.parse(errorText);
+            if (response.status === 404 && errorData.message === "No tickets found for this user.") {
+              setTickets([])
+              setError(null)
+              return;
+            } else {
+              throw new Error(errorData.message || `HTTP error! status: ${response.status}, Details: ${errorText}`);
+            }
+          } catch (jsonError) {
+            // If parsing as JSON fails, it's likely a plain HTML error page
+            throw new Error(`The server returned an unexpected response. Please try again later.`);
+          }
         }
+
         const data = await response.json()
+
         if (data.success) {
           setTickets(data.data)
+          setError(null)
         } else {
-          setError(data.message || "Failed to fetch tickets.")
-          toast.error(data.message || "Failed to fetch tickets.")
+          // This else block handles cases where response.ok is true but data.success is false
+          setError(data.message || "We couldn't retrieve your tickets. Please try again.")
+          toast.error(data.message || "Failed to retrieve tickets.")
         }
       } catch (err: any) {
         console.error("Fetch error:", err)
-        setError(err.message || "An unexpected error occurred.")
-        toast.error(err.message || "Failed to fetch tickets.")
+        setError(err.message || "An unexpected error occurred while loading your tickets.")
+        toast.error(err.message || "Failed to load tickets.")
       } finally {
         setLoading(false)
       }
@@ -218,132 +233,140 @@ export default function TicketsSection() {
               <div className="text-sm text-gray-600 md:ml-auto">Total: {filteredTickets.length} tickets</div>
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="[&_tr]:border-b">
-                  <tr className="bg-muted/50">
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                      Event
-                    </th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                      Venue
-                    </th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                      Attended Date
-                    </th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                      Ticket Type
-                    </th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                      Tickets
-                    </th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                      Cost
-                    </th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                      Ticket Status {/* Changed to Ticket Status */}
-                    </th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="[&_tr:last-child]:border-0">
-                  {getPaginatedData(filteredTickets, ticketsPage).map((ticket) => (
-                    <tr
-                      key={ticket.registrationId}
-                      className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
-                    >
-                      <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                        <div>
-                          <h4 className="font-medium">{ticket.eventName}</h4>
-                          <p className="text-xs text-muted-foreground">{ticket.ticketTypeName}</p>
-                        </div>
-                      </td>
-                      <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
-                        {ticket.venueName}
-                        {ticket.venueGoogleMapsLink && (
-                          <a
-                            href={ticket.venueGoogleMapsLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="ml-2 text-blue-600 hover:underline text-xs"
-                          >
-                            Map
-                          </a>
-                        )}
-                      </td>
-                      <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                        <div className="text-muted-foreground">
-                          <div className="font-medium">{formatDate(ticket.attendedDate)}</div>
-                        </div>
-                      </td>
-                      <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
-                        {ticket.ticketTypeName}
-                      </td>
-                      <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
-                        {ticket.noOfTickets}
-                      </td>
-                      <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
-                        ${ticket.totalCost}
-                      </td>
-                      <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                        <span
-                          className={`px-3 py-1 text-xs font-semibold rounded-full
-                            ${
-                              ticket.attended === true
-                                ? "bg-red-100 text-red-800" // Inactive if attended is true
-                                : ticket.attended === false || ticket.attended === undefined || ticket.attended === null
-                                  ? "bg-green-100 text-green-800" // Active if attended is false, undefined, or null
-                                  : "bg-gray-100 text-gray-800" // Default or N/A
-                            }`}
-                        >
-                          {ticket.attended === true
-                            ? "Inactive"
-                            : ticket.attended === false || ticket.attended === undefined || ticket.attended === null
-                              ? "Active"
-                              : "N/A"}
-                        </span>
-                      </td>
-                      <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
-                        <div className="flex space-x-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              router.push(`/user-dashboard/tickets/${ticket.registrationId}`)
-                            }}
-                          >
-                            <Eye className="h-4 w-4 mr-1" /> View Details
-                          </Button>
-                        </div>
-                      </td>
+              {filteredTickets.length > 0 ? (
+                <table className="w-full text-sm">
+                  <thead className="[&_tr]:border-b">
+                    <tr className="bg-muted/50">
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
+                        Event
+                      </th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
+                        Venue
+                      </th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
+                        Attended Date
+                      </th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
+                        Ticket Type
+                      </th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
+                        Tickets
+                      </th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
+                        Cost
+                      </th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
+                        Ticket Status
+                      </th>
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
+                        Actions
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="[&_tr:last-child]:border-0">
+                    {getPaginatedData(filteredTickets, ticketsPage).map((ticket) => (
+                      <tr
+                        key={ticket.registrationId}
+                        className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                      >
+                        <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                          <div>
+                            <h4 className="font-medium">{ticket.eventName}</h4>
+                            <p className="text-xs text-muted-foreground">{ticket.ticketTypeName}</p>
+                          </div>
+                        </td>
+                        <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
+                          {ticket.venueName}
+                          {ticket.venueGoogleMapsLink && (
+                            <a
+                              href={ticket.venueGoogleMapsLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-2 text-blue-600 hover:underline text-xs"
+                            >
+                              Map
+                            </a>
+                          )}
+                        </td>
+                        <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                          <div className="text-muted-foreground">
+                            <div className="font-medium">{formatDate(ticket.attendedDate)}</div>
+                          </div>
+                        </td>
+                        <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
+                          {ticket.ticketTypeName}
+                        </td>
+                        <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
+                          {ticket.noOfTickets}
+                        </td>
+                        <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0 text-muted-foreground">
+                          Frw {ticket.totalCost}
+                        </td>
+                        <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+                          <span
+                            className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                              ticket.attended === true
+                                ? 'bg-red-100 text-red-800' // Inactive if attended is true
+                                : ticket.attended === false
+                                  ? 'bg-green-100 text-green-800' // Active if attended is false
+                                  : 'bg-gray-100 text-gray-800' // Default or N/A
+                            }`}
+                          >
+                            {ticket.attended === true ? 'Inactive' :
+                              ticket.attended === false ? 'Active' :
+                              'N/A'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6">
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                sessionStorage.setItem('currentTicketDetail', JSON.stringify(ticket));
+                                router.push(`/user-dashboard/tickets/${ticket.registrationId}`);
+                              }}
+                            >
+                              <Eye className="h-4 w-4 mr-1" /> View Details
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="p-4 text-center text-muted-foreground">
+                  <p className="text-lg font-semibold mb-2">No tickets found.</p>
+                  <p className="text-sm">It seems you don't have any tickets yet. Explore events and book yours!</p>
+                  {/* <Button className="mt-4">Browse Events</Button> */}
+                </div>
+              )}
             </div>
             {/* Pagination */}
-            <div className="flex justify-end gap-2 mt-4 p-4">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={ticketsPage === 1}
-                onClick={() => setTicketsPage(ticketsPage - 1)}
-              >
-                Previous
-              </Button>
-              <span className="px-2 py-1 text-sm flex items-center">
-                Page {ticketsPage} of {getTotalPages(filteredTickets.length)}
-              </span>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={ticketsPage === getTotalPages(filteredTickets.length)}
-                onClick={() => setTicketsPage(ticketsPage + 1)}
-              >
-                Next
-              </Button>
-            </div>
+            {filteredTickets.length > 0 && (
+              <div className="flex justify-end gap-2 mt-4 p-4">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={ticketsPage === 1}
+                  onClick={() => setTicketsPage(ticketsPage - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="px-2 py-1 text-sm flex items-center">
+                  Page {ticketsPage} of {getTotalPages(filteredTickets.length)}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={ticketsPage === getTotalPages(filteredTickets.length)}
+                  onClick={() => setTicketsPage(ticketsPage + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

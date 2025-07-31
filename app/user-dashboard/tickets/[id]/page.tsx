@@ -11,6 +11,7 @@ import { toast } from "sonner"
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useAuth } from "@/contexts/auth-context"
+import { format } from 'date-fns'; // Added for date formatting
 
 interface TicketTypeDetails {
   ticketTypeId: string
@@ -52,7 +53,6 @@ interface Ticket {
   qrCode: string
   buyerId: string
   attended?: boolean
-  ticketTypeDetails: TicketTypeDetails; // Add this new field
   payment: {
     paymentId: string
     amountPaid: string
@@ -61,6 +61,8 @@ interface Ticket {
     paymentReference: string
     notes: string
   }
+  ticketTypeDetails: TicketTypeDetails
+  checkDate: string; // Add checkDate to the Ticket interface
 }
 
 export default function TicketDetailPage() {
@@ -99,16 +101,16 @@ export default function TicketDetailPage() {
             setTicket(foundTicket)
             setShowQrCodeContent(foundTicket.attended === false)
           } else {
-            setError("Ticket not found for this user.")
+            setError("Ticket details could not be found. It might have been moved or deleted.")
             setTicket(null)
           }
         } else {
-          setError(data.message || "Failed to fetch tickets or no data returned.")
+          setError(data.message || "We couldn't load the ticket list. Please try again.")
           setTicket(null)
         }
       } catch (err: any) {
         console.error("Fetch error:", err)
-        setError(err.message || "An unexpected error occurred.")
+        setError(err.message || "An unexpected error occurred while loading ticket details.")
         setTicket(null)
       } finally {
         setLoading(false)
@@ -327,6 +329,17 @@ export default function TicketDetailPage() {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Attended Date</p>
                 <p>{formatDate(ticket.attendedDate)}</p>
+              </div>
+              {/* New: Check-in Date */}
+              <div>
+                <p className="text-sm font-medium text-gray-700">Check-in Date:</p>
+                <p className="text-sm text-gray-800">
+                  {ticket.checkDate && ticket.checkDate !== "N/A" ? (
+                    format(new Date(ticket.checkDate), 'PPP p') // Formats date like 'Jul 31st, 2025 at 7:18 PM'
+                  ) : (
+                    "N/A"
+                  )}
+                </p>
               </div>
             </div>
           </div>
