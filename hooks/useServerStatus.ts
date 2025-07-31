@@ -26,9 +26,8 @@ export const useServerStatus = () => {
 
       // Try multiple endpoints to check server status
       const endpoints = [
-        '/health',
-        '/events', // Try a common endpoint that likely exists
-        '/venues', // Another common endpoint
+        '/health/status', // Common health check endpoint
+       
         '/' // Root endpoint
       ]
 
