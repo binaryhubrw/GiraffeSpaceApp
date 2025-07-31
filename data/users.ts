@@ -20,6 +20,7 @@ export interface User {
   userId: string;
   username: string;
   email: string;
+  token?: string; // Add the token property
   firstName: string;
   lastName: string;
   phoneNumber: string;

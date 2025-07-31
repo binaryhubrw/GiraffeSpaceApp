@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Building2, Mail, Phone, MapPin as MapPinIcon, Edit, XCircle, Loader2, FileText, AlertTriangle } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog"
 import ApiService from "@/api/apiConfig"
 import { toast } from "sonner"
 import OrganizationForm from "@/components/OrganizationForm"
+import { ImageIcon, Upload } from "lucide-react"
 
 interface Organization {
   organizationId: string
@@ -58,12 +59,155 @@ export default function UserOrgDetailPage() {
   const [responseType, setResponseType] = useState<'success' | 'error' | null>(null)
   const [openDoc, setOpenDoc] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [showLogoEditDialog, setShowLogoEditDialog] = useState(false); // New state for logo edit dialog
+  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null); // New state for selected logo file
+  const [showDocsEditDialog, setShowDocsEditDialog] = useState(false); // New state for docs edit dialog
+  const [selectedDocFiles, setSelectedDocFiles] = useState<FileList | null>(null); // New state for selected document files
+  const [currentExistingDocs, setCurrentExistingDocs] = useState<string[]>(organization?.supportingDocuments || []); // Track existing docs in dialog
+  const [docsToRemove, setDocsToRemove] = useState<string[]>([]); // Docs marked for removal
 
   const id = Array.isArray(params?.id) ? params.id[0] : (params?.id as string)
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (organization?.supportingDocuments) {
+      setCurrentExistingDocs(organization.supportingDocuments);
+    }
+  }, [organization?.supportingDocuments]);
+
+  const handleDocumentSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const totalExisting = currentExistingDocs.filter(doc => !docsToRemove.includes(doc)).length;
+    const totalNewSelected = files.length;
+    const combinedTotal = totalExisting + totalNewSelected;
+
+    if (combinedTotal > 3) {
+      toast.error(`You can only have a maximum of 3 supporting documents. You have ${totalExisting} existing and selected ${totalNewSelected} new, totaling ${combinedTotal}.`);
+      setSelectedDocFiles(null); // Clear selection if over limit
+      e.target.value = ''; // Clear file input
+    } else {
+      setSelectedDocFiles(files);
+    }
+  };
+
+  const handleRemoveExistingDocument = (docUrl: string) => {
+    setDocsToRemove(prev => [...prev, docUrl]);
+    setCurrentExistingDocs(prev => prev.filter(doc => doc !== docUrl));
+  };
+
+  const handleRemoveSelectedNewDocument = (index: number) => {
+    if (selectedDocFiles) {
+      const dt = new DataTransfer();
+      Array.from(selectedDocFiles).forEach((file, i) => {
+        if (i !== index) dt.items.add(file);
+      });
+      setSelectedDocFiles(dt.files.length > 0 ? dt.files : null);
+    }
+  };
+
+  const handleSaveDocuments = async () => {
+    setUpdating(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Authentication token not found.");
+        setUpdating(false);
+        return;
+      }
+
+      // 1. Handle document removals
+      if (docsToRemove.length > 0) {
+        for (const docUrl of docsToRemove) {
+          const res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${id}/supporting-document/remove`, {
+            method: "PATCH",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ documentUrl: docUrl }),
+          });
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.message || `Failed to remove document: ${docUrl}`);
+          }
+        }
+        toast.success(`${docsToRemove.length} document(s) removed successfully.`);
+      }
+
+      // 2. Prepare combined payload for new and existing documents to keep
+      const documentsToUploadOrKeep = new FormData();
+      let hasChangesToDocuments = false;
+
+      // Add new selected files
+      if (selectedDocFiles && selectedDocFiles.length > 0) {
+        Array.from(selectedDocFiles).forEach(file => {
+          documentsToUploadOrKeep.append("supportingDocument", file); // Assuming backend expects 'supportingDocument' for files
+        });
+        hasChangesToDocuments = true;
+      }
+
+      // Add existing documents (not marked for removal) to the payload
+      const keptExistingDocs = currentExistingDocs.filter(doc => !docsToRemove.includes(doc));
+      if (keptExistingDocs.length > 0) {
+        // Assuming backend expects existing document URLs as a JSON string under 'existingDocumentUrls' field
+        documentsToUploadOrKeep.append("existingDocumentUrls", JSON.stringify(keptExistingDocs));
+        hasChangesToDocuments = true;
+      }
+
+      if (hasChangesToDocuments) {
+        const res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${id}/supporting-document`, {
+          method: "PATCH",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            // Content-Type header for FormData is usually set automatically by the browser
+          },
+          body: documentsToUploadOrKeep,
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to update documents.");
+        }
+        toast.success("Documents updated successfully!");
+      }
+
+      if (docsToRemove.length === 0 && !hasChangesToDocuments) {
+        toast.info("No changes were made to documents.");
+      }
+      fetchOrg(); // Always refresh organization data after all updates
+      setShowDocsEditDialog(false);
+      setDocsToRemove([]); // Reset removed docs
+      setSelectedDocFiles(null); // Reset new selected docs
+    } catch (error: any) {
+      console.error("Document management error:", error);
+      toast.error(error.message || "Failed to update documents.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (organization?.supportingDocuments) {
+      setCurrentExistingDocs(organization.supportingDocuments);
+      setDocsToRemove([]); // Reset on org data change
+      setSelectedDocFiles(null); // Reset on org data change
+    }
+  }, [organization?.supportingDocuments]);
+
+  const handleDialogClose = (open: boolean) => {
+    if (!open) {
+      setShowDocsEditDialog(false);
+      // Reset states when dialog closes without saving
+      setCurrentExistingDocs(organization?.supportingDocuments || []);
+      setDocsToRemove([]);
+      setSelectedDocFiles(null);
+    }
+  };
 
   // Move fetchOrg outside useEffect so it can be called after edit
   const fetchOrg = async () => {
@@ -183,8 +327,17 @@ export default function UserOrgDetailPage() {
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
           {organization.logo && (
-            <div>
-              <img src={organization.logo} alt="Logo" className="w-24 h-24 object-contain border rounded" />
+            <div className="relative w-24 h-24 group">
+              <img src={organization.logo} alt="Logo" className="w-full h-full object-contain border rounded p-1 bg-white" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowLogoEditDialog(true)}
+                className="absolute top-0 right-0 w-6 h-6 rounded-full bg-gray-100/80 hover:bg-gray-200/90 text-gray-600 hover:text-gray-900 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                title="Edit Logo"
+              >
+                <Edit className="w-3 h-3" />
+              </Button>
             </div>
           )}
             <div>
@@ -205,7 +358,12 @@ export default function UserOrgDetailPage() {
             </div>
             {/* Replace supporting document display with the provided code */}
             <div>
-              <p className="text-sm text-gray-500 mb-3">Supporting Documents</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-gray-500">Supporting Documents</p>
+                <Button variant="outline" size="sm" onClick={() => setShowDocsEditDialog(true)}>
+                  <Edit className="w-4 h-4 mr-2" /> Edit Documents
+                </Button>
+              </div>
               {(organization.supportingDocuments?.length ?? 0) > 0 ? (
                 <div className="space-y-3">
                   <p className="text-xs text-gray-400 uppercase tracking-wide">Scanned Documents</p>
@@ -240,60 +398,6 @@ export default function UserOrgDetailPage() {
               ) : (
                 <p className="text-sm text-gray-400">No documents provided</p>
               )}
-
-              {/* Modal */}
-              {openDoc && (
-                <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-                  {/* Google Drive-like modal */}
-                  <div className="bg-white rounded-lg shadow-2xl w-full h-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
-                    {/* Header bar */}
-                    <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-6 h-6 text-blue-600" />
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          Supporting Document
-                        </h3>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={openDoc}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                        >
-                          Open in new tab
-                        </a>
-                        <button
-                          onClick={() => setOpenDoc(null)}
-                          className="p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
-                          aria-label="Close modal"
-                        >
-                          <XCircle className="w-6 h-6" />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Document viewer */}
-                    <div className="flex-1 bg-gray-100 flex items-center justify-center">
-                      {openDoc.endsWith('.pdf') ? (
-                        <iframe 
-                          src={openDoc} 
-                          className="w-full h-full border-none" 
-                          title="Supporting Document"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center p-4">
-                          <img 
-                            src={openDoc} 
-                            alt="Supporting Document" 
-                            className="max-w-full max-h-full object-contain shadow-lg rounded"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
           <div className="space-y-4">
@@ -303,6 +407,246 @@ export default function UserOrgDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Logo Edit Dialog */}
+      <Dialog open={showLogoEditDialog} onOpenChange={setShowLogoEditDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Organization Logo</DialogTitle>
+            <DialogDescription>
+              Upload a new logo for your organization. This will replace the current logo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 items-center">
+            {/* Current Logo Preview */}
+            {organization.logo && !selectedLogoFile && (
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-sm text-muted-foreground">Current Logo:</p>
+                <img src={organization.logo} alt="Current Logo" className="w-32 h-32 object-contain border rounded-md p-2" />
+              </div>
+            )}
+
+            {/* New Logo Selection/Preview */}
+            <label
+              htmlFor="logo-upload-dialog"
+              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition-all duration-300 group"
+            >
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setSelectedLogoFile(e.target.files?.[0] || null)}
+                className="hidden"
+                id="logo-upload-dialog"
+              />
+              {selectedLogoFile ? (
+                <div className="flex flex-col items-center text-center">
+                  <ImageIcon className="h-8 w-8 text-blue-600 mb-2" />
+                  <span className="text-sm font-medium text-gray-900 truncate w-full px-2">{selectedLogoFile.name}</span>
+                  <p className="text-xs text-gray-500">Click to change</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <Upload className="h-8 w-8 text-gray-400 mb-2 group-hover:text-blue-500" />
+                  <p className="text-sm font-medium text-gray-700 group-hover:text-blue-600">Click to upload new logo</p>
+                  <p className="text-xs text-gray-500 mt-1">PNG, JPG, SVG up to 5MB</p>
+                </div>
+              )}
+            </label>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowLogoEditDialog(false)}>Cancel</Button>
+            <Button
+              onClick={async () => {
+                if (!selectedLogoFile) {
+                  toast.error("Please select a logo file.");
+                  return;
+                }
+                setUpdating(true);
+                try {
+                  const token = localStorage.getItem("token");
+                  if (!token) {
+                    toast.error("Authentication token not found.");
+                    setUpdating(false);
+                    return;
+                  }
+                  const logoData = new FormData();
+                  logoData.append("logo", selectedLogoFile);
+
+                  const res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${id}/logo`, {
+                    method: "PATCH",
+                    headers: {
+                      "Authorization": `Bearer ${token}`,
+                    },
+                    body: logoData,
+                  });
+
+                  if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    throw new Error(errorData.message || "Failed to upload logo.");
+                  }
+                  toast.success("Logo updated successfully!");
+                  setShowLogoEditDialog(false);
+                  setSelectedLogoFile(null); // Clear selected file
+                  fetchOrg(); // Refresh organization data
+                } catch (error: any) {
+                  console.error("Logo upload error:", error);
+                  toast.error(error.message || "Failed to upload logo.");
+                } finally {
+                  setUpdating(false);
+                }
+              }}
+              disabled={updating}
+            >
+              {updating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : ""} Save Logo
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Supporting Documents Edit Dialog */}
+      <Dialog open={showDocsEditDialog} onOpenChange={handleDialogClose}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Supporting Documents</DialogTitle>
+            <DialogDescription>
+              Manage your organization's supporting documents. You can remove existing documents or upload new ones (maximum 3 documents total).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* Existing Documents section */}
+            <h4 className="text-md font-semibold">Existing Documents ({currentExistingDocs.filter(doc => !docsToRemove.includes(doc)).length})</h4>
+            {(currentExistingDocs.length ?? 0) > 0 ? (
+              <div className="space-y-2">
+                {currentExistingDocs.map((docUrl: string, idx: number) => (
+                  <div key={docUrl} className="flex items-center justify-between p-3 border rounded-md shadow-sm bg-gray-50">
+                    <a href={docUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-blue-600 hover:underline">
+                      <FileText className="h-5 w-5" />
+                      <span>Document {idx + 1} ({docUrl.split('.').pop()?.toUpperCase()})</span>
+                    </a>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveExistingDocument(docUrl)}
+                      disabled={updating}
+                      className="text-red-500 hover:bg-red-100"
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No supporting documents uploaded yet.</p>
+            )}
+
+            {/* New Document Upload section */}
+            <h4 className="text-md font-semibold mt-4">Upload New Documents</h4>
+            <label
+              htmlFor="docs-upload-dialog"
+              className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-blue-50 hover:border-blue-400 transition-all duration-300 group"
+            >
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                onChange={handleDocumentSelection}
+                className="hidden"
+                id="docs-upload-dialog"
+              />
+              {selectedDocFiles && selectedDocFiles.length > 0 ? (
+                <div className="flex flex-col items-center text-center">
+                  <Upload className="h-8 w-8 text-blue-600 mb-2" />
+                  <span className="text-sm font-medium text-gray-900">{selectedDocFiles.length} file(s) selected</span>
+                  <p className="text-xs text-gray-500">Click to add/change documents</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center">
+                  <Upload className="h-8 w-8 text-gray-400 mb-2 group-hover:text-blue-500" />
+                  <p className="text-sm font-medium text-gray-700 group-hover:text-blue-600">Click to upload documents</p>
+                  <p className="text-xs text-gray-500 mt-1">PDF, DOCX, JPG, PNG (Max 3 total)</p>
+                </div>
+              )}
+            </label>
+
+            {/* Preview of Newly Selected Documents */}
+            {selectedDocFiles && selectedDocFiles.length > 0 && (
+              <div className="space-y-2 mt-2">
+                <h5 className="text-sm font-medium">Selected for upload:</h5>
+                {Array.from(selectedDocFiles).map((file, index) => (
+                  <div key={file.name} className="flex items-center justify-between p-2 border rounded-md bg-blue-50">
+                    <span className="text-sm truncate">{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    <Button variant="ghost" size="sm" onClick={() => handleRemoveSelectedNewDocument(index)} className="text-red-500 hover:bg-red-100">
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {(currentExistingDocs.filter(doc => !docsToRemove.includes(doc)).length + (selectedDocFiles?.length || 0)) > 3 && (
+              <p className="text-sm text-red-500">Error: Maximum 3 documents allowed. Please remove some before uploading new ones.</p>
+            )}
+            {(currentExistingDocs.filter(doc => !docsToRemove.includes(doc)).length + (selectedDocFiles?.length || 0)) < 1 && (
+              <p className="text-sm text-yellow-600">Warning: An organization should have at least one supporting document.</p>
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => handleDialogClose(false)}>Cancel</Button>
+            <Button onClick={handleSaveDocuments} disabled={updating || (currentExistingDocs.filter(doc => !docsToRemove.includes(doc)).length + (selectedDocFiles?.length || 0)) < 1}>
+              {updating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : ""} Save Documents
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Viewer Modal (Re-added) */}
+      {openDoc && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full h-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+              <div className="flex items-center gap-3">
+                <FileText className="w-6 h-6 text-blue-600" />
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Supporting Document
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={openDoc}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                >
+                  Open in new tab
+                </a>
+                <button
+                  onClick={() => setOpenDoc(null)}
+                  className="p-2 rounded-full hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
+                  aria-label="Close modal"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-gray-100 flex items-center justify-center">
+              {openDoc.endsWith('.pdf') ? (
+                <iframe
+                  src={openDoc}
+                  className="w-full h-full border-none"
+                  title="Supporting Document"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center p-4">
+                  <img
+                    src={openDoc}
+                    alt="Supporting Document"
+                    className="max-w-full max-h-full object-contain shadow-lg rounded"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 
