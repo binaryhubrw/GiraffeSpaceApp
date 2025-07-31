@@ -245,7 +245,18 @@ export default function VenueDetailsPage() {
   // Add a handler for Book Now button
   const handleBookNow = () => {
     if (!mounted) return;
-    router.push(isLoggedIn ? "/venues/book" : "/login");
+    
+    // Use timezone-safe date formatting to avoid UTC conversion issues
+    const dateToUse = selectedDate || new Date();
+    const formattedDate = dateToUse.getFullYear() + '-' + 
+      String(dateToUse.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(dateToUse.getDate()).padStart(2, '0');
+    
+    if (isLoggedIn) {
+      router.push(`/venues/book?venueId=${venue?.venueId}&date=${formattedDate}`);
+    } else {
+      router.push("/login");
+    }
   };
 
   if (loading) {

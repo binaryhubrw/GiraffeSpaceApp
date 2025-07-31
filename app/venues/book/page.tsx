@@ -137,6 +137,11 @@ export default function CreateEventForm() {
       
       // Convert MM/DD/YYYY format to proper date strings for form processing
       const formattedDates = selectedDates.map(dateStr => {
+        // Check if the date is already in YYYY-MM-DD format
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          return dateStr; // Already in correct format
+        }
+        
         // Parse MM/DD/YYYY format
         const parts = dateStr.split('/');
         if (parts.length !== 3) {

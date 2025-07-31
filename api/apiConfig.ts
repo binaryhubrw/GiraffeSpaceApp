@@ -109,7 +109,7 @@ class ApiService {
     try {
       console.log("in try block");
       const response = await axios.post(
-        `${this.BASE_URL}/users/auth/login/default`,
+        `${this.BASE_URL}/users/auth/login`,
         formData,
         {
           headers: this.getHeader(formData),

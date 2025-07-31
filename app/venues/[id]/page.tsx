@@ -293,9 +293,16 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
       toast.error("Please select a date to continue.")
       return
     }
-    const selectedDate = selectedDates[0].toISOString().split("T")[0]
+    // Use timezone-safe date formatting to avoid UTC conversion issues
+    // Format all selected dates
+    const formattedDates = selectedDates.map(date => 
+      date.getFullYear() + '-' + 
+      String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(date.getDate()).padStart(2, '0')
+    ).join(',')
+    
     if (isLoggedIn) {
-      router.push(`/venues/book?venueId=${venue?.venueId}&date=${selectedDate}`)
+      router.push(`/venues/book?venueId=${venue?.venueId}&date=${formattedDates}`)
     } else {
       router.push("/login")
     }
