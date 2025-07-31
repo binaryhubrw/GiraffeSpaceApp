@@ -27,22 +27,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedLoginState = localStorage.getItem("isLoggedIn")
     const storedUser = localStorage.getItem("currentUser")
-    const storedToken = localStorage.getItem("token") // Retrieve token
 
     if (storedLoginState === "true" && storedUser) {
       try {
-        const parsedUser: User = JSON.parse(storedUser)
-        // Attach the token to the user object if it exists
-        if (storedToken) {
-          parsedUser.token = storedToken
-        }
+        const parsedUser = JSON.parse(storedUser)
         setIsLoggedIn(true)
         setUser(parsedUser)
       } catch (error) {
         // If parsing fails, clear the stored data
         localStorage.removeItem("isLoggedIn")
         localStorage.removeItem("currentUser")
-        localStorage.removeItem("token") // Also clear token
       }
     }
     setMounted(true)
