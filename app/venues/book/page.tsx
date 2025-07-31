@@ -138,7 +138,20 @@ export default function CreateEventForm() {
       // Convert MM/DD/YYYY format to proper date strings for form processing
       const formattedDates = selectedDates.map(dateStr => {
         // Parse MM/DD/YYYY format
-        const [month, day, year] = dateStr.split('/');
+        const parts = dateStr.split('/');
+        if (parts.length !== 3) {
+          console.warn(`Invalid date format: ${dateStr}`);
+          return dateStr; // Return original if format is invalid
+        }
+        
+        const [month, day, year] = parts;
+        
+        // Validate that all parts exist and are valid
+        if (!month || !day || !year) {
+          console.warn(`Invalid date parts: month=${month}, day=${day}, year=${year}`);
+          return dateStr; // Return original if any part is missing
+        }
+        
         // Create a proper date string in YYYY-MM-DD format for the form
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
       });

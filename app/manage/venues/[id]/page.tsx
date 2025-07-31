@@ -478,49 +478,61 @@ export default function VenueDetailsPage() {
               </div>
             <div>
                 <h3 className="text-lg font-semibold mb-2">Google Maps Link</h3>
-                <a href={venue.googleMapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                  View on Google Maps
-                </a>
+                {venue.googleMapsLink ? (
+                  <a href={venue.googleMapsLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                    View on Google Maps
+                  </a>
+                ) : (
+                  <p className="text-gray-500">No Google Maps link available</p>
+                )}
               </div>
             </div>
 
             {/* Amenities */}
             <div>
               <h3 className="text-lg font-semibold mb-2">Amenities</h3>
-              <ul className="list-disc list-inside text-gray-800">
-                {venue.amenities.map(amenity => (
-                  <li key={amenity.id}>
-                    {amenity.resourceName} ({amenity.quantity}) - ${amenity.costPerUnit}/unit
-                  </li>
-                ))}
-              </ul>
+              {venue.amenities && venue.amenities.length > 0 ? (
+                <ul className="list-disc list-inside text-gray-800">
+                  {venue.amenities.map(amenity => (
+                    <li key={amenity.id}>
+                      {amenity.resourceName} ({amenity.quantity}) - ${amenity.costPerUnit}/unit
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No amenities available</p>
+              )}
             </div>
 
             {/* Booking Conditions */}
             <div>
               <h3 className="text-lg font-semibold mb-2">Booking Conditions</h3>
-              <ul className="list-disc list-inside text-gray-800">
-                {venue.bookingConditions.map(condition => (
-                  <li key={condition.id}>
-                    {condition.descriptionCondition}
-                    <br />
-                    Nota Bene: {condition.notaBene}
-                    <br />
-                    Transition Time: {condition.transitionTime} day
-                    <br />
-                    Deposit Required: {condition.depositRequiredPercent}%
-                    <br />
-                    Payment Complement Time: {condition.paymentComplementTimeBeforeEvent} day
-                  </li>
-                ))}
-              </ul>
+              {venue.bookingConditions && venue.bookingConditions.length > 0 ? (
+                <ul className="list-disc list-inside text-gray-800">
+                  {venue.bookingConditions.map(condition => (
+                    <li key={condition.id}>
+                      {condition.descriptionCondition}
+                      <br />
+                      Nota Bene: {condition.notaBene}
+                      <br />
+                      Transition Time: {condition.transitionTime} day
+                      <br />
+                      Deposit Required: {condition.depositRequiredPercent}%
+                      <br />
+                      Payment Complement Time: {condition.paymentComplementTimeBeforeEvent} day
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500">No booking conditions available</p>
+              )}
               </div>
 
             {/* Availability Slots */}
             {/* (Removed as per request) */}
 
             {/* Virtual Tour */}
-            {venue.virtualTourUrl && (
+            {venue.virtualTourUrl && venue.virtualTourUrl.trim() !== '' && (
               <div>
                 <h3 className="text-lg font-semibold mb-2">Virtual Tour</h3>
                 <a href={venue.virtualTourUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
@@ -530,7 +542,7 @@ export default function VenueDetailsPage() {
             )}
 
             {/* Documents */}
-            {venue.venueDocuments && (
+            {venue.venueDocuments && venue.venueDocuments.trim() !== '' && (
             <div>
                 <h3 className="text-lg font-semibold mb-2">Documents</h3>
                 <p className="text-gray-800">Documents available for this venue.</p>
