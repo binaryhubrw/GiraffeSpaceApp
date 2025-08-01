@@ -25,7 +25,7 @@ import {
   Star,
 } from "lucide-react"
 import Image from "next/image"
-import ApiService from "@/api/apiConfig"
+// Removed API import since we're using mock data
 import { Switch } from "@/components/ui/switch"
 import { useAttendee } from "@/context/AttendeeContext"
 import { useParams } from "next/navigation"
@@ -137,43 +137,138 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    const fetchEventData = async () => {
+    const initializeData = async () => {
       try {
         setLoading(true)
         setError(null)
-
-        // Fetch both event data and active tickets
-        const [eventResponse, ticketsResponse] = await Promise.all([
-          ApiService.getPubulishedEventById(eventId),
-          ApiService.getActiveEventTickets(eventId)
-        ])
-
-        if (eventResponse.success && eventResponse.data) {
-          setEventData(eventResponse.data)
-        } else {
-          setError("Failed to load event data")
+        
+        // Simulate a brief loading time
+        await new Promise((resolve) => setTimeout(resolve, 500))
+        
+        // Use mock data instead of API calls
+        const mockEventData: EventData = {
+          eventVenues: [],
+          eventId: "ccec53d7-eb77-4c06-937b-3b20b801714c",
+          eventName: "iwacu muzika",
+          eventType: "PARTY",
+          eventDescription: "An amazing music festival featuring top artists and incredible performances",
+          eventPhoto: "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753799162/events/photos/ofs29hfkvinl013s3tb6.jpg",
+          bookingDates: [{ date: "2025-10-12" }, { date: "2025-10-13" }, { date: "2025-10-14" }],
+          maxAttendees: 9999,
+          eventStatus: "APPROVED",
+          isFeatured: true,
+          isEntryPaid: true,
+          visibilityScope: "PUBLIC",
+          venues: [
+            {
+              venueName: "Akagera Tents",
+              venueLocation: "59 KN 7 Ave, Kigali, Rwanda",
+              capacity: 10000,
+            },
+          ],
         }
-
-        if (ticketsResponse.success && ticketsResponse.data) {
-          setTicketTypes(ticketsResponse.data)
-        } else {
-          console.error("Failed to fetch tickets:", ticketsResponse)
-          // Don't set error here as event might still be valid without tickets
-        }
+        
+        const mockTicketTypes: TicketType[] = [
+          {
+            ticketTypeId: "early-bird",
+            eventId: "ccec53d7-eb77-4c06-937b-3b20b801714c",
+            name: "Early Bird Special",
+            description: "Limited time offer with exclusive benefits and early access to the event",
+            price: "50.00",
+            quantityAvailable: 25,
+            quantitySold: 0,
+            currency: "USD",
+            saleStartsAt: "2025-01-01T00:00:00Z",
+            saleEndsAt: "2025-09-01T00:00:00Z",
+            createdAt: "2025-01-01T00:00:00Z",
+            updatedAt: "2025-01-01T00:00:00Z",
+            isPubliclyAvailable: true,
+            maxPerPerson: 5,
+            isActive: true,
+            categoryDiscounts: {
+              "EARLY_BIRD": {
+                percent: 20,
+                description: "Limited time 20% discount"
+              }
+            },
+            isRefundable: true,
+            refundPolicy: "Full refund available up to 7 days before event",
+            transferable: true,
+            ageRestriction: "NO_RESTRICTION",
+            specialInstructions: null,
+            status: "ACTIVE",
+            validForDate: "2025-10-12"
+          },
+          {
+            ticketTypeId: "regular",
+            eventId: "ccec53d7-eb77-4c06-937b-3b20b801714c",
+            name: "General Admission",
+            description: "Standard event access with essential amenities and full event experience",
+            price: "75.00",
+            quantityAvailable: 150,
+            quantitySold: 0,
+            currency: "USD",
+            saleStartsAt: "2025-01-15T00:00:00Z",
+            saleEndsAt: "2025-10-10T00:00:00Z",
+            createdAt: "2025-01-15T00:00:00Z",
+            updatedAt: "2025-01-15T00:00:00Z",
+            isPubliclyAvailable: true,
+            maxPerPerson: 10,
+            isActive: true,
+            categoryDiscounts: null,
+            isRefundable: true,
+            refundPolicy: "Full refund available up to 3 days before event",
+            transferable: true,
+            ageRestriction: "NO_RESTRICTION",
+            specialInstructions: null,
+            status: "ACTIVE",
+            validForDate: "2025-10-12"
+          },
+          {
+            ticketTypeId: "vip",
+            eventId: "ccec53d7-eb77-4c06-937b-3b20b801714c",
+            name: "VIP Premium Experience",
+            description: "Ultimate premium experience with exclusive perks, backstage access, and luxury amenities",
+            price: "150.00",
+            quantityAvailable: 10,
+            quantitySold: 0,
+            currency: "USD",
+            saleStartsAt: "2025-01-01T00:00:00Z",
+            saleEndsAt: "2025-10-11T00:00:00Z",
+            createdAt: "2025-01-01T00:00:00Z",
+            updatedAt: "2025-01-01T00:00:00Z",
+            isPubliclyAvailable: true,
+            maxPerPerson: 3,
+            isActive: true,
+            categoryDiscounts: {
+              "VIP": {
+                percent: 15,
+                description: "Early VIP booking discount"
+              }
+            },
+            isRefundable: true,
+            refundPolicy: "Full refund available up to 14 days before event",
+            transferable: true,
+            ageRestriction: "18_PLUS",
+            specialInstructions: "VIP check-in required 30 minutes before event",
+            status: "ACTIVE",
+            validForDate: "2025-10-12"
+          }
+        ]
+        
+        setEventData(mockEventData)
+        setTicketTypes(mockTicketTypes)
+        
       } catch (err) {
-        console.error("Error fetching data:", err)
+        console.error("Error initializing data:", err)
         setError("An error occurred while loading the event")
       } finally {
         setLoading(false)
       }
     }
-    if (eventId) {
-      fetchEventData()
-    } else {
-      setLoading(false)
-      setError("No event ID provided in URL.")
-    }
-  }, [eventId])
+    
+    initializeData()
+  }, [])
 
   // Pre-fill buyer info with first attendee if available
   useEffect(() => {
