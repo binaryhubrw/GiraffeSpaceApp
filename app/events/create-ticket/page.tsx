@@ -136,58 +136,25 @@ const mockEventData: EventData = {
 }
 
 const predefinedTicketNames = [
-  "General Admission",
-  "VIP Pass",
-  "Premium Access",
-  "Early Bird Special",
-  "Student Discount",
-  "Group Package",
-  "Corporate Package",
-  "Sponsor Pass",
-  "Backstage Pass",
-  "All Access Pass",
-  "Front Row Seats",
-  "Balcony Seats",
-  "Standing Room",
-  "Meet & Greet Package",
-  "Dinner & Show",
-  "Weekend Pass",
-  "Single Day Pass",
-  "Family Package",
-  "Senior Discount",
-  "Military Discount",
-]
-
-const ticketCategories = [
-  "GENERAL_ADMISSION",
+ "VVIP",
   "VIP",
-  "PREMIUM",
-  "EARLY_BIRD",
-  "STUDENT",
-  "GROUP",
-  "CORPORATE",
-  "SPONSOR",
-]
+  "Gold",
+  "Platinum",
+  "Regular",
+  "Standard"]
+
+
 
 const currencies = [
   { code: "USD", symbol: "$", name: "US Dollar" },
-  { code: "RWF", symbol: "₣", name: "Rwandan Franc" },
+  { code: "RWF", symbol: "Rwf", name: "Rwandan Franc" },
   { code: "EUR", symbol: "€", name: "Euro" },
   { code: "GBP", symbol: "£", name: "British Pound" },
 ]
 
 const ageRestrictions = ["NO_RESTRICTION", "18_PLUS", "21_PLUS", "FAMILY_FRIENDLY", "CHILDREN_ONLY", "SENIOR_DISCOUNT"]
 
-const accessLevels = ["GENERAL", "VIP", "PREMIUM", "BACKSTAGE", "ALL_ACCESS"]
 
-const benefitCategories = [
-  { id: "access", name: "Access & Entry", icon: "ticket" },
-  { id: "food", name: "Food & Beverage", icon: "utensils" },
-  { id: "entertainment", name: "Entertainment", icon: "music" },
-  { id: "networking", name: "Networking", icon: "users" },
-  { id: "merchandise", name: "Merchandise", icon: "gift" },
-  { id: "services", name: "Services", icon: "star" },
-]
 
 const availableGuests = [
   {
@@ -220,38 +187,11 @@ const availableGuests = [
   },
 ]
 
-const mealOptions = [
-  "Welcome Cocktail",
-  "Breakfast",
-  "Lunch",
-  "Dinner",
-  "Afternoon Tea",
-  "Gala Dinner",
-  "Networking Lunch",
-  "VIP Reception",
-]
 
-const merchandiseOptions = [
-  "Event T-Shirt",
-  "Branded Tote Bag",
-  "Event Program",
-  "Commemorative Pin",
-  "Photo Book",
-  "USB Drive with Content",
-  "Branded Water Bottle",
-  "Event Poster",
-]
 
-const exclusiveAreaOptions = [
-  "VIP Lounge",
-  "Backstage Area",
-  "Green Room",
-  "Executive Suite",
-  "Rooftop Terrace",
-  "Private Bar",
-  "Networking Zone",
-  "Photo Booth Area",
-]
+
+
+
 
 const steps = [
   { id: 1, title: "Basic Info & Benefits", icon: Info },
@@ -776,29 +716,7 @@ export default function CreateTicketForm() {
                         )}
                       </div>
 
-                      <div>
-                        <Label htmlFor={`category-${index}`}>Category *</Label>
-                        <Select
-                          value={ticket.category}
-                          onValueChange={(value) => handleTicketChange(index, "category", value)}
-                        >
-                          <SelectTrigger
-                            className={`mt-1 ${errors[`ticket-${index}-category`] ? "border-red-500" : ""}`}
-                          >
-                            <SelectValue placeholder="Select category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ticketCategories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category.replace(/_/g, " ")}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errors[`ticket-${index}-category`] && (
-                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-category`]}</p>
-                        )}
-                      </div>
+                   
                     </div>
 
                     <div>
@@ -876,25 +794,7 @@ export default function CreateTicketForm() {
                       </div>
                     </div>
 
-                    {/* Access Level */}
-                    <div>
-                      <Label htmlFor={`accessLevel-${index}`}>Access Level</Label>
-                      <Select
-                        value={ticket.accessLevel}
-                        onValueChange={(value) => handleTicketChange(index, "accessLevel", value)}
-                      >
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {accessLevels.map((level) => (
-                            <SelectItem key={level} value={level}>
-                              {level.replace(/_/g, " ")}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                  
 
                     {/* Included Guests/Participants/Entertainers */}
                     <div>
@@ -1067,159 +967,13 @@ export default function CreateTicketForm() {
                       </div>
                     </div>
 
-                    {/* Included Meals */}
-                    <div>
-                      <Label className="text-base font-semibold">Included Meals & Refreshments</Label>
-                      <p className="text-sm text-gray-600 mb-3">Select which meals and refreshments are included</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {mealOptions.map((meal) => (
-                          <div
-                            key={meal}
-                            className={`p-2 text-sm border rounded cursor-pointer transition-all ${
-                              ticket.includedMeals.includes(meal)
-                                ? "border-green-500 bg-green-50 text-green-700"
-                                : "border-gray-200 hover:border-gray-300"
-                            }`}
-                            onClick={() => toggleArrayItem(index, "includedMeals", meal)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Utensils className="h-3 w-3" />
-                              <span>{meal}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                 
 
-                    {/* Merchandise Included */}
-                    <div>
-                      <Label className="text-base font-semibold">Included Merchandise</Label>
-                      <p className="text-sm text-gray-600 mb-3">Select merchandise items included with this ticket</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {merchandiseOptions.map((item) => (
-                          <div
-                            key={item}
-                            className={`p-2 text-sm border rounded cursor-pointer transition-all ${
-                              ticket.merchandiseIncluded.includes(item)
-                                ? "border-green-500 bg-green-50 text-green-700"
-                                : "border-gray-200 hover:border-gray-300"
-                            }`}
-                            onClick={() => toggleArrayItem(index, "merchandiseIncluded", item)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Gift className="h-3 w-3" />
-                              <span>{item}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                   
 
-                    {/* Exclusive Areas */}
-                    <div>
-                      <Label className="text-base font-semibold">Exclusive Area Access</Label>
-                      <p className="text-sm text-gray-600 mb-3">
-                        Select exclusive areas this ticket provides access to
-                      </p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        {exclusiveAreaOptions.map((area) => (
-                          <div
-                            key={area}
-                            className={`p-2 text-sm border rounded cursor-pointer transition-all ${
-                              ticket.exclusiveAreas.includes(area)
-                                ? "border-green-500 bg-green-50 text-green-700"
-                                : "border-gray-200 hover:border-gray-300"
-                            }`}
-                            onClick={() => toggleArrayItem(index, "exclusiveAreas", area)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Star className="h-3 w-3" />
-                              <span>{area}</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                  
 
-                    {/* Additional Benefits */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">Parking Included</Label>
-                            <p className="text-xs text-gray-600">Free parking access</p>
-                          </div>
-                          <Switch
-                            checked={ticket.parkingIncluded}
-                            onCheckedChange={(checked) => handleTicketChange(index, "parkingIncluded", checked)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">Meet & Greet</Label>
-                            <p className="text-xs text-gray-600">Meet with performers/speakers</p>
-                          </div>
-                          <Switch
-                            checked={ticket.meetAndGreet}
-                            onCheckedChange={(checked) => handleTicketChange(index, "meetAndGreet", checked)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">Priority Access</Label>
-                            <p className="text-xs text-gray-600">Skip regular queues</p>
-                          </div>
-                          <Switch
-                            checked={ticket.priorityAccess}
-                            onCheckedChange={(checked) => handleTicketChange(index, "priorityAccess", checked)}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">Gift Bag</Label>
-                            <p className="text-xs text-gray-600">Exclusive event gift bag</p>
-                          </div>
-                          <Switch
-                            checked={ticket.giftBag}
-                            onCheckedChange={(checked) => handleTicketChange(index, "giftBag", checked)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">Certificate</Label>
-                            <p className="text-xs text-gray-600">Attendance certificate</p>
-                          </div>
-                          <Switch
-                            checked={ticket.certificateIncluded}
-                            onCheckedChange={(checked) => handleTicketChange(index, "certificateIncluded", checked)}
-                          />
-                        </div>
-
-                        <div className="p-3 bg-gray-50 rounded-lg">
-                          <Label htmlFor={`drinks-${index}`} className="text-sm font-medium">
-                            Complimentary Drinks
-                          </Label>
-                          <p className="text-xs text-gray-600 mb-2">Number of free drinks included</p>
-                          <Input
-                            id={`drinks-${index}`}
-                            type="number"
-                            min="0"
-                            max="10"
-                            value={ticket.complimentaryDrinks}
-                            onChange={(e) =>
-                              handleTicketChange(index, "complimentaryDrinks", Number.parseInt(e.target.value) || 0)
-                            }
-                            className="w-full"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                   
 
                     {/* Custom Benefits */}
                     <div>
@@ -1229,24 +983,8 @@ export default function CreateTicketForm() {
                         {ticket.benefits.map((benefit, benefitIndex) => (
                           <Card key={benefit.id} className="p-4">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              <div>
-                                <Label className="text-sm">Category</Label>
-                                <Select
-                                  value={benefit.category}
-                                  onValueChange={(value) => updateBenefit(index, benefitIndex, "category", value)}
-                                >
-                                  <SelectTrigger className="mt-1">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {benefitCategories.map((cat) => (
-                                      <SelectItem key={cat.id} value={cat.id}>
-                                        {cat.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                             
+                            
                               <div>
                                 <Label className="text-sm">Title</Label>
                                 <Input
@@ -1518,17 +1256,7 @@ export default function CreateTicketForm() {
                                 </Button>
                               </div>
                             </div>
-                            <div className="mt-3">
-                              <Label className="text-sm">Description</Label>
-                              <Input
-                                value={discount.description}
-                                onChange={(e) =>
-                                  updateDiscountTier(index, discountIndex, "description", e.target.value)
-                                }
-                                placeholder="Brief description of this discount"
-                                className="mt-1"
-                              />
-                            </div>
+                          
                             {discount.percentage > 0 && ticket.price > 0 && (
                               <div className="mt-2 p-2 bg-green-50 rounded text-sm">
                                 <span className="text-green-700 font-medium">
@@ -1593,27 +1321,7 @@ export default function CreateTicketForm() {
                           />
                         </div>
 
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">Transferable</Label>
-                            <p className="text-xs text-gray-600">Allow ticket transfers</p>
-                          </div>
-                          <Switch
-                            checked={ticket.transferable}
-                            onCheckedChange={(checked) => handleTicketChange(index, "transferable", checked)}
-                          />
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">Requires Approval</Label>
-                            <p className="text-xs text-gray-600">Manual approval needed</p>
-                          </div>
-                          <Switch
-                            checked={ticket.requiresApproval}
-                            onCheckedChange={(checked) => handleTicketChange(index, "requiresApproval", checked)}
-                          />
-                        </div>
+                       
                       </div>
 
                       <div className="space-y-4">

@@ -198,7 +198,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <UserHeader user={user} />
+      <UserHeader  />
 
       <main className="flex-1">
         {/* Header Section */}

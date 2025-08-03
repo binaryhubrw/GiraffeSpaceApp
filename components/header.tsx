@@ -106,22 +106,7 @@ export function Header({ activePage }: HeaderProps) {
           >
             Venues
           </Link>
-          <Link
-            href="/organizers"
-            className={`text-sm font-medium ${
-              activePage === "organizers" ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Organizations
-          </Link>
-          {/* <Link
-            href="/dashboard"
-            className={`text-sm font-medium ${
-              activePage === "dashboard" ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            Statistics
-          </Link> */}
+          
         </nav>
 
         {/* Desktop auth buttons or user menu */}
@@ -164,7 +149,7 @@ export function Header({ activePage }: HeaderProps) {
                       onClick={() => setIsManageMenuOpen(false)}
                     >
                       <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                      Dashboard
+                      Manage Events
                     </Link>
                     <Link
                       href="/manage/venues/dashboard"
@@ -208,13 +193,7 @@ export function Header({ activePage }: HeaderProps) {
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 border">
                   <div className="py-1">
-                    <Link
-                      href="/user-dashboard"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setIsUserMenuOpen(false)}
-                    >
-                      User Dashboard
-                    </Link>
+                   
                     <Link
                       href="/profile"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -230,12 +209,20 @@ export function Header({ activePage }: HeaderProps) {
                       Settings
                     </Link>
                     <Link
+                      href="/my-tickets"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      My tickets
+                    </Link>
+                      <Link
                       href="/my-organizations"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                       onClick={() => setIsUserMenuOpen(false)}
                     >
                       My Organization
                     </Link>
+
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"

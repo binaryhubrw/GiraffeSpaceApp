@@ -141,7 +141,7 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
       try {
         setLoading(true)
         setError(null)
-        
+
         // Simulate a brief loading time
         await new Promise((resolve) => setTimeout(resolve, 500))
         

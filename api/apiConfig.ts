@@ -1056,6 +1056,20 @@ class ApiService {
     }
   }
 
+   /**** get  booking userId*** */
+  static async getBookingByUserId(userId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/venue-bookings/user/${userId}/bookings`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching event bookings for user with ID ${userId}:`, error);
+      throw error;
+    }
+  }
+
 
   /**************************************** */
 
@@ -1218,6 +1232,8 @@ class ApiService {
     } 
   }
 
+
+
   /*** cancel event booking** */
   static async cancelEventBooking(eventId: string, data: any): Promise<any> {
     try {
@@ -1337,6 +1353,9 @@ class ApiService {
       throw error;
     }
   }
+
+
+ 
 
 
 

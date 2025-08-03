@@ -38,32 +38,10 @@ export function UserDashboardSidebar({ onClose }: UserDashboardSidebarProps) {
             <span className="flex items-center justify-center w-7 h-7"><Home className="h-5 w-5" /></span>
             <span className="text-left whitespace-nowrap">Overview</span>
           </Link>
+        
+         
           <Link 
-            href="/user-dashboard/tickets" 
-            onClick={handleLinkClick}
-            className={`w-full flex items-center gap-2 px-0 py-2 text-sm font-medium rounded-md transition-colors ${
-              isActive("/user-dashboard/tickets")
-                ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-            }`}
-          >
-            <span className="flex items-center justify-center w-7 h-7"><Ticket className="h-5 w-5" /></span>
-            <span className="text-left whitespace-nowrap">My Tickets</span>
-          </Link>
-          <Link 
-            href="/user-dashboard/attended-event" 
-            onClick={handleLinkClick}
-            className={`w-full flex items-center gap-2 px-0 py-2 text-sm font-medium rounded-md transition-colors ${
-              isActive("/user-dashboard/attended-event")
-                ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-            }`}
-          >
-            <span className="flex items-center justify-center w-7 h-7"><CheckCircle className="h-5 w-5" /></span>
-            <span className="text-left whitespace-nowrap">Attended Events</span>
-          </Link>
-          <Link 
-            href="/user-dashboard/organization" 
+            href="/user-dashboard/booking" 
             onClick={handleLinkClick}
             className={`w-full flex items-center gap-2 px-0 py-2 text-sm font-medium rounded-md transition-colors ${
               isActive("/user-dashboard/organization")
@@ -72,7 +50,7 @@ export function UserDashboardSidebar({ onClose }: UserDashboardSidebarProps) {
             }`}
           >
             <span className="flex items-center justify-center w-7 h-7"><Building2 className="h-5 w-5" /></span>
-            <span className="text-left whitespace-nowrap">My Organizations</span>
+            <span className="text-left whitespace-nowrap">My booking</span>
           </Link>
           <Link 
             href="/user-dashboard/events" 

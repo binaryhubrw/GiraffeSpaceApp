@@ -5,11 +5,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, Loader2 } from "lucide-react"
+import { Eye, Loader2, Ticket, CheckCircle, XCircle, DollarSign, Calendar, MapPin } from "lucide-react"
 import { isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
 import { useAuth } from "@/contexts/auth-context" // Assuming this context is available
 import { toast } from "sonner" // Assuming sonner is configured
 import { useRouter } from "next/navigation"
+import { Header } from "@/components/header"
+import { Footer } from "@/components/footer"
 
 interface Ticket {
   registrationId: string
@@ -158,28 +160,98 @@ export default function TicketsSection() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[500px]">
-        <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
-        <p className="ml-3 text-gray-600">Loading your tickets...</p>
+      <div className="min-h-screen bg-gray-50">
+        <Header activePage="my-tickets" />
+        <div className="flex justify-center items-center min-h-[500px]">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+          <p className="ml-3 text-gray-600">Loading your tickets...</p>
+        </div>
+        <Footer />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-[500px] text-red-600">
-        <p className="text-lg font-medium">Error: {error}</p>
-        <p className="text-sm text-gray-500 mt-2">Please try refreshing the page or contact support.</p>
+      <div className="min-h-screen bg-gray-50">
+        <Header activePage="my-tickets" />
+        <div className="flex flex-col justify-center items-center min-h-[500px] text-red-600">
+          <p className="text-lg font-medium">Error: {error}</p>
+          <p className="text-sm text-gray-500 mt-2">Please try refreshing the page or contact support.</p>
+        </div>
+        <Footer />
       </div>
     )
   }
 
+  // Calculate statistics from real data
+  const totalTickets = tickets.length
+  const activeTickets = tickets.filter(t => t.attended === false || t.attended === undefined || t.attended === null).length
+  const usedTickets = tickets.filter(t => t.attended === true).length
+  const totalSpent = tickets.reduce((sum, t) => sum + parseFloat(t.totalCost), 0)
+
   return (
-    <div className="p-4 md:p-8">
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">My Tickets</h2>
+    <div className="min-h-screen bg-gray-50">
+      <Header activePage="my-tickets" />
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Tickets</h1>
+          <p className="text-gray-600">Manage and view all your purchased tickets</p>
         </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Tickets</p>
+                  <p className="text-2xl font-bold text-gray-900">{totalTickets}</p>
+                </div>
+                <Ticket className="h-8 w-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Active Tickets</p>
+                  <p className="text-2xl font-bold text-green-600">{activeTickets}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Used Tickets</p>
+                  <p className="text-2xl font-bold text-blue-600">{usedTickets}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total Spent</p>
+                  <p className="text-2xl font-bold text-purple-600">Frw {totalSpent.toFixed(2)}</p>
+                </div>
+                <DollarSign className="h-8 w-8 text-purple-600" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
         <Card>
           <CardContent className="p-0">
             <div className="flex flex-col md:flex-row gap-4 mb-4 w-full items-center justify-between px-4 pt-4">
@@ -369,7 +441,9 @@ export default function TicketsSection() {
             )}
           </CardContent>
         </Card>
+        </div>
       </div>
+      <Footer />
     </div>
   )
 }
