@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MapPin, Mail, Phone, Users, Calendar as CalendarIcon, Clock, Info, Pencil, Trash2, CalendarPlus, ArrowLeft, Plus } from "lucide-react";
+import { MapPin, Mail, Phone, Users, Calendar as CalendarIcon, Clock, Info, Pencil, Trash2, CalendarPlus, ArrowLeft, Plus, X } from "lucide-react";
 import ApiService from "@/api/apiConfig";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -31,6 +31,16 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
@@ -103,6 +113,13 @@ interface VenueDetails {
   venueDocuments: string;
 }
 
+interface AmenityData {
+  resourceName: string;
+  quantity: number;
+  amenitiesDescription: string;
+  costPerUnit: string;
+}
+
 export default function VenueDetailsPage() {
   const params = useParams();
   const [venue, setVenue] = useState<VenueDetails | null>(null);
@@ -115,9 +132,64 @@ export default function VenueDetailsPage() {
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Amenity modal states
+  const [addAmenityModalOpen, setAddAmenityModalOpen] = useState(false);
+  const [amenityFormData, setAmenityFormData] = useState<AmenityData>({
+    resourceName: '',
+    quantity: 1,
+    amenitiesDescription: '',
+    costPerUnit: ''
+  });
+  const [addingAmenity, setAddingAmenity] = useState(false);
+
+  // Update amenity modal states
+  const [updateAmenityModalOpen, setUpdateAmenityModalOpen] = useState(false);
+  const [editingAmenity, setEditingAmenity] = useState<{
+    id: string;
+    data: AmenityData;
+  } | null>(null);
+  const [updatingAmenity, setUpdatingAmenity] = useState(false);
+
+  // Delete amenity states
+  const [deleteAmenityDialogOpen, setDeleteAmenityDialogOpen] = useState(false);
+  const [deletingAmenityId, setDeletingAmenityId] = useState<string | null>(null);
+  const [deletingAmenity, setDeletingAmenity] = useState(false);
+
+  // Booking condition update states
+  const [updateBookingConditionModalOpen, setUpdateBookingConditionModalOpen] = useState(false);
+  const [editingBookingCondition, setEditingBookingCondition] = useState<{
+    id: string;
+    data: {
+      descriptionCondition: string;
+      notaBene: string;
+      transitionTime: number;
+      depositRequiredPercent: number;
+      depositRequiredTime: number;
+      paymentComplementTimeBeforeEvent: number;
+    };
+  } | null>(null);
+  const [updatingBookingCondition, setUpdatingBookingCondition] = useState(false);
+
+  // Venue variable update states
+  const [updateVenueVariableModalOpen, setUpdateVenueVariableModalOpen] = useState(false);
+  const [editingVenueVariable, setEditingVenueVariable] = useState<{
+    id: string;
+    data: {
+      amount: string;
+      managerId: string;
+    };
+  } | null>(null);
+  const [updatingVenueVariable, setUpdatingVenueVariable] = useState(false);
+
+  // Video tour update states
+  const [updateVideoTourModalOpen, setUpdateVideoTourModalOpen] = useState(false);
+  const [updatingVideoTour, setUpdatingVideoTour] = useState(false);
+  const [videoTourUploadProgress, setVideoTourUploadProgress] = useState(0);
+
   // File input refs
   const mainPhotoInputRef = useRef<HTMLInputElement>(null);
   const subPhotoInputRef = useRef<HTMLInputElement>(null);
+  const videoTourInputRef = useRef<HTMLInputElement>(null);
 
   // Add handlers for image actions
   const handleEditMainPhoto = () => {
@@ -198,6 +270,385 @@ export default function VenueDetailsPage() {
         toast.error("Failed to delete sub image.");
       } finally {
         setDeleting(false);
+      }
+    }
+  };
+
+  // Amenity form handlers
+  const handleAmenityInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setAmenityFormData(prev => ({
+      ...prev,
+      [name]: name === 'quantity' ? (value === '' ? '' : parseInt(value) || 0) : value
+    }));
+  };
+
+  const handleAddAmenity = async () => {
+    if (!venue) return;
+
+    // Validate form data
+    if (!amenityFormData.resourceName.trim() || 
+        !amenityFormData.amenitiesDescription.trim() || 
+        !amenityFormData.costPerUnit.trim() ||
+        !amenityFormData.quantity || 
+        amenityFormData.quantity <= 0) {
+      toast.error("Please fill in all required fields and ensure quantity is greater than 0.");
+      return;
+    }
+
+    // Validate costPerUnit format (should be a valid number)
+    const costPerUnit = parseFloat(amenityFormData.costPerUnit);
+    if (isNaN(costPerUnit) || costPerUnit <= 0) {
+      toast.error("Cost per unit must be a valid positive number.");
+      return;
+    }
+
+    // Additional validation to ensure data format matches API expectations
+    if (amenityFormData.resourceName.length < 2) {
+      toast.error("Resource name must be at least 2 characters long.");
+      return;
+    }
+
+    if (amenityFormData.amenitiesDescription.length < 5) {
+      toast.error("Description must be at least 5 characters long.");
+      return;
+    }
+
+    setAddingAmenity(true);
+    try {
+      // Ensure quantity is a number and costPerUnit is properly formatted
+      const amenityData = {
+        resourceName: amenityFormData.resourceName.trim(),
+        quantity: parseInt(amenityFormData.quantity.toString()) || 1,
+        amenitiesDescription: amenityFormData.amenitiesDescription.trim(),
+        costPerUnit: costPerUnit.toFixed(2) // Format as string with 2 decimal places
+      };
+
+     
+      
+      const amenityPayload = [amenityData];
+     
+      
+    
+      
+      const response = await ApiService.addVenueAmenities(venue.venueId, amenityPayload);
+      
+    
+      
+      if (response.success) {
+        // Always refresh venue details on successful API response
+        const venueResponse = await ApiService.getVenueById(venue.venueId);
+        if (venueResponse.success) {
+          setVenue(venueResponse.data);
+        }
+
+        // Reset form and close modal regardless of whether 'added' array is populated
+        setAmenityFormData({
+          resourceName: '',
+          quantity: 1,
+          amenitiesDescription: '',
+          costPerUnit: ''
+        });
+        setAddAmenityModalOpen(false);
+
+        if (response.added && response.added.length > 0) {
+          toast.success("Amenity added successfully.");
+        } else if (response.skipped && response.skipped.length > 0) {
+          const skippedReason = response.skipped[0]?.reason || "Validation failed";
+          toast.error(`Amenity was skipped: ${skippedReason}`);
+        } else {
+          // If success is true, but no added/skipped reported, assume success due to observed behavior.
+          toast.success("Amenity was added successfully.");
+        }
+      } else {
+        toast.error(response.message || "Failed to add amenity.");
+      }
+    } catch (err) {
+      console.error("Error adding amenity:", err);
+      toast.error("Failed to add amenity. Please try again.");
+    } finally {
+      setAddingAmenity(false);
+    }
+  };
+
+  const resetAmenityForm = () => {
+    setAmenityFormData({
+      resourceName: '',
+      quantity: 1,
+      amenitiesDescription: '',
+      costPerUnit: ''
+    });
+  };
+
+  // Update amenity handlers
+  const handleEditAmenity = (amenity: any) => {
+    setEditingAmenity({
+      id: amenity.id,
+      data: {
+        resourceName: amenity.resourceName,
+        quantity: amenity.quantity,
+        amenitiesDescription: amenity.amenitiesDescription,
+        costPerUnit: amenity.costPerUnit
+      }
+    });
+    setUpdateAmenityModalOpen(true);
+  };
+
+  const handleUpdateAmenityInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    if (editingAmenity) {
+      setEditingAmenity(prev => ({
+        ...prev!,
+        data: {
+          ...prev!.data,
+          [name]: name === 'quantity' ? (value === '' ? '' : parseInt(value) || 0) : value
+        }
+      }));
+    }
+  };
+
+  const handleUpdateAmenity = async () => {
+    if (!venue || !editingAmenity) return;
+
+    // Validate form data
+    if (!editingAmenity.data.resourceName.trim() || !editingAmenity.data.amenitiesDescription.trim() || !editingAmenity.data.costPerUnit.trim()) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    setUpdatingAmenity(true);
+    try {
+      const response = await ApiService.updateVenueAmenities(venue.venueId, editingAmenity.id, editingAmenity.data);
+      
+      if (response.success) {
+        // Refresh venue details
+        const venueResponse = await ApiService.getVenueById(venue.venueId);
+        if (venueResponse.success) setVenue(venueResponse.data);
+        
+        // Close modal and reset state
+        setUpdateAmenityModalOpen(false);
+        setEditingAmenity(null);
+        toast.success("Amenity updated successfully.");
+      } else {
+        toast.error(response.message || "Failed to update amenity.");
+      }
+    } catch (err) {
+      console.error("Error updating amenity:", err);
+      toast.error("Failed to update amenity. Please try again.");
+    } finally {
+      setUpdatingAmenity(false);
+    }
+  };
+
+  // Delete amenity handlers
+  const handleDeleteAmenity = (amenityId: string) => {
+    setDeletingAmenityId(amenityId);
+    setDeleteAmenityDialogOpen(true);
+  };
+
+  const confirmDeleteAmenity = async () => {
+    if (!venue || !deletingAmenityId) return;
+
+    setDeletingAmenity(true);
+    try {
+      const response = await ApiService.removeVenueAmenity(venue.venueId, deletingAmenityId);
+      
+      if (response.success) {
+        // Refresh venue details
+        const venueResponse = await ApiService.getVenueById(venue.venueId);
+        if (venueResponse.success) setVenue(venueResponse.data);
+        
+        // Close dialog and reset state
+        setDeleteAmenityDialogOpen(false);
+        setDeletingAmenityId(null);
+        toast.success("Amenity deleted successfully.");
+      } else {
+        toast.error(response.message || "Failed to delete amenity.");
+      }
+    } catch (err) {
+      console.error("Error deleting amenity:", err);
+      toast.error("Failed to delete amenity. Please try again.");
+    } finally {
+      setDeletingAmenity(false);
+    }
+  };
+
+  // Booking condition update handlers
+  const handleEditBookingCondition = (condition: any) => {
+    setEditingBookingCondition({
+      id: condition.id,
+      data: {
+        descriptionCondition: condition.descriptionCondition,
+        notaBene: condition.notaBene,
+        transitionTime: condition.transitionTime,
+        depositRequiredPercent: condition.depositRequiredPercent,
+        depositRequiredTime: condition.depositRequiredTime || 5, // Default value if not present
+        paymentComplementTimeBeforeEvent: condition.paymentComplementTimeBeforeEvent
+      }
+    });
+    setUpdateBookingConditionModalOpen(true);
+  };
+
+  const handleUpdateBookingConditionInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (!editingBookingCondition) return;
+    
+    const { name, value } = e.target;
+    setEditingBookingCondition(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        data: {
+          ...prev.data,
+          [name]: name === 'transitionTime' || name === 'depositRequiredPercent' || name === 'depositRequiredTime' || name === 'paymentComplementTimeBeforeEvent' 
+            ? parseInt(value) || 0 
+            : value
+        }
+      };
+    });
+  };
+
+  const handleUpdateBookingCondition = async () => {
+    if (!editingBookingCondition || !venue) return;
+
+    setUpdatingBookingCondition(true);
+    try {
+      const response = await ApiService.updateBookingCondition(
+        editingBookingCondition.id,
+        venue.venueId,
+        editingBookingCondition.data
+      );
+
+      if (response.success) {
+        // Refresh venue details
+        const venueResponse = await ApiService.getVenueById(venue.venueId);
+        if (venueResponse.success) setVenue(venueResponse.data);
+        
+        // Reset form and close modal
+        setEditingBookingCondition(null);
+        setUpdateBookingConditionModalOpen(false);
+        toast.success("Booking condition updated successfully.");
+      } else {
+        toast.error(response.message || "Failed to update booking condition.");
+      }
+    } catch (err) {
+      console.error("Error updating booking condition:", err);
+      toast.error("Failed to update booking condition. Please try again.");
+    } finally {
+      setUpdatingBookingCondition(false);
+    }
+  };
+
+  // Venue variable update handlers
+  const handleEditVenueVariable = (variable: any) => {
+    setEditingVenueVariable({
+      id: variable.id,
+      data: {
+        amount: variable.venueAmount.toString(),
+        managerId: venue?.managerId || variable.manager?.userId || ""
+      }
+    });
+    setUpdateVenueVariableModalOpen(true);
+  };
+
+  const handleUpdateVenueVariableInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editingVenueVariable) return;
+    
+    const { name, value } = e.target;
+    setEditingVenueVariable(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        data: {
+          ...prev.data,
+          [name]: value
+        }
+      };
+    });
+  };
+
+  const handleUpdateVenueVariable = async () => {
+    if (!editingVenueVariable || !venue) return;
+
+    setUpdatingVenueVariable(true);
+    try {
+      const response = await ApiService.updateVenueVariable(
+        venue.venueId,
+        editingVenueVariable.id,
+        editingVenueVariable.data
+      );
+
+      if (response.success) {
+        // Refresh venue details
+        const venueResponse = await ApiService.getVenueById(venue.venueId);
+        if (venueResponse.success) setVenue(venueResponse.data);
+        
+        // Reset form and close modal
+        setEditingVenueVariable(null);
+        setUpdateVenueVariableModalOpen(false);
+        toast.success("Venue variable updated successfully.");
+      } else {
+        toast.error(response.message || "Failed to update venue variable.");
+      }
+    } catch (err) {
+      console.error("Error updating venue variable:", err);
+      toast.error("Failed to update venue variable. Please try again.");
+    } finally {
+      setUpdatingVenueVariable(false);
+    }
+  };
+
+  // Video tour update handlers
+  const handleEditVideoTour = () => {
+    videoTourInputRef.current?.click();
+  };
+
+  const handleVideoTourFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && venue) {
+      const formData = new FormData();
+      formData.append("virtualTour", file);
+      try {
+        setUpdatingVideoTour(true);
+        setVideoTourUploadProgress(0);
+        await ApiService.updateVenueVideoTour(
+          venue.venueId, 
+          formData, 
+          (progressEvent) => {
+            if (progressEvent.total) {
+              setVideoTourUploadProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
+            }
+          }
+        );
+        
+        // Refresh venue details to update UI
+        const venueResponse = await ApiService.getVenueById(venue.venueId);
+        if (venueResponse.success) {
+          setVenue(venueResponse.data);
+          console.log("Venue details refreshed after video tour update");
+        }
+        
+        // Reset file input
+        if (videoTourInputRef.current) {
+          videoTourInputRef.current.value = '';
+        }
+        
+        toast.success("Video tour updated successfully.");
+      } catch (err: any) {
+        console.error("Error updating video tour:", err);
+        
+        // Extract the actual error message from the response
+        let errorMessage = "Failed to update video tour. Please try again.";
+        
+        if (err.response?.data?.message) {
+          errorMessage = `Video tour update failed: ${err.response.data.message}`;
+        } else if (err.message) {
+          errorMessage = `Video tour update failed: ${err.message}`;
+        }
+        
+        toast.error(errorMessage);
+      } finally {
+        setUpdatingVideoTour(false);
+        setVideoTourUploadProgress(0);
       }
     }
   };
@@ -451,7 +902,7 @@ export default function VenueDetailsPage() {
               </Carousel>
                   </div>
 
-            {/* Venue Details */}
+            {/* Basic Venue Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <h3 className="text-lg font-semibold mb-2">Description</h3>
@@ -464,10 +915,6 @@ export default function VenueDetailsPage() {
               <div>
                 <h3 className="text-lg font-semibold mb-2">Booking Type</h3>
                 <p className="text-gray-800">{venue.bookingType}</p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Amount</h3>
-                <p className="text-gray-800">${venue.amount.toFixed(2)}</p>
               </div>
               <div>
                 <h3 className="text-lg font-semibold mb-2">Location</h3>
@@ -499,56 +946,412 @@ export default function VenueDetailsPage() {
               </div>
             </div>
 
-            {/* Amenities */}
+            {/* Organization Section */}
+            <div className="border-t pt-6">
+              <h3 className="text-xl font-semibold mb-4 text-gray-900">Organization</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Amenities</h3>
+                  <h4 className="text-md font-medium mb-1">Organization Name</h4>
+                  <p className="text-gray-800">{venue.organization?.organizationName || 'N/A'}</p>
+                </div>
+                <div>
+                  <h4 className="text-md font-medium mb-1">Organization Status</h4>
+                  <Badge variant={venue.organization?.status === 'APPROVED' ? 'default' : 'secondary'}>
+                    {venue.organization?.status || 'N/A'}
+                  </Badge>
+                </div>
+                <div>
+                  <h4 className="text-md font-medium mb-1">Organization Email</h4>
+                  <p className="text-gray-800">{venue.organization?.contactEmail || 'N/A'}</p>
+                </div>
+                <div>
+                  <h4 className="text-md font-medium mb-1">Organization Phone</h4>
+                  <p className="text-gray-800">{venue.organization?.contactPhone || 'N/A'}</p>
+                </div>
+                <div className="md:col-span-2">
+                  <h4 className="text-md font-medium mb-1">Organization Address</h4>
+                  <p className="text-gray-800">{venue.organization?.address || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+
+             {/* Amenities Section */}
+             <div className="border-t pt-6">
+               <div className="flex justify-between items-center mb-4">
+                 <div className="flex items-center gap-2">
+                   <h3 className="text-xl font-semibold text-gray-900">Amenities</h3>
+                   <Badge variant="secondary" className="text-xs">
+                     {venue.amenities?.length || 0} {venue.amenities?.length === 1 ? 'amenity' : 'amenities'}
+                   </Badge>
+                 </div>
+                 <Dialog open={addAmenityModalOpen} onOpenChange={setAddAmenityModalOpen}>
+                   <DialogTrigger asChild>
+                     <button
+                       className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
+                       title="Add New Amenity"
+                     >
+                       <Plus className="w-4 h-4" />
+                       <span className="text-sm">Add New</span>
+                     </button>
+                   </DialogTrigger>
+                   <DialogContent className="sm:max-w-[500px]">
+                     <DialogHeader>
+                       <DialogTitle className="flex items-center gap-2">
+                         <Plus className="w-5 h-5" />
+                         Add New Amenity
+                       </DialogTitle>
+                     </DialogHeader>
+                     <div className="space-y-4 py-4">
+                       <div className="space-y-2">
+                         <Label htmlFor="resourceName">Resource Name *</Label>
+                         <Input
+                           id="resourceName"
+                           name="resourceName"
+                           value={amenityFormData.resourceName}
+                           onChange={handleAmenityInputChange}
+                           placeholder="e.g., Projector, Tables, Chairs"
+                           required
+                         />
+                       </div>
+                                               <div className="space-y-2">
+                          <Label htmlFor="quantity">Quantity *</Label>
+                          <Input
+                            id="quantity"
+                            name="quantity"
+                            type="number"
+                            min="1"
+                            value={amenityFormData.quantity || ''}
+                            onChange={handleAmenityInputChange}
+                            placeholder="1"
+                            required
+                          />
+                        </div>
+                       <div className="space-y-2">
+                         <Label htmlFor="amenitiesDescription">Description *</Label>
+                         <Textarea
+                           id="amenitiesDescription"
+                           name="amenitiesDescription"
+                           value={amenityFormData.amenitiesDescription}
+                           onChange={handleAmenityInputChange}
+                           placeholder="Describe the amenity and its features"
+                           rows={3}
+                           required
+                         />
+                       </div>
+                       <div className="space-y-2">
+                         <Label htmlFor="costPerUnit">Cost per Unit (RWF) *</Label>
+                         <Input
+                           id="costPerUnit"
+                           name="costPerUnit"
+                           value={amenityFormData.costPerUnit}
+                           onChange={handleAmenityInputChange}
+                           placeholder="e.g., 20000.00"
+                           required
+                         />
+                       </div>
+                     </div>
+                     <div className="flex justify-end gap-2 pt-4">
+                       <Button
+                         variant="outline"
+                         onClick={() => {
+                           resetAmenityForm();
+                           setAddAmenityModalOpen(false);
+                         }}
+                         disabled={addingAmenity}
+                       >
+                         Cancel
+                       </Button>
+                       <Button
+                         onClick={handleAddAmenity}
+                         disabled={addingAmenity}
+                         className="bg-blue-600 hover:bg-blue-700"
+                       >
+                         {addingAmenity ? "Adding..." : "Add Amenity"}
+                       </Button>
+                     </div>
+                   </DialogContent>
+                 </Dialog>
+               </div>
               {venue.amenities && venue.amenities.length > 0 ? (
-                <ul className="list-disc list-inside text-gray-800">
+                 <div className="w-full">
+                   <Carousel opts={{ align: "start" }}>
+                     <CarouselContent>
                   {venue.amenities.map(amenity => (
-                    <li key={amenity.id}>
-                      {amenity.resourceName} ({amenity.quantity}) - ${amenity.costPerUnit}/unit
-                    </li>
-                  ))}
-                </ul>
+                         <CarouselItem key={amenity.id} className="basis-1/2 md:basis-1/3 lg:basis-1/4">
+                           <div className="border rounded-lg p-4 bg-gray-50 relative group h-full">
+                             {/* Action buttons overlay */}
+                             <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                               <button
+                                 className="p-1 bg-blue-100 hover:bg-blue-200 rounded text-blue-600 transition-colors"
+                                 title="Update Amenity"
+                                 onClick={() => handleEditAmenity(amenity)}
+                               >
+                                 <Pencil className="w-3 h-3" />
+                               </button>
+                               <button
+                                 className="p-1 bg-red-100 hover:bg-red-200 rounded text-red-600 transition-colors"
+                                 title="Delete Amenity"
+                                 onClick={() => handleDeleteAmenity(amenity.id)}
+                               >
+                                 <Trash2 className="w-3 h-3" />
+                               </button>
+                             </div>
+                             <h4 className="font-medium text-gray-900 mb-2 pr-16">{amenity.resourceName}</h4>
+                             <div className="space-y-1 text-sm text-gray-700">
+                               <p><span className="font-medium">Quantity:</span> {amenity.quantity}</p>
+                               <p><span className="font-medium">Description:</span> {amenity.amenitiesDescription}</p>
+                               <p><span className="font-medium">Cost per Unit:</span> ${amenity.costPerUnit}</p>
+                             </div>
+                           </div>
+                         </CarouselItem>
+                       ))}
+                     </CarouselContent>
+                     <CarouselPrevious />
+                     <CarouselNext />
+                   </Carousel>
+                 </div>
               ) : (
                 <p className="text-gray-500">No amenities available</p>
               )}
-            </div>
 
-            {/* Booking Conditions */}
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Booking Conditions</h3>
+               {/* Update Amenity Modal */}
+               <Dialog open={updateAmenityModalOpen} onOpenChange={setUpdateAmenityModalOpen}>
+                 <DialogContent className="sm:max-w-[500px]">
+                   <DialogHeader>
+                     <DialogTitle className="flex items-center gap-2">
+                       <Pencil className="w-5 h-5" />
+                       Update Amenity
+                     </DialogTitle>
+                   </DialogHeader>
+                   {editingAmenity && (
+                     <div className="space-y-4 py-4">
+                       <div className="space-y-2">
+                         <Label htmlFor="update-resourceName">Resource Name *</Label>
+                         <Input
+                           id="update-resourceName"
+                           name="resourceName"
+                           value={editingAmenity.data.resourceName}
+                           onChange={handleUpdateAmenityInputChange}
+                           placeholder="e.g., Projector, Tables, Chairs"
+                           required
+                         />
+            </div>
+                                               <div className="space-y-2">
+                          <Label htmlFor="update-quantity">Quantity *</Label>
+                          <Input
+                            id="update-quantity"
+                            name="quantity"
+                            type="number"
+                            min="1"
+                            value={editingAmenity.data.quantity || ''}
+                            onChange={handleUpdateAmenityInputChange}
+                            placeholder="1"
+                            required
+                          />
+                        </div>
+                       <div className="space-y-2">
+                         <Label htmlFor="update-amenitiesDescription">Description *</Label>
+                         <Textarea
+                           id="update-amenitiesDescription"
+                           name="amenitiesDescription"
+                           value={editingAmenity.data.amenitiesDescription}
+                           onChange={handleUpdateAmenityInputChange}
+                           placeholder="Describe the amenity and its features"
+                           rows={3}
+                           required
+                         />
+                       </div>
+                       <div className="space-y-2">
+                         <Label htmlFor="update-costPerUnit">Cost per Unit (RWF) *</Label>
+                         <Input
+                           id="update-costPerUnit"
+                           name="costPerUnit"
+                           value={editingAmenity.data.costPerUnit}
+                           onChange={handleUpdateAmenityInputChange}
+                           placeholder="e.g., 20000.00"
+                           required
+                         />
+                       </div>
+                     </div>
+                   )}
+                   <div className="flex justify-end gap-2 pt-4">
+                     <Button
+                       variant="outline"
+                       onClick={() => {
+                         setUpdateAmenityModalOpen(false);
+                         setEditingAmenity(null);
+                       }}
+                       disabled={updatingAmenity}
+                     >
+                       Cancel
+                     </Button>
+                     <Button
+                       onClick={handleUpdateAmenity}
+                       disabled={updatingAmenity}
+                       className="bg-blue-600 hover:bg-blue-700"
+                     >
+                       {updatingAmenity ? "Updating..." : "Update Amenity"}
+                     </Button>
+                   </div>
+                 </DialogContent>
+               </Dialog>
+
+               {/* Delete Amenity Confirmation Dialog */}
+               <AlertDialog open={deleteAmenityDialogOpen} onOpenChange={setDeleteAmenityDialogOpen}>
+                 <AlertDialogContent>
+                   <AlertDialogHeader>
+                     <AlertDialogTitle>Delete Amenity</AlertDialogTitle>
+                     <AlertDialogDescription>
+                       Are you sure you want to delete this amenity? This action cannot be undone.
+                     </AlertDialogDescription>
+                   </AlertDialogHeader>
+                   <AlertDialogFooter>
+                     <AlertDialogCancel disabled={deletingAmenity}>Cancel</AlertDialogCancel>
+                     <AlertDialogAction 
+                       onClick={confirmDeleteAmenity} 
+                       disabled={deletingAmenity}
+                       className="bg-destructive text-white"
+                     >
+                       {deletingAmenity ? "Deleting..." : "Delete"}
+                     </AlertDialogAction>
+                   </AlertDialogFooter>
+                 </AlertDialogContent>
+               </AlertDialog>
+             </div>
+
+                         {/* Booking Conditions Section */}
+             <div className="border-t pt-6">
+               <div className="flex justify-between items-center mb-4">
+                 <h3 className="text-xl font-semibold text-gray-900">Booking Conditions</h3>
+                 <button
+                   className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
+                   title="Update Booking Conditions"
+                   onClick={() => venue.bookingConditions && venue.bookingConditions.length > 0 && handleEditBookingCondition(venue.bookingConditions[0])}
+                 >
+                   <Pencil className="w-4 h-4" />
+                   <span className="text-sm">Update</span>
+                 </button>
+               </div>
               {venue.bookingConditions && venue.bookingConditions.length > 0 ? (
-                <ul className="list-disc list-inside text-gray-800">
+                 <div className="space-y-4">
                   {venue.bookingConditions.map(condition => (
-                    <li key={condition.id}>
-                      {condition.descriptionCondition}
-                      <br />
-                      Nota Bene: {condition.notaBene}
-                      <br />
-                      Transition Time: {condition.transitionTime} day
-                      <br />
-                      Deposit Required: {condition.depositRequiredPercent}%
-                      <br />
-                      Payment Complement Time: {condition.paymentComplementTimeBeforeEvent} day
-                    </li>
-                  ))}
-                </ul>
+                     <div key={condition.id} className="border rounded-lg p-4 bg-gray-50">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div>
+                           <h4 className="font-medium text-gray-900 mb-1">Description</h4>
+                           <p className="text-gray-700">{condition.descriptionCondition}</p>
+                         </div>
+                         <div>
+                           <h4 className="font-medium text-gray-900 mb-1">Nota Bene</h4>
+                           <p className="text-gray-700">{condition.notaBene}</p>
+                         </div>
+                         <div>
+                           <h4 className="font-medium text-gray-900 mb-1">Transition Time</h4>
+                           <p className="text-gray-700">{condition.transitionTime} day(s)</p>
+                         </div>
+                         <div>
+                           <h4 className="font-medium text-gray-900 mb-1">Deposit Required</h4>
+                           <p className="text-gray-700">{condition.depositRequiredPercent}%</p>
+                         </div>
+                         <div>
+                           <h4 className="font-medium text-gray-900 mb-1">Payment Complement Time</h4>
+                           <p className="text-gray-700">{condition.paymentComplementTimeBeforeEvent} day(s) before event</p>
+                         </div>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
               ) : (
                 <p className="text-gray-500">No booking conditions available</p>
               )}
               </div>
+
+                         {/* Venue Variables Section */}
+             <div className="border-t pt-6">
+               <div className="flex justify-between items-center mb-4">
+                 <h3 className="text-xl font-semibold text-gray-900">Venue Variables</h3>
+                 <button
+                   className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
+                   title="Update Venue Variables"
+                   onClick={() => venue.venueVariables && venue.venueVariables.length > 0 && handleEditVenueVariable(venue.venueVariables[0])}
+                 >
+                   <Pencil className="w-4 h-4" />
+                   <span className="text-sm">Update</span>
+                 </button>
+               </div>
+               {venue.venueVariables && venue.venueVariables.length > 0 ? (
+                 <div className="space-y-4">
+                   {venue.venueVariables.map(variable => (
+                     <div key={variable.id} className="border rounded-lg p-4 bg-gray-50">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div>
+                           <h4 className="font-medium text-gray-900 mb-1">Venue Amount</h4>
+                           <p className="text-gray-700">${variable.venueAmount.toFixed(2)}</p>
+                         </div>
+                         <div>
+                           <h4 className="font-medium text-gray-900 mb-1">Manager</h4>
+                           <p className="text-gray-700">{variable.manager?.firstName} {variable.manager?.lastName}</p>
+                         </div>
+                         <div>
+                           <h4 className="font-medium text-gray-900 mb-1">Manager Email</h4>
+                           <p className="text-gray-700">{variable.manager?.email}</p>
+                         </div>
+                         <div>
+                           <h4 className="font-medium text-gray-900 mb-1">Manager Phone</h4>
+                           <p className="text-gray-700">{variable.manager?.phoneNumber}</p>
+                         </div>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               ) : (
+                 <p className="text-gray-500">No venue variables available</p>
+               )}
+             </div>
 
             {/* Availability Slots */}
             {/* (Removed as per request) */}
 
             {/* Virtual Tour */}
             {venue.virtualTourUrl && venue.virtualTourUrl.trim() !== '' && (
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Virtual Tour</h3>
-                <a href={venue.virtualTourUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                  View Virtual Tour
-                </a>
+               <div className="border-t pt-6">
+                 <div className="flex justify-between items-center mb-4">
+                   <h3 className="text-xl font-semibold text-gray-900">Virtual Tour</h3>
+                                    <button
+                   className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
+                   title="Update Virtual Tour"
+                   onClick={handleEditVideoTour}
+                   disabled={updatingVideoTour}
+                 >
+                   <Pencil className="w-4 h-4" />
+                   <span className="text-sm">
+                     {updatingVideoTour ? `Uploading... ${videoTourUploadProgress}%` : "Update"}
+                   </span>
+                 </button>
+                 </div>
+                 <div className="relative rounded-lg overflow-hidden bg-gray-100">
+                   <video
+                     controls
+                     className="w-full h-auto max-h-96 object-contain"
+                     preload="metadata"
+                   >
+                     <source src={venue.virtualTourUrl} type="video/mp4" />
+                     <source src={venue.virtualTourUrl} type="video/webm" />
+                     <source src={venue.virtualTourUrl} type="video/ogg" />
+                     Your browser does not support the video tag.
+                   </video>
+                   <div className="absolute top-2 right-2">
+                     <a 
+                       href={venue.virtualTourUrl} 
+                       target="_blank" 
+                       rel="noopener noreferrer" 
+                       className="bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs hover:bg-opacity-90 transition-colors"
+                       title="Open in new tab"
+                     >
+                       Open in new tab
+                     </a>
+                   </div>
+                 </div>
               </div>
             )}
 
@@ -562,6 +1365,153 @@ export default function VenueDetailsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Update Booking Condition Modal */}
+      <Dialog open={updateBookingConditionModalOpen} onOpenChange={setUpdateBookingConditionModalOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Update Booking Condition</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="descriptionCondition">Description Condition</Label>
+              <Textarea
+                id="descriptionCondition"
+                name="descriptionCondition"
+                value={editingBookingCondition?.data.descriptionCondition || ''}
+                onChange={handleUpdateBookingConditionInputChange}
+                placeholder="Enter description condition"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="notaBene">Nota Bene</Label>
+              <Textarea
+                id="notaBene"
+                name="notaBene"
+                value={editingBookingCondition?.data.notaBene || ''}
+                onChange={handleUpdateBookingConditionInputChange}
+                placeholder="Enter nota bene"
+                className="mt-1"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="transitionTime">Transition Time (days)</Label>
+                <Input
+                  id="transitionTime"
+                  name="transitionTime"
+                  type="number"
+                  value={editingBookingCondition?.data.transitionTime || 0}
+                  onChange={handleUpdateBookingConditionInputChange}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="depositRequiredPercent">Deposit Required (%)</Label>
+                <Input
+                  id="depositRequiredPercent"
+                  name="depositRequiredPercent"
+                  type="number"
+                  value={editingBookingCondition?.data.depositRequiredPercent || 0}
+                  onChange={handleUpdateBookingConditionInputChange}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="depositRequiredTime">Deposit Required Time (days)</Label>
+                <Input
+                  id="depositRequiredTime"
+                  name="depositRequiredTime"
+                  type="number"
+                  value={editingBookingCondition?.data.depositRequiredTime || 0}
+                  onChange={handleUpdateBookingConditionInputChange}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="paymentComplementTimeBeforeEvent">Payment Complement Time (days before event)</Label>
+                <Input
+                  id="paymentComplementTimeBeforeEvent"
+                  name="paymentComplementTimeBeforeEvent"
+                  type="number"
+                  value={editingBookingCondition?.data.paymentComplementTimeBeforeEvent || 0}
+                  onChange={handleUpdateBookingConditionInputChange}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setUpdateBookingConditionModalOpen(false);
+                  setEditingBookingCondition(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateBookingCondition}
+                disabled={updatingBookingCondition}
+              >
+                {updatingBookingCondition ? "Updating..." : "Update Booking Condition"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Update Venue Variable Modal */}
+      <Dialog open={updateVenueVariableModalOpen} onOpenChange={setUpdateVenueVariableModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update Venue Variable</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="amount">Amount</Label>
+              <Input
+                id="amount"
+                name="amount"
+                type="text"
+                value={editingVenueVariable?.data.amount || ''}
+                onChange={handleUpdateVenueVariableInputChange}
+                placeholder="Enter amount"
+                className="mt-1"
+              />
+            </div>
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setUpdateVenueVariableModalOpen(false);
+                  setEditingVenueVariable(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateVenueVariable}
+                disabled={updatingVenueVariable}
+              >
+                {updatingVenueVariable ? "Updating..." : "Update Venue Variable"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hidden file input for video tour */}
+      <input
+        type="file"
+        ref={videoTourInputRef}
+        onChange={handleVideoTourFileChange}
+        accept="video/*"
+        style={{ display: 'none' }}
+      />
     </div>
   );
 }

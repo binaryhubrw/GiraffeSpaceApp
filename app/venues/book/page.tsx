@@ -300,7 +300,7 @@ export default function CreateEventForm() {
       formDataToSend.append("eventTitle", formData.eventTitle);
       formDataToSend.append("eventType", formData.eventType);
       formDataToSend.append("visibilityScope", formData.visibilityScope);
-      formDataToSend.append("eventOrganizerId", selectedOrgId || user?.userId || "");
+             formDataToSend.append("eventOrganizerId", selectedOrgId === "none" ? (user?.userId || "") : (selectedOrgId || user?.userId || ""));
       formDataToSend.append("venueId", formData.venueId);
       formDataToSend.append("description", formData.description);
       formDataToSend.append("maxAttendees", formData.maxAttendees);
@@ -442,31 +442,36 @@ export default function CreateEventForm() {
                   {errors.visibilityScope && <p className="text-sm text-red-500 mt-1">{errors.visibilityScope}</p>}
                 </div>
               </div>
-              {/* Organization selection with explanation */}
-              {orgLoading ? (
-                <div className="text-gray-500">Loading organizations...</div>
-              ) : organizations && organizations.length > 0 ? (
-                    <div>
-                  <Label className="text-base font-medium">Organization</Label>
-                  <div className="text-xs text-gray-500 mb-2">
-                    If you want to create this event for an organization, select one below. Otherwise, it will be created as a personal event under your account.If you want to create this event for an organization, <a href="/user-dashboard/organization" className="text-blue-600 hover:underline">create an organization</a> first.
-                  </div>
-                  <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
-                    <SelectTrigger className="mt-2 h-12">
-                      <SelectValue placeholder="Select organization (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organizations.map(org => (
-                        <SelectItem key={org.organizationId} value={org.organizationId}>
-                          {org.organizationName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">This event will be created as a personal event (no organization found).If you want to create this event for an organization, <a href="/user-dashboard/organization" className="text-blue-600 hover:underline">create an organization</a> first.</div>
-              )}
+                             {/* Organization selection with explanation */}
+               {orgLoading ? (
+                 <div className="text-gray-500">Loading organizations...</div>
+               ) : organizations && organizations.length > 0 ? (
+                                    <div>
+                     <Label className="text-base font-medium">Organization</Label>
+                     <div className="text-xs text-gray-500 mb-2">
+                       If you want to create this event for an organization, select one below. Otherwise, it will be created as a personal event under your account. If you want to create this event for an organization, <a href="/user-dashboard/organization" className="text-blue-600 hover:underline">create an organization</a> first.
+                     </div>
+                     <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+                       <SelectTrigger className="mt-2 h-12">
+                         <SelectValue placeholder="Select organization (optional)" />
+                       </SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="none">
+                           <div className="flex items-center gap-2">
+                             <span>None - Personal Event</span>
+                           </div>
+                         </SelectItem>
+                         {organizations.map(org => (
+                           <SelectItem key={org.organizationId} value={org.organizationId}>
+                             {org.organizationName}
+                           </SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                   </div>
+               ) : (
+                 <div className="text-sm text-gray-500">This event will be created as a personal event (no organization found). If you want to create this event for an organization, <a href="/user-dashboard/organization" className="text-blue-600 hover:underline">create an organization</a> first.</div>
+               )}
             </div>
           </div>
         )
@@ -540,31 +545,36 @@ export default function CreateEventForm() {
             </div>
 
             <div className="space-y-8">
-              {/* Organization selection with explanation */}
-              {orgLoading ? (
-                <div className="text-gray-500">Loading organizations...</div>
-              ) : organizations && organizations.length > 0 ? (
-                <div>
-                  <Label className="text-base font-medium">Organization</Label>
-                  <div className="text-xs text-gray-500 mb-2">
-                    If you want to create this event for an organization, select one below. Otherwise, it will be created as a personal event under your account.
-                  </div>
-                  <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
-                    <SelectTrigger className="mt-2 h-12">
-                      <SelectValue placeholder="Select organization (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {organizations.map(org => (
-                        <SelectItem key={org.organizationId} value={org.organizationId}>
-                          {org.organizationName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : (
-                <div className="text-xs text-gray-500">This event will be created as a personal event (no organization found).</div>
-              )}
+                             {/* Organization selection with explanation */}
+               {orgLoading ? (
+                 <div className="text-gray-500">Loading organizations...</div>
+               ) : organizations && organizations.length > 0 ? (
+                 <div>
+                   <Label className="text-base font-medium">Organization</Label>
+                   <div className="text-xs text-gray-500 mb-2">
+                     If you want to create this event for an organization, select one below. Otherwise, it will be created as a personal event under your account.
+                   </div>
+                   <Select value={selectedOrgId} onValueChange={setSelectedOrgId}>
+                     <SelectTrigger className="mt-2 h-12">
+                       <SelectValue placeholder="Select organization (optional)" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="none">
+                         <div className="flex items-center gap-2">
+                           <span>None - Personal Event</span>
+                         </div>
+                       </SelectItem>
+                       {organizations.map(org => (
+                         <SelectItem key={org.organizationId} value={org.organizationId}>
+                           {org.organizationName}
+                         </SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
+               ) : (
+                 <div className="text-xs text-gray-500">This event will be created as a personal event (no organization found).</div>
+               )}
 
               <div>
                 <Label className="text-base font-medium">Event Photo *</Label>

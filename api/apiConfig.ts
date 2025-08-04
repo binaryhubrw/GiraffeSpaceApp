@@ -787,7 +787,7 @@ class ApiService {
   ): Promise<any> {
     try {
       const response = await axios.put(
-        `${this.BASE_URL}/venue/updateVenueManager//${venueId}`,
+        `${this.BASE_URL}/venue/updateVenueManager/${venueId}`,
         { managerId },
         {
           headers: this.getHeader(),
@@ -935,6 +935,169 @@ class ApiService {
       throw error;
     }
   }
+
+
+  /*** add venue amenities** */
+
+  static async addVenueAmenities(
+    venueId: string,
+    amenities: Array<{
+      resourceName: string;
+      quantity: number;
+      amenitiesDescription: string;
+      costPerUnit: string;
+    }>
+  ): Promise<any> {
+    try {
+      console.log("API: Sending amenities data:", JSON.stringify(amenities, null, 2));
+      const response = await axios.post(
+        `${this.BASE_URL}/venue/${venueId}/amenities`,
+        amenities,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      console.log("API: Response received:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error adding amenities to venue with ID ${venueId}:`, error);
+     
+      throw error;
+    }
+  }
+
+
+/*** update venue amenities**** */
+  static async updateVenueAmenities(
+    venueId: string,
+    amenityId: string,
+    amenityData: {
+      resourceName: string;
+      quantity: number;
+      amenitiesDescription: string;
+      costPerUnit: string;
+    }
+  ): Promise<any> {
+    try {
+      const response = await axios.put(
+        `${this.BASE_URL}/venue/${venueId}/amenities/${amenityId}`,
+        amenityData,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating amenities for venue with ID ${venueId}:`, error);
+      throw error;
+    }
+  }
+
+
+  /**** remove venue amenity**** */
+  static async removeVenueAmenity(
+    venueId: string,
+    amenityId: string
+  ): Promise<any> {
+    try {
+      const response = await axios.delete(
+        `${this.BASE_URL}/venue/${venueId}/amenities/${amenityId}`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error removing amenity from venue with ID ${venueId}:`, error);
+      throw error;
+    }
+  }
+
+
+  /**** update booking condition**** */
+  static async updateBookingCondition(
+    bookingConditionId: string,
+    venueId: string,
+    conditionData: {
+      descriptionCondition: string;
+      notaBene: string;
+      transitionTime: number;
+      depositRequiredPercent: number;
+      depositRequiredTime: number;
+      paymentComplementTimeBeforeEvent: number;
+    }
+  ): Promise<any> {
+    try {
+      const response = await axios.put(
+        `${this.BASE_URL}/venue/${venueId}/booking-conditions/${bookingConditionId}`,
+        conditionData,
+        {
+          headers: this.getHeader(conditionData),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating booking condition for ID ${bookingConditionId}:`, error);
+      throw error;
+    }
+  }
+
+
+  /*** update venue variable*** */
+  static async updateVenueVariable(
+    venueId: string,
+    variableId: string,
+    variableData: {
+      amount: string;
+      managerId: string;
+    }
+  ): Promise<any> {
+    try {
+      const response = await axios.put(
+        `${this.BASE_URL}/venue/${venueId}/variables/${variableId}`,
+        variableData,
+        {
+          headers: this.getHeader(variableData),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating venue variable with ID ${variableId}:`, error);
+      throw error;
+    }
+  }
+
+ 
+  /***** update venue video tour******** */
+
+  static async updateVenueVideoTour(
+    venueId: string,
+    videoData: FormData,
+    onUploadProgress?: (progressEvent: AxiosProgressEvent) => void
+  ): Promise<any> {
+    try {
+      const response = await axios.patch(
+        `${this.BASE_URL}/venue/${venueId}/virtual-tour`,
+        videoData,
+        {
+          headers: this.getHeader(videoData),
+          withCredentials: true,
+          ...(onUploadProgress ? { onUploadProgress } : {}),
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating video tour for venue with ID ${venueId}:`, error);
+      throw error;
+    }
+  }
+
+
 
 
 /********************************************** */
