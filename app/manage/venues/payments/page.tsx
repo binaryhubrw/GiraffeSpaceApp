@@ -428,7 +428,6 @@ export default function PaymentsPage() {
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Customer</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Venue</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Amount Paid</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Amount Remained</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Date & Time</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Method</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Status</th>
@@ -441,9 +440,6 @@ export default function PaymentsPage() {
                     <td className="px-4 py-4 text-sm text-gray-900">{payment.customer}</td>
                     <td className="px-4 py-4 text-sm text-gray-900">{payment.venue}</td>
                     <td className="px-4 py-4 text-sm font-medium text-gray-900">{formatCurrency(payment.amount)}</td>
-                    <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                      {formatCurrency(payment.remainingAmount)}
-                    </td>
                     <td className="px-4 py-4 text-sm text-gray-900">
                       {payment.date} • {payment.time}
                     </td>

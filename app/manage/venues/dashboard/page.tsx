@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/auth-context" // Assuming this path is correct
 import { useRouter } from "next/navigation"
 import { useEffect, useState, useMemo } from "react"
-import { Eye, XCircle, DollarSign, Building, Calendar, BookOpen, Home, MinusCircle } from "lucide-react"
+import { Eye, XCircle, DollarSign, Building, Calendar, BookOpen, Home, MinusCircle, CheckCircle, AlertCircle, Clock } from "lucide-react"
 import Link from "next/link"
 import ApiService from "@/api/apiConfig" // Assuming this path is correct
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table"
@@ -33,6 +33,75 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 
 const ITEMS_PER_PAGE = 5
+
+// Define interfaces for API response structures
+interface Payer {
+  userId: string
+  username: string
+  fullName: string
+  email: string
+  phoneNumber: string
+  role: string
+  location: {
+    city: string
+    country: string
+  }
+}
+
+interface ApiPayment {
+  paymentId: string
+  amountPaid: number
+  paymentMethod: string
+  paymentStatus: string
+  paymentReference: string | null
+  paymentDate: string // ISO string
+  notes: string | null
+}
+
+interface BookingPaymentInfo {
+  bookingId: string
+  bookingReason: string
+  bookingDate: string // YYYY-MM-DD
+  amountToBePaid: number
+  totalAmountPaid: number
+  remainingAmount: number
+  isFullyPaid: boolean
+  payments: ApiPayment[]
+  payer: Payer
+}
+
+interface PaymentsApiResponse {
+  success: boolean
+  data: BookingPaymentInfo[]
+}
+
+interface BookingSummary {
+  totalVenues: number
+  totalBookings: number
+  totalAmount: number
+  totalPaid: number
+  totalRemaining: number
+  pendingBookings: number
+  approvedBookings: number
+  partialBookings: number
+  cancelledBookings: number
+  bookingsByVenue: Array<{ venueId: string; venueName: string; totalBookings: number; totalAmount: number; totalPaid: number }>
+  paymentSummary: {
+    totalExpectedAmount: number
+    totalPaidAmount: number
+    totalPendingAmount: number
+    collectionProgress: string
+  }
+}
+
+interface AllBookingsApiResponse {
+  success: boolean
+  data: {
+    bookings: any[]; // Or define a more specific type if needed for the table
+    summary: BookingSummary;
+  };
+  message: string;
+}
 
 // Define the interface for Venue based on the provided JSON response
 interface Venue {
@@ -95,8 +164,11 @@ export default function DashboardPage() {
   const router = useRouter()
   const [bookings, setBookings] = useState<any[]>([])
   const [allVenues, setAllVenues] = useState<Venue[]>([]) // Now holds real venue data
-  const [loadingBookings, setLoadingBookings] = useState(true)
+  const [paymentsData, setPaymentsData] = useState<BookingPaymentInfo[]>([]) // New state for payments from formatted API
+  const [bookingSummary, setBookingSummary] = useState<BookingSummary | null>(null) // New state for booking summary
+  const [loadingBookingsAndSummary, setLoadingBookingsAndSummary] = useState(true) // Combined loading state
   const [loadingAllVenues, setLoadingAllVenues] = useState(true)
+  const [loadingPaymentsData, setLoadingPaymentsData] = useState(true) // New loading state
 
   const [bookingFilter, setBookingFilter] = useState("")
   const [bookingDateFilter, setBookingDateFilter] = useState("")
@@ -114,22 +186,23 @@ export default function DashboardPage() {
     }
   }, [isLoggedIn, router])
 
-  // Fetch bookings for manager
+  // Fetch bookings and summary for manager
   useEffect(() => {
-    const fetchManagerBookings = async () => {
+    const fetchManagerBookingsAndSummary = async () => {
       if (!user?.userId) return
-      setLoadingBookings(true)
+      setLoadingBookingsAndSummary(true)
       try {
-        const response = await ApiService.getAllBookingsByManager(user.userId)
+        const response: AllBookingsApiResponse = await ApiService.getAllBookingsByManager(user.userId)
         setBookings(response.data.bookings || [])
+        setBookingSummary(response.data.summary || null)
       } catch (err) {
-        console.error("Error fetching bookings:", err)
-        toast.error("Failed to fetch bookings.")
+        console.error("Error fetching bookings and summary:", err)
+        toast.error("Failed to fetch bookings and summary.")
       } finally {
-        setLoadingBookings(false)
+        setLoadingBookingsAndSummary(false)
       }
     }
-    if (user?.userId) fetchManagerBookings()
+    if (user?.userId) fetchManagerBookingsAndSummary()
   }, [user?.userId])
 
   // Fetch all managed venues from the real API
@@ -148,6 +221,28 @@ export default function DashboardPage() {
       }
     }
     if (user?.userId) fetchAllManagedVenues()
+  }, [user?.userId])
+
+  // Fetch payments data from the formatted endpoint
+  useEffect(() => {
+    const fetchPaymentsFormatted = async () => {
+      if (!user?.userId) return
+      setLoadingPaymentsData(true)
+      try {
+        const response: PaymentsApiResponse = await ApiService.getFormattedManagerPayments(user.userId) // Ensure getFormattedManagerPayments exists in ApiService
+        if (response.success) {
+          setPaymentsData(response.data || [])
+        } else {
+          toast.error("Failed to fetch payments data.") // Simplified error message
+        }
+      } catch (err) {
+        console.error("Error fetching formatted payments:", err)
+        toast.error("Failed to fetch payments data.")
+      } finally {
+        setLoadingPaymentsData(false)
+      }
+    }
+    if (user?.userId) fetchPaymentsFormatted()
   }, [user?.userId])
 
   // Filtered bookings (pending only, with text and date filter)
@@ -181,32 +276,26 @@ export default function DashboardPage() {
     })
   }, [bookings])
 
-  // Stats calculations for financial cards using current month's data
-  const totalAmountToBePaid = useMemo(() => {
-    return currentMonthBookings
-      .filter((b) => b.bookingStatus === "PENDING")
-      .reduce((sum, b) => sum + (b.totalPrice || 0), 0)
-  }, [currentMonthBookings])
+  // Stats calculations for financial cards using paymentsData
+  const totalAmountPaidOverall = useMemo(() => {
+    return paymentsData.reduce((sum, booking) => sum + (booking.totalAmountPaid || 0), 0)
+  }, [paymentsData])
 
-  const totalAmountReceived = useMemo(() => {
-    return currentMonthBookings
-      .filter((b) => b.bookingStatus === "APPROVED")
-      .reduce((sum, b) => sum + (b.totalPrice || 0), 0)
-  }, [currentMonthBookings])
+  const overallTotalAmountRemaining = useMemo(() => {
+    return paymentsData.reduce((sum, booking) => sum + (booking.remainingAmount || 0), 0)
+  }, [paymentsData])
+
 
   // Venue Management Statistics
-  const totalNumberOfVenues = allVenues.length
+  const totalNumberOfVenues = bookingSummary?.totalVenues || 0 // Use data from summary
 
-  const venuesBooked = useMemo(() => {
-    const bookedVenueIds = new Set<string>()
-    allVenues.forEach((venue) => {
-      const isBooked = venue.availabilitySlots.some((slot) => slot.status === "BOOKED" || slot.status === "HOLDING")
-      if (isBooked) {
-        bookedVenueIds.add(venue.venueId)
-      }
-    })
-    return bookedVenueIds.size
-  }, [allVenues])
+  // Venues booked - now derived from bookingSummary, or a direct count of pending/approved bookings
+  // Since the summary gives totalBookings, we can infer booked venues from there, or keep current logic if distinct
+  // For now, let's use the simple calculation from bookings or redefine if summary directly gives it.
+  // Given the current summary data, `totalBookings` and `pendingBookings` are available.
+  const venuesBookedCount = bookingSummary?.approvedBookings || 0 + (bookingSummary?.partialBookings || 0); // Sum of approved and partial bookings as 'booked'
+
+  const pendingBookingsCount = bookingSummary?.pendingBookings || 0; // Directly from summary
 
   const venuesAvailable = useMemo(() => {
     let availableCount = 0
@@ -226,8 +315,8 @@ export default function DashboardPage() {
   }, [allVenues])
 
   // Calculate total venues and bookings count for the top cards
-  const totalVenuesCount = allVenues.length
-  const totalBookingsCount = bookings.length
+  const totalVenuesCardValue = bookingSummary?.totalVenues || 0
+  const totalBookingsCardValue = bookingSummary?.totalBookings || 0
 
   // Cancel booking handler
   const handleCancelBooking = async () => {
@@ -239,10 +328,21 @@ export default function DashboardPage() {
       setCancelDialogOpen(false)
       setCancelReason("")
       setCancelingId(null)
-      // Refresh bookings
+      // Refresh bookings and summary
       if (user?.userId) {
-        const response = await ApiService.getAllBookingsByManager(user.userId)
+        const response: AllBookingsApiResponse = await ApiService.getAllBookingsByManager(user.userId)
         setBookings(response.data.bookings || [])
+        setBookingSummary(response.data.summary || null)
+
+        // Also refresh payments data if it's affected by booking cancellations
+        const paymentsResponse: PaymentsApiResponse = await ApiService.getFormattedManagerPayments(user.userId);
+        if (paymentsResponse.success) {
+          setPaymentsData(paymentsResponse.data || []);
+        } else {
+          // Handle error case for fetching payments after cancellation
+          console.error("Failed to refresh payments data after booking cancellation:", paymentsResponse); // Log the response
+          toast.error("Failed to refresh payments data after cancellation.");
+        }
       }
     } catch (err) {
       toast.error("Failed to cancel booking.")
@@ -262,7 +362,7 @@ export default function DashboardPage() {
               <Building className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalVenuesCount}</div>
+              <div className="text-2xl font-bold">{totalVenuesCardValue}</div>
               <Link href="/manage/venues" className="text-xs text-muted-foreground hover:underline">
                 View all venues
               </Link>
@@ -274,49 +374,38 @@ export default function DashboardPage() {
               <Calendar className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalBookingsCount}</div>
+              <div className="text-2xl font-bold">{totalBookingsCardValue}</div>
               <Link href="/manage/bookings" className="text-xs text-muted-foreground hover:underline">
                 View all bookings
               </Link>
             </CardContent>
           </Card>
+          {/* Removed Pending Bookings Card */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Venues Booked</CardTitle>
-              <BookOpen className="h-5 w-5 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Total Amount Paid</CardTitle>
+              <DollarSign className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{venuesBooked}</div>
+              <div className="text-2xl font-bold">
+                {totalAmountPaidOverall.toLocaleString("en-US", { style: "currency", currency: "RWF" })}
+              </div>
               <CardDescription className="text-xs text-muted-foreground">
-                With active or pending bookings
+                Overall from all bookings
               </CardDescription>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Amount Remained</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Amount Remaining</CardTitle>
               <DollarSign className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {totalAmountToBePaid.toLocaleString("en-US", { style: "currency", currency: "RWF" })}
+                {overallTotalAmountRemaining.toLocaleString("en-US", { style: "currency", currency: "RWF" })}
               </div>
               <CardDescription className="text-xs text-muted-foreground">
-                From pending bookings this month
-              </CardDescription>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Amount We Have</CardTitle>
-              <DollarSign className="h-5 w-5 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {totalAmountReceived.toLocaleString("en-US", { style: "currency", currency: "RWF" })}
-              </div>
-              <CardDescription className="text-xs text-muted-foreground">
-                From approved bookings this month
+                Overall from all bookings
               </CardDescription>
             </CardContent>
           </Card>
@@ -366,7 +455,7 @@ export default function DashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loadingBookings ? (
+                    {loadingBookingsAndSummary ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center">
                           Loading bookings...
