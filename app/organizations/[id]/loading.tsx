@@ -1,5 +1,5 @@
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import { Loading } from "@/components/loading"
 import { ChevronLeft } from "lucide-react"
 import Link from "next/link"

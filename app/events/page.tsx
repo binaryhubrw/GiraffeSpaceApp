@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Calendar, ChevronDown, Search } from "lucide-react"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import { EventCard } from "@/components/event-card"
 import ApiService from "@/api/apiConfig"
 import { Button } from "@/components/button"

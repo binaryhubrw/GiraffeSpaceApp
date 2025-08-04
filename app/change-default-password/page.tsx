@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Lock, AlertCircle, Eye, EyeOff, CheckCircle } from "lucide-react"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useDefaultPasswordAuth } from "@/contexts/default-password-auth-context"
 import { useState, useEffect } from "react"

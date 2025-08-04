@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import { Users, Calendar, MapPin, Mail, Phone, Globe, ChevronLeft, ChevronDown, FileText, Shield } from "lucide-react"
 import Link from "next/link"
 

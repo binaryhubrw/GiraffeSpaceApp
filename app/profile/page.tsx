@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { UserHeader } from "@/components/UserHeader"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import { useAuth } from "@/contexts/auth-context"
 import ApiService from "@/api/apiConfig";
 import { useRouter } from "next/navigation"

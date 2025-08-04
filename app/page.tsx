@@ -2,7 +2,6 @@
 
 import { CalendarDays, Users, MapPin, BarChart3, CheckCircle, Lock } from "lucide-react"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
 import { EventCard } from "@/components/event-card"
 import { StatCard } from "@/components/stat-card"
 import { FeatureCard } from "@/components/feature-card"
@@ -12,6 +11,7 @@ import { Section } from "@/components/section"
 import { HeroSlideshow } from "@/components/hero-slideshow"
 import { useEffect, useState } from "react"
 import ApiService from "@/api/apiConfig"
+import Footer from "@/components/footer"
 
 export default function Home() {
   const [isLoaded, setIsLoaded] = useState(false)

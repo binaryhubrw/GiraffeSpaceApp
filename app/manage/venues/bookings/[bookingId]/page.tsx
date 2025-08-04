@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel } from "@/components/ui/alert-dialog";
 
 import { toast } from "sonner";
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 
 function getStatusBadgeVariant(status: string) {
   switch (status.toLowerCase()) {

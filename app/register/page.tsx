@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Calendar, AlertCircle } from "lucide-react"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import { useState } from "react"
 import ApiService from "@/api/apiConfig"
 import { useRouter } from "next/navigation"

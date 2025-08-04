@@ -30,7 +30,7 @@ import { Switch } from "@/components/ui/switch"
 import { useAttendee } from "@/context/AttendeeContext"
 import { useParams } from "next/navigation"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import Link from "next/link"
 import { toast } from "sonner"
 

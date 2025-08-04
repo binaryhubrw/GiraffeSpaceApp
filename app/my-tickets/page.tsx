@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/auth-context" // Assuming this context is av
 import { toast } from "sonner" // Assuming sonner is configured
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 
 interface Ticket {
   registrationId: string

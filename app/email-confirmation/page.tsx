@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Mail, CheckCircle, ArrowLeft } from "lucide-react"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import { useState, useEffect } from "react"
 
 export default function EmailConfirmationPage() {

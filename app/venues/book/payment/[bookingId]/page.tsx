@@ -26,7 +26,7 @@ import {
 } from "lucide-react"
 import Image from "next/image"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import { useParams } from "next/navigation"
 import ApiService from "@/api/apiConfig"
 import { useBooking } from "@/contexts/booking-context"
