@@ -3,7 +3,7 @@
 import type React from "react"
 import MediaUpload from './uploadImage';
 
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"

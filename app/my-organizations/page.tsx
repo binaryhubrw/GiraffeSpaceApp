@@ -13,7 +13,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import OrganizationForm from "@/components/OrganizationForm"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 
 interface Organization {
   organizationId: string

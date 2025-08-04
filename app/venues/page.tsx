@@ -5,7 +5,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { MapPin, Users, ChevronDown, Search, Calendar } from "lucide-react"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import { Button } from "@/components/button"
 import { useSearchParams } from 'next/navigation'
 import ApiService from "@/api/apiConfig"

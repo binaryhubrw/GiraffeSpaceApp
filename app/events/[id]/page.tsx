@@ -28,7 +28,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 import ApiService from "@/api/apiConfig"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 import { useAuth } from "@/contexts/auth-context"
 
 export default function EventDetails() {

@@ -17,7 +17,7 @@ import { ArrowLeft, Save, Users as UsersIcon, Calendar, MapPin, Home } from "luc
 import { useRouter } from "next/navigation"
 import { users } from "@/data/users"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
+import Footer from "@/components/footer"
 
 interface UserRole {
   roleName: string;
