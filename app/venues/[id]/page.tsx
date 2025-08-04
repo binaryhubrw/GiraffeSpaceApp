@@ -150,10 +150,10 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
   // Create photos array from venue data
   const photos = venue ? [venue.mainPhotoUrl, ...venue.photoGallery].filter(Boolean) : []
 
-  // Generate time slots for hourly bookings (8 AM to 10 PM)
+  // Generate time slots for hourly bookings (24 hours)
   const generateTimeSlots = (): string[] => {
     const slots: string[] = []
-    for (let hour = 8; hour < 22; hour++) {
+    for (let hour = 0; hour < 24; hour++) {
       slots.push(`${String(hour).padStart(2, "0")}:00`)
     }
     return slots
@@ -222,23 +222,23 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
             const newFullyBookedDates: Date[] = []
             const newPartiallyBookedDates: Date[] = []
 
-            updatedSlots.forEach((slot: AvailabilitySlot) => {
-              const dateObj = new Date(slot.date)
-              dateObj.setHours(0, 0, 0, 0) // Normalize date for comparison
+                         updatedSlots.forEach((slot: AvailabilitySlot) => {
+               const dateObj = new Date(slot.date)
+               dateObj.setHours(0, 0, 0, 0) // Normalize date for comparison
 
-              if (venueData.bookingType === "DAILY") {
-                if (!slot.isAvailable) {
-                  newFullyBookedDates.push(dateObj)
-                }
-                // No partial booking for DAILY type
-              } else if (venueData.bookingType === "HOURLY") {
-                if (!slot.isAvailable || slot.availableHours?.length === 0) {
-                  newFullyBookedDates.push(dateObj)
-                } else if (slot.bookedHours && slot.bookedHours.length > 0) {
-                  newPartiallyBookedDates.push(dateObj)
-                }
-              }
-            })
+               if (venueData.bookingType === "HOURLY") {
+                 if (!slot.isAvailable || slot.availableHours?.length === 0) {
+                   newFullyBookedDates.push(dateObj)
+                 } else if (slot.bookedHours && slot.bookedHours.length > 0) {
+                   newPartiallyBookedDates.push(dateObj)
+                 }
+               } else if (venueData.bookingType === "DAILY") {
+                 if (!slot.isAvailable) {
+                   newFullyBookedDates.push(dateObj)
+                 }
+                 // No partial booking for DAILY type
+               }
+             })
             setFullyBookedDates(newFullyBookedDates)
             setPartiallyBookedDates(newPartiallyBookedDates)
           }
@@ -291,6 +291,20 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
       toast.error("Please select a date to continue.")
       return
     }
+    
+         // For HOURLY booking type, check if time slots are selected
+     if (venue?.bookingType === "HOURLY") {
+       const hasTimeSlots = selectedDates.some(date => {
+         const dateStr = date.toISOString();
+         return selectedTimes[dateStr] && selectedTimes[dateStr].length > 0;
+       });
+       
+       if (!hasTimeSlots) {
+         toast.error("Please select time slots for your selected dates.")
+         return
+       }
+     }
+    
     // Use timezone-safe date formatting to avoid UTC conversion issues
     // Format all selected dates
     const formattedDates = selectedDates.map(date => 
@@ -299,8 +313,22 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
       String(date.getDate()).padStart(2, '0')
     ).join(',')
     
+    // Format selected times for each date
+    const formattedTimes = Object.entries(selectedTimes).map(([dateStr, times]) => {
+      const date = new Date(dateStr)
+      const dateKey = date.getFullYear() + '-' + 
+        String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(date.getDate()).padStart(2, '0')
+      return `${dateKey}:${times.join(',')}`
+    }).join('|')
+    
     if (isLoggedIn) {
-      router.push(`/venues/book?venueId=${venue?.venueId}&date=${formattedDates}`)
+      const queryParams = new URLSearchParams({
+        venueId: venue?.venueId || '',
+        date: formattedDates,
+        ...(formattedTimes && { times: formattedTimes })
+      })
+      router.push(`/venues/book?${queryParams.toString()}`)
     } else {
       router.push("/login")
     }
@@ -847,16 +875,16 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                               <p className="font-medium text-sm text-gray-900 mb-2">{date.toLocaleDateString()}</p>
                               {venue?.bookingType === "HOURLY" && (
                                 <div>
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowTimePopup({ isOpen: true, date })}
-                                    className="w-full px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
-                                  >
-                                    Select Hours
-                                  </button>
+                                                                     <button
+                                     type="button"
+                                     onClick={() => setShowTimePopup({ isOpen: true, date })}
+                                     className="w-full px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+                                   >
+                                     Select Time Slots
+                                   </button>
                                   {selectedTimes[date.toISOString()]?.length > 0 && (
                                     <div className="mt-2">
-                                      <p className="text-xs text-gray-500 mb-1">Selected Hours:</p>
+                                      <p className="text-xs text-gray-500 mb-1">Selected Times:</p>
                                       <div className="flex flex-wrap gap-1">
                                         {selectedTimes[date.toISOString()].map((time) => (
                                           <span
@@ -1007,7 +1035,16 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
         <Button
           onClick={handleBookingClick}
           className="px-8 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-lg text-base font-medium"
-          disabled={!mounted || !selectedDates.length}
+                     disabled={
+             !mounted || 
+             !selectedDates.length || 
+             (venue?.bookingType === "HOURLY" && 
+               !selectedDates.some(date => {
+                 const dateStr = date.toISOString();
+                 return selectedTimes[dateStr] && selectedTimes[dateStr].length > 0;
+               })
+             )
+           }
         >
           {isLoggedIn ? "Book Now" : "Book Now"}
         </Button>
@@ -1018,8 +1055,8 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
       {showTimePopup.isOpen && showTimePopup.date && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Select Hours for {showTimePopup.date.toLocaleDateString()}</h3>
+                         <div className="flex justify-between items-center mb-4">
+               <h3 className="text-lg font-semibold">Select Time Slots for {showTimePopup.date.toLocaleDateString()}</h3>
               <button
                 onClick={() => setShowTimePopup({ isOpen: false, date: null })}
                 className="text-gray-400 hover:text-gray-500"

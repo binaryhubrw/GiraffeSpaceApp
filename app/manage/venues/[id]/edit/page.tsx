@@ -9,59 +9,52 @@ import { useRouter, useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { ArrowLeft, Upload, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { MapPicker } from "../../create/MapPicker";
+import MapPicker  from "../../create/MapPicker";
+import MediaUpload from '../../create/uploadImage';
 import ApiService from "@/api/apiConfig";
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
-import { toast } from 'sonner';
+import { toast } from '@/hooks/use-toast';
 
-// Sample venue data
-const venuesData = [
-  {
-    id: "grand-conference-hall",
-    name: "Grand Conference Hall",
-    address: "123 Main Street, City Center",
-    capacity: 500,
-    pricePerHour: 1000,
-    bookings: 8,
-    image: "/main.png",
-    description: "A spacious venue perfect for large conferences and events.",
-    amenities: ["Wi-Fi", "Projector", "Sound System", "Catering"],
-  },
-  {
-    id: "riverside-meeting-room",
-    name: "Riverside Meeting Room",
-    address: "45 River Road, Waterfront",
-    capacity: 50,
-    pricePerHour: 200,
-    bookings: 3,
-    image: "/main.png",
-    description: "A comfortable meeting room with a beautiful view of the river.",
-    amenities: ["Wi-Fi", "Whiteboard", "Coffee Machine"],
-  },
-  {
-    id: "downtown-studio",
-    name: "Downtown Studio",
-    address: "78 Urban Avenue, Downtown",
-    capacity: 100,
-    pricePerHour: 350,
-    bookings: 1,
-    image: "/main.png",
-    description: "A modern studio space perfect for workshops and creative events.",
-    amenities: ["Wi-Fi", "Sound System", "Projector", "Accessibility"],
-  },
-]
+interface BookingCondition {
+  descriptionCondition: string;
+  notaBene: string;
+  transitionTime: string;
+  depositRequiredPercent: string;
+  paymentComplementTimeBeforeEvent: string;
+}
 
-// All possible amenities
-const allAmenities = [
-  "Wi-Fi",
-  "Sound System",
-  "Whiteboard",
-  "Parking",
-  "Projector",
-  "Catering",
-  "Coffee Machine",
-  "Accessibility",
-]
+interface VenueAmenity {
+  resourceName: string;
+  quantity: string;
+  amenitiesDescription: string;
+  costPerUnit: string;
+}
+
+interface VenueVariable {
+  venueAmount: string;
+  venueManagerId: string;
+  isFree: boolean;
+}
+
+interface VenueFormData {
+  venueName: string;
+  capacity: string;
+  location: string;
+  latitude: string;
+  longitude: string;
+  googleMapsLink: string;
+  organizationId: string;
+  mainPhoto: File | null;
+  photoGallery: File[];
+  virtualTour: File[];
+  existingMainPhoto?: string;
+  existingPhotoGallery?: string[];
+  existingVirtualTour?: string[];
+  bookingConditions: BookingCondition[];
+  venueVariable: VenueVariable;
+  venueAmenities: VenueAmenity[];
+  bookingType: string;
+}
 
 export default function EditVenuePage() {
   const { isLoggedIn, user } = useAuth()
@@ -69,7 +62,7 @@ export default function EditVenuePage() {
   const { id } = useParams()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<VenueFormData>({
     venueName: "",
     capacity: "",
     location: "",
@@ -77,10 +70,16 @@ export default function EditVenuePage() {
     longitude: "",
     googleMapsLink: "",
     organizationId: "",
+    mainPhoto: null,
+    photoGallery: [],
+    virtualTour: [],
+    existingMainPhoto: "",
+    existingPhotoGallery: [],
+    existingVirtualTour: [],
     bookingConditions: [],
     venueVariable: {
       venueAmount: "",
-      venueManagerId: "",
+      venueManagerId: user?.userId || "",
       isFree: false,
     },
     venueAmenities: [],
@@ -98,6 +97,15 @@ export default function EditVenuePage() {
   // Fetch venue data
   useEffect(() => {
     const fetchVenue = async () => {
+      if (!id || typeof id !== 'string') {
+        toast({
+          title: "Error",
+          description: "Invalid venue ID.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       setLoading(true);
       try {
         const response = await ApiService.getVenueById(id);
@@ -111,6 +119,12 @@ export default function EditVenuePage() {
             longitude: v.longitude?.toString() || "",
             googleMapsLink: v.googleMapsLink || "",
             organizationId: v.organization?.organizationId || v.organizationId || "",
+            mainPhoto: null,
+            photoGallery: [],
+            virtualTour: [],
+            existingMainPhoto: v.mainPhoto || "",
+            existingPhotoGallery: v.photoGallery || [],
+            existingVirtualTour: v.virtualTour || [],
             bookingConditions: v.bookingConditions?.map((c: any) => ({
               descriptionCondition: c.descriptionCondition || "",
               notaBene: c.notaBene || "",
@@ -120,7 +134,7 @@ export default function EditVenuePage() {
             })) || [],
             venueVariable: {
               venueAmount: v.venueVariables?.[0]?.venueAmount?.toString() || "",
-              venueManagerId: v.venueVariables?.[0]?.manager?.userId || "",
+              venueManagerId: v.venueVariables?.[0]?.manager?.userId || user?.userId || "",
               isFree: v.venueVariables?.[0]?.isFree || false,
             },
             venueAmenities: v.amenities?.map((a: any) => ({
@@ -133,22 +147,47 @@ export default function EditVenuePage() {
           });
         }
       } catch (err) {
-        toast.error("Failed to fetch venue data.");
+        toast({
+          title: "Error",
+          description: "Failed to fetch venue data.",
+          variant: "destructive"
+        });
       } finally {
         setLoading(false);
       }
     };
-    if (id) fetchVenue();
-  }, [id]);
+    fetchVenue();
+  }, [id, user?.userId]);
 
   // Handlers (adapted from create page)
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
+  
   const handleOrgChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFormData((prev) => ({ ...prev, organizationId: e.target.value }));
   };
+
+  // Media upload handlers
+  const handleMainPhotoChange = (files: FileList | null) => {
+    if (files && files[0]) {
+      setFormData(prev => ({ ...prev, mainPhoto: files[0] }));
+    }
+  };
+  
+  const handlePhotoGalleryFilesChange = (files: FileList | null) => {
+    if (files) {
+      setFormData(prev => ({ ...prev, photoGallery: Array.from(files) }));
+    }
+  };
+  
+  const handleVirtualTourFilesChange = (files: FileList | null) => {
+    if (files) {
+      setFormData(prev => ({ ...prev, virtualTour: Array.from(files) }));
+    }
+  };
+
   const handleAddBookingCondition = () => {
     setFormData(prev => ({
       ...prev,
@@ -158,9 +197,11 @@ export default function EditVenuePage() {
       ]
     }));
   };
+  
   const handleRemoveBookingCondition = (idx: number) => {
     setFormData((prev) => ({ ...prev, bookingConditions: prev.bookingConditions.filter((_, i) => i !== idx) }));
   };
+  
   const handleBookingConditionChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const { value } = e.target;
     setFormData(prev => ({
@@ -170,6 +211,7 @@ export default function EditVenuePage() {
       )
     }));
   };
+  
   const handleBookingConditionDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const { value } = e.target;
     setFormData(prev => ({
@@ -179,6 +221,7 @@ export default function EditVenuePage() {
       )
     }));
   };
+  
   const handleBookingConditionTransitionTimeChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const { value } = e.target;
     setFormData(prev => ({
@@ -188,6 +231,7 @@ export default function EditVenuePage() {
       )
     }));
   };
+  
   const handleBookingConditionDepositChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const { value } = e.target;
     setFormData(prev => ({
@@ -197,6 +241,7 @@ export default function EditVenuePage() {
       )
     }));
   };
+  
   const handleBookingConditionPaymentTimeChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const { value } = e.target;
     setFormData(prev => ({
@@ -206,10 +251,12 @@ export default function EditVenuePage() {
       )
     }));
   };
+  
   const handleVenueVariableChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, venueVariable: { ...prev.venueVariable, [name]: value } }));
   };
+  
   const handleVenueVariableIsFreeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { checked } = e.target;
     setFormData((prev) => ({ 
@@ -217,20 +264,39 @@ export default function EditVenuePage() {
       venueVariable: { 
         ...prev.venueVariable, 
         isFree: checked,
-        // Clear venue amount if venue is free
         venueAmount: checked ? "" : prev.venueVariable.venueAmount
       } 
     }));
   };
-  const handleVenueAmenityChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+  
+  const handleVenueAmenityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      venueAmenities: prev.venueAmenities.map((amenity, i) =>
-        i === idx ? { ...amenity, [name]: value } : amenity
+      venueAmenities: prev.venueAmenities.map((amenity, index) =>
+        index === prev.venueAmenities.length - 1 ? { ...amenity, [name]: value } : amenity
       )
     }));
   };
+  
+  const handleVenueAmenityQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVenueAmenities = [...formData.venueAmenities];
+    newVenueAmenities[newVenueAmenities.length - 1].quantity = e.target.value;
+    setFormData((prev) => ({ ...prev, venueAmenities: newVenueAmenities }));
+  }
+  
+  const handleVenueAmenityDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVenueAmenities = [...formData.venueAmenities];
+    newVenueAmenities[newVenueAmenities.length - 1].amenitiesDescription = e.target.value;
+    setFormData((prev) => ({ ...prev, venueAmenities: newVenueAmenities }));
+  }
+  
+  const handleVenueAmenityCostPerUnitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVenueAmenities = [...formData.venueAmenities];
+    newVenueAmenities[newVenueAmenities.length - 1].costPerUnit = e.target.value;
+    setFormData((prev) => ({ ...prev, venueAmenities: newVenueAmenities }));
+  }
+  
   const handleAddVenueAmenity = () => {
     setFormData(prev => ({
       ...prev,
@@ -240,6 +306,7 @@ export default function EditVenuePage() {
       ]
     }));
   };
+  
   const handleRemoveVenueAmenity = (idx: number) => {
     setFormData((prev) => ({ ...prev, venueAmenities: prev.venueAmenities.filter((_, i) => i !== idx) }));
   };
@@ -259,50 +326,103 @@ export default function EditVenuePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.organizationId) {
+      toast({
+        title: "Organization Required",
+        description: "Please select an organization for this venue.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!formData.latitude || !formData.longitude || !formData.location) {
-      toast.error("Please select a venue location on the map.");
+      toast({
+        title: "Venue Location Required",
+        description: "Please select a venue location on the map.",
+        variant: "destructive"
+      });
       return;
     }
     
     setSaving(true);
     try {
-      const dataToSend = {
-        venueName: formData.venueName,
-        capacity: Number(formData.capacity),
-        venueLocation: formData.location,
-        latitude: formData.latitude,
-        longitude: formData.longitude,
-        googleMapsLink: formData.googleMapsLink,
-        organizationId: formData.organizationId,
-        venueVariable: {
-          venueAmount: Number(formData.venueVariable.venueAmount),
-          venueManagerId: formData.venueVariable.venueManagerId,
-          isFree: formData.venueVariable.isFree,
-        },
-        bookingConditions: formData.bookingConditions.map((c: any) => ({
-          descriptionCondition: c.descriptionCondition,
-          notaBene: c.notaBene,
-          transitionTime: Number(c.transitionTime),
-          depositRequiredPercent: Number(c.depositRequiredPercent),
-          paymentComplementTimeBeforeEvent: Number(c.paymentComplementTimeBeforeEvent)
-        })),
-        venueAmenities: formData.venueAmenities.map((a: any) => ({
-          resourceName: a.resourceName,
+      const formDataToSend = new FormData();
+
+      // Append all form fields to FormData
+      formDataToSend.append("venueName", formData.venueName);
+      formDataToSend.append("capacity", formData.capacity);
+      formDataToSend.append("venueLocation", formData.location);
+      formDataToSend.append("latitude", formData.latitude);
+      formDataToSend.append("longitude", formData.longitude);
+      formDataToSend.append("googleMapsLink", formData.googleMapsLink);
+      formDataToSend.append("organizationId", formData.organizationId);
+      formDataToSend.append("venueVariable", JSON.stringify({
+        venueAmount: Number(formData.venueVariable.venueAmount),
+        venueManagerId: formData.venueVariable.venueManagerId,
+        isFree: formData.venueVariable.isFree,
+      }));
+      formDataToSend.append("bookingConditions", JSON.stringify(
+        formData.bookingConditions.map(condition => ({
+          ...condition,
+          transitionTime: Number(condition.transitionTime),
+          depositRequiredPercent: Number(condition.depositRequiredPercent),
+          paymentComplementTimeBeforeEvent: Number(condition.paymentComplementTimeBeforeEvent)
+        }))
+      ));
+      formDataToSend.append("venueAmenities", JSON.stringify(
+        formData.venueAmenities.map(a => ({
+          ...a,
           quantity: Number(a.quantity),
-          amenitiesDescription: a.amenitiesDescription,
           costPerUnit: Number(a.costPerUnit)
-        })),
-        bookingType: formData.bookingType,
-      };
-      const response = await ApiService.updateVenueDetailsById(id, dataToSend);
+        }))
+      ));
+      formDataToSend.append("bookingType", formData.bookingType);
+
+      // Append mainPhoto if it exists
+      if (formData.mainPhoto) {
+        formDataToSend.append("mainPhoto", formData.mainPhoto);
+      }
+
+      // Append photoGallery if it exists
+      if (formData.photoGallery.length > 0) {
+        formData.photoGallery.forEach((file) => {
+          formDataToSend.append('photoGallery', file);
+        });
+      }
+
+      // Append virtualTour if it exists
+      if (formData.virtualTour.length > 0) {
+        formData.virtualTour.forEach((file) => {
+          formDataToSend.append('virtualTour', file);
+        });
+      }
+
+      if (user?.userId) {
+        formDataToSend.append("managerId", user.userId);
+      }
+
+      if (!id || typeof id !== 'string') {
+        throw new Error("Invalid venue ID");
+      }
+
+      const response = await ApiService.updateVenueDetailsById(id, formDataToSend);
       if (response.success) {
-        toast.success("Venue updated successfully.");
+        toast({
+          title: "Venue Updated Successfully! 🎉",
+          description: `${formData.venueName} has been updated.`,
+          variant: "default",
+          className: "bg-green-500 text-white",
+        });
         router.push(`/manage/venues/${id}`);
       } else {
         throw new Error(response.message || 'Failed to update venue');
       }
     } catch (err: any) {
-      toast.error(err.message || "There was a problem updating your venue. Please try again.");
+      toast({
+        title: "Error Updating Venue",
+        description: err.message || "There was a problem updating your venue. Please try again.",
+        variant: "destructive"
+      });
     } finally {
       setSaving(false);
     }
@@ -349,7 +469,7 @@ export default function EditVenuePage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <main className="flex-1 bg-white">
+      <main className="flex-1 bg-white m-5">
         <div className="container mx-auto px-4 md:px-16 max-w-7xl py-8">
           <div className="flex items-center mb-6">
             <Link href={`/manage/venues/${id}`} className="flex items-center text-gray-600 hover:text-gray-900">
@@ -357,7 +477,7 @@ export default function EditVenuePage() {
               <span>Back</span>
             </Link>
           </div>
-          <h1 className="text-3xl font-bold mb-6">Edit Venue</h1>
+          <h1 className="text-3xl font-bold mb-8">Edit Venue</h1>
           <form onSubmit={handleSubmit} className="space-y-10">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               {/* Left Column - Venue Details */}
@@ -366,19 +486,19 @@ export default function EditVenuePage() {
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="venueName" className="block text-sm font-medium text-gray-700 mb-1">
-                    Venue Name
-                  </label>
-                  <input
-                    type="text"
+                      Venue Name
+                    </label>
+                    <input
+                      type="text"
                       id="venueName"
                       name="venueName"
                       value={formData.venueName}
-                    onChange={handleInputChange}
+                      onChange={handleInputChange}
                       placeholder="Enter venue name"
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
+                      required
+                    />
+                  </div>
                   <div>
                     <label htmlFor="organizationId" className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
                     {orgLoading ? (
@@ -404,18 +524,18 @@ export default function EditVenuePage() {
                     )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
-                      Capacity
-                    </label>
-                    <input
-                      type="number"
-                      id="capacity"
-                      name="capacity"
-                      value={formData.capacity}
-                      onChange={handleInputChange}
+                    <div>
+                      <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
+                        Capacity
+                      </label>
+                      <input
+                        type="number"
+                        id="capacity"
+                        name="capacity"
+                        value={formData.capacity}
+                        onChange={handleInputChange}
                         placeholder="Max number of people"
-                      min="1"
+                        min="1"
                         className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                       />
@@ -424,16 +544,18 @@ export default function EditVenuePage() {
                       <label htmlFor="bookingType" className="block text-sm font-medium text-gray-700 mb-1">
                         Booking Type
                       </label>
-                      <input
-                        type="text"
+                      <select
                         id="bookingType"
                         name="bookingType"
-                        value={formData.bookingType || ''}
-                        onChange={e => setFormData(prev => ({ ...prev, bookingType: e.target.value }))}
-                        placeholder="e.g. Daily"
+                        value={formData.bookingType}
+                        onChange={handleInputChange}
                         className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
+                        required
+                      >
+                        <option value="">Select booking type</option>
+                        <option value="DAILY">Daily</option>
+                        <option value="HOURLY">Hourly</option>
+                      </select>
                     </div>
                   </div>
                   {/* Booking Conditions */}
@@ -465,7 +587,7 @@ export default function EditVenuePage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Transition Time (days)</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Transition Time (hours/days)</label>
                             <input
                               type="number"
                               placeholder="e.g. 2"
@@ -485,7 +607,7 @@ export default function EditVenuePage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Payment Time Before Event (days)</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Payment Time Before Event (hours/days)</label>
                             <input
                               type="number"
                               placeholder="e.g. 3"
@@ -536,10 +658,10 @@ export default function EditVenuePage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Venue Amenities</label>
                     {formData.venueAmenities.map((amenity, index) => (
                       <div key={index} className="flex flex-col gap-2 mb-2 border p-2 rounded">
-                        <input type="text" placeholder="Resource Name (e.g. Projector)" name="resourceName" value={amenity.resourceName} onChange={e => handleVenueAmenityChange(e, index)} className="px-3 py-2 border rounded text-sm" />
-                        <input type="number" placeholder="Quantity (e.g. 2)" name="quantity" value={amenity.quantity} onChange={e => handleVenueAmenityChange(e, index)} className="px-3 py-2 border rounded text-sm" />
-                        <input type="text" placeholder="Amenities Description (e.g. HD projectors available)" name="amenitiesDescription" value={amenity.amenitiesDescription} onChange={e => handleVenueAmenityChange(e, index)} className="px-3 py-2 border rounded text-sm" />
-                        <input type="number" placeholder="Cost Per Unit (e.g. 100)" name="costPerUnit" value={amenity.costPerUnit} onChange={e => handleVenueAmenityChange(e, index)} className="px-3 py-2 border rounded text-sm" />
+                        <input type="text" placeholder="Resource Name (e.g. Projector)" name="resourceName" value={amenity.resourceName} onChange={e => handleVenueAmenityChange(e)} className="px-3 py-2 border rounded text-sm" />
+                        <input type="number" placeholder="Quantity (e.g. 2)" name="quantity" value={amenity.quantity} onChange={e => handleVenueAmenityQuantityChange(e)} className="px-3 py-2 border rounded text-sm" />
+                        <input type="text" placeholder="Amenities Description (e.g. HD projectors available)" name="amenitiesDescription" value={amenity.amenitiesDescription} onChange={e => handleVenueAmenityDescriptionChange(e)} className="px-3 py-2 border rounded text-sm" />
+                        <input type="number" placeholder="Cost Per Unit (e.g. 100)" name="costPerUnit" value={amenity.costPerUnit} onChange={e => handleVenueAmenityCostPerUnitChange(e)} className="px-3 py-2 border rounded text-sm" />
                         <button type="button" onClick={() => handleRemoveVenueAmenity(index)} className="text-red-500 text-xs">Remove Amenity</button>
                       </div>
                     ))}
@@ -547,20 +669,79 @@ export default function EditVenuePage() {
                   </div>
                 </div>
               </div>
-              {/* Right Column - Map Picker */}
+
+              {/* Right Column - Media & Amenities */}
               <div>
-                <h2 className="text-xl font-semibold mb-6">Venue Location</h2>
+                <h2 className="text-xl font-semibold mb-6">Venue Media & Amenities</h2>
+                {/* Main Photo */}
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Venue Location *</label>
-                  <p className="text-xs text-gray-500 mb-3">Click on the map or search for a location to set your venue address</p>
-                  <MapPicker
-                    latitude={formData.latitude ? parseFloat(formData.latitude) : undefined}
-                    longitude={formData.longitude ? parseFloat(formData.longitude) : undefined}
-                    onLocationSelect={handleMapChange}
-                  />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Main Photo</label>
+                  {formData.existingMainPhoto && (
+                    <div className="mb-3">
+                      <p className="text-sm text-gray-600 mb-2">Current main photo:</p>
+                      <img 
+                        src={formData.existingMainPhoto} 
+                        alt="Current main photo" 
+                        className="w-32 h-32 object-cover rounded-lg border"
+                      />
+                    </div>
+                  )}
+                  <MediaUpload accept="image/*" multiple={false} onChange={handleMainPhotoChange} />
+                </div>
+                {/* Photo Gallery */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Photo Gallery</label>
+                  {formData.existingPhotoGallery && formData.existingPhotoGallery.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-sm text-gray-600 mb-2">Current photos:</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {formData.existingPhotoGallery.map((photo, index) => (
+                          <img 
+                            key={index}
+                            src={photo} 
+                            alt={`Current photo ${index + 1}`} 
+                            className="w-20 h-20 object-cover rounded border"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <MediaUpload accept="image/*" multiple={true} onChange={handlePhotoGalleryFilesChange} />
+                </div>
+                {/* Virtual Tour */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Virtual Tour (Videos)</label>
+                  {formData.existingVirtualTour && formData.existingVirtualTour.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-sm text-gray-600 mb-2">Current videos:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {formData.existingVirtualTour.map((video, index) => (
+                          <video 
+                            key={index}
+                            src={video} 
+                            controls 
+                            className="w-full h-24 object-cover rounded border"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <MediaUpload accept="video/*" multiple={true} onChange={handleVirtualTourFilesChange} />
                 </div>
               </div>
             </div>
+
+            {/* Move Map Picker here, below all other fields */}
+            <div className="col-span-1 md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Venue Location *</label>
+              <p className="text-xs text-gray-500 mb-3">Click on the map or search for a location to set your venue address</p>
+              <MapPicker
+                latitude={formData.latitude ? parseFloat(formData.latitude) : undefined}
+                longitude={formData.longitude ? parseFloat(formData.longitude) : undefined}
+                onLocationSelect={handleMapChange}
+              />
+            </div>
+
             <div className="mt-8 flex justify-end gap-4">
               <Link
                 href={`/manage/venues/${id}`}

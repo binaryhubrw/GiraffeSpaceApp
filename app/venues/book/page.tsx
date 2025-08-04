@@ -65,8 +65,7 @@ interface EventFormData {
 const eventTypes = ["CONFERENCE", "MEETING", "WEDDING", "WORKSHOP", "SEMINAR", "PARTY", "EXHIBITION", "OTHER"]
 const visibilityScopes = ["PUBLIC", "PRIVATE", "RESTRICTED"]
 
-// Mock logged-in user ID
-const LOGGED_IN_USER_ID = "5f726607-0112-4474-8e43-fa9af91bd2b7"
+
 
 const steps = [
   { id: 1, title: "Basic Info", icon: Info },
@@ -87,7 +86,7 @@ export default function CreateEventForm() {
     eventTitle: "",
     eventType: "",
     visibilityScope: "",
-    eventOrganizerId: LOGGED_IN_USER_ID,
+    eventOrganizerId: user?.userId || "",
     venueId: "",
     description: "",
     dates: [""],
@@ -107,6 +106,7 @@ export default function CreateEventForm() {
   } | null>(null);
   const [venueError, setVenueError] = useState<string | null>(null);
   const [prefilledDate, setPrefilledDate] = useState<string | null>(null);
+  const [selectedTimes, setSelectedTimes] = useState<{ [date: string]: string[] }>({});
 
   useEffect(() => {
     if (organizations && organizations.length === 1) {
@@ -114,10 +114,20 @@ export default function CreateEventForm() {
     }
   }, [organizations]);
 
+  // Update eventOrganizerId when user changes
+  useEffect(() => {
+    if (user?.userId) {
+      setFormData(prev => ({ ...prev, eventOrganizerId: user.userId }));
+    }
+  }, [user?.userId]);
+
   useEffect(() => {
     const venueId = searchParams.get("venueId");
     const date = searchParams.get("date");
+    const times = searchParams.get("times");
     console.log("Received date parameter:", date); // Debug log
+    console.log("Received times parameter:", times); // Debug log
+    
     if (venueId) {
       ApiService.getVenueById(venueId)
         .then(res => {
@@ -165,6 +175,27 @@ export default function CreateEventForm() {
       setFormData(prev => ({ ...prev, dates: formattedDates }));
       setPrefilledDate(date);
     }
+    
+         // Parse times parameter
+     if (times) {
+       const timesData: { [date: string]: string[] } = {};
+       const timeEntries = times.split('|');
+       
+       timeEntries.forEach(entry => {
+         // Find the first colon to separate date from times
+         const colonIndex = entry.indexOf(':');
+         if (colonIndex !== -1) {
+           const dateKey = entry.substring(0, colonIndex);
+           const timeSlots = entry.substring(colonIndex + 1);
+           if (dateKey && timeSlots) {
+             timesData[dateKey] = timeSlots.split(',').filter(t => t.trim());
+           }
+         }
+       });
+       
+       console.log("Parsed times data:", timesData); // Debug log
+       setSelectedTimes(timesData);
+     }
   }, [searchParams]);
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -463,16 +494,33 @@ export default function CreateEventForm() {
                 <Label className="text-base font-medium">Event Date(s)</Label>
                 {formData.dates.filter((date) => date).length > 0 ? (
                   <div className="mt-2 space-y-2">
-                    {formData.dates.filter((date) => date).map((date, index) => (
-                      <div key={index} className="h-12 flex items-center px-3 bg-gray-100 rounded border border-gray-200 text-base font-medium">
-                        {new Date(date).toLocaleDateString('en-US', { 
-                          weekday: 'long', 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
-                      </div>
-                    ))}
+                    {formData.dates.filter((date) => date).map((date, index) => {
+                      const dateTimes = selectedTimes[date] || [];
+                      return (
+                        <div key={index} className="bg-gray-100 rounded border border-gray-200 p-3">
+                          <div className="text-base font-medium">
+                            {new Date(date).toLocaleDateString('en-US', { 
+                              weekday: 'long', 
+                              year: 'numeric', 
+                              month: 'long', 
+                              day: 'numeric' 
+                            })}
+                          </div>
+                          {dateTimes.length > 0 && (
+                            <div className="mt-2">
+                              <div className="text-sm text-gray-600 mb-1">Selected Time Slots:</div>
+                              <div className="flex flex-wrap gap-1">
+                                {dateTimes.map((time, timeIndex) => (
+                                  <Badge key={timeIndex} variant="secondary" className="text-xs">
+                                    {time}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="mt-2 h-12 flex items-center px-3 bg-gray-50 rounded border border-gray-200 text-base text-gray-400">No dates selected.</div>
@@ -748,22 +796,38 @@ export default function CreateEventForm() {
                       </div>
                     )}
 
-                    <div className="flex items-start gap-2">
-                      <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
-                      <div className="flex flex-col">
-                        <span className="text-sm text-gray-500">Event Dates:</span>
-                        {formData.dates.filter((date) => date).map((date, index) => (
-                          <span key={index} className="text-sm font-medium">
-                            {new Date(date).toLocaleDateString('en-US', { 
-                              weekday: 'long', 
-                              year: 'numeric', 
-                              month: 'long', 
-                              day: 'numeric' 
-                            })}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                                         <div className="flex items-start gap-2">
+                       <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
+                       <div className="flex flex-col">
+                         <span className="text-sm text-gray-500">Event Dates:</span>
+                         {formData.dates.filter((date) => date).map((date, index) => {
+                           const dateTimes = selectedTimes[date] || [];
+                           return (
+                             <div key={index} className="mb-2">
+                               <span className="text-sm font-medium">
+                                 {new Date(date).toLocaleDateString('en-US', { 
+                                   weekday: 'long', 
+                                   year: 'numeric', 
+                                   month: 'long', 
+                                   day: 'numeric' 
+                                 })}
+                               </span>
+                               {dateTimes.length > 0 && (
+                                 <div className="mt-1">
+                                   <div className="flex flex-wrap gap-1">
+                                     {dateTimes.map((time, timeIndex) => (
+                                       <Badge key={timeIndex} variant="secondary" className="text-xs">
+                                         {time}
+                                       </Badge>
+                                     ))}
+                                   </div>
+                                 </div>
+                               )}
+                             </div>
+                           );
+                         })}
+                       </div>
+                     </div>
 
                     {formData.maxAttendees && (
                       <div className="flex items-center gap-2">

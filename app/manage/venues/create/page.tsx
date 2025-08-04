@@ -95,7 +95,7 @@ export default function CreateVenuePage() {
     }
   }, [isLoggedIn, router])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({
       ...prev,
@@ -452,16 +452,14 @@ export default function CreateVenuePage() {
                       <select
                         id="bookingType"
                         name="bookingType"
-                        value={formData.bookingType || ''}
-                        onChange={e => setFormData(prev => ({ ...prev, bookingType: e.target.value }))}
+                        value={formData.bookingType}
+                        onChange={handleInputChange}
                         className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         required
                       >
                         <option value="">Select booking type</option>
                         <option value="DAILY">Daily</option>
                         <option value="HOURLY">Hourly</option>
-                        <option value="WEEKLY">Weekly</option>
-                        <option value="MONTHLY">Monthly</option>
                       </select>
                     </div>
                   </div>
@@ -494,7 +492,7 @@ export default function CreateVenuePage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Transition Time (days)</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Transition Time (hours/days)</label>
                             <input
                               type="number"
                               placeholder="e.g. 2"
@@ -514,7 +512,7 @@ export default function CreateVenuePage() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Payment Time Before Event (days)</label>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Payment Time Before Event (hours/days)</label>
                             <input
                               type="number"
                               placeholder="e.g. 3"
