@@ -213,6 +213,31 @@ class ApiService {
     }
   }
 
+  // **** NEW: Fetch formatted payments for a manager ****
+  static async getFormattedManagerPayments(managerId: string): Promise<any> {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found.");
+      }
+      const response = await axios.get(
+        `${this.BASE_URL}/venue-bookings/payments/manager/${managerId}/formatted`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching formatted manager payments for ID ${managerId}:`, error);
+      throw error;
+    }
+  }
+
+
   //**** ORGANIZATION ROUTE *** */
 
   /** Add a new organization */

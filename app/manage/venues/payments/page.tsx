@@ -1,6 +1,6 @@
 "use client"
 
-import { useAuth } from "@/contexts/auth-context"
+import { useAuth } from "@/contexts/auth-context" // Assuming this context is available
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import {
@@ -18,79 +18,65 @@ import {
 import Link from "next/link"
 import { format, isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
 
-// Mock data for payments
-const mockPayments = [
-  {
-    id: "PAY-001",
-    amount: 1200.0,
-    date: "2025-01-10",
-    time: "14:30",
-    customer: "John Smith",
-    venue: "Grand Conference Hall",
-    method: "Credit Card",
-    status: "completed",
-    transactionId: "TXN-12345",
-  },
-  {
-    id: "PAY-002",
-    amount: 850.0,
-    date: "2025-01-09",
-    time: "10:15",
-    customer: "Sarah Johnson",
-    venue: "Riverside Meeting Room",
-    method: "Bank Transfer",
-    status: "pending",
-    transactionId: "TXN-12346",
-  },
-  {
-    id: "PAY-003",
-    amount: 2100.0,
-    date: "2025-01-08",
-    time: "16:45",
-    customer: "Tech Corp Inc",
-    venue: "Downtown Studio",
-    method: "Credit Card",
-    status: "completed",
-    transactionId: "TXN-12347",
-  },
-  {
-    id: "PAY-004",
-    amount: 650.0,
-    date: "2025-01-07",
-    time: "11:20",
-    customer: "Mary Wilson",
-    venue: "Garden Pavilion",
-    method: "PayPal",
-    status: "failed",
-    transactionId: "TXN-12348",
-  },
-  {
-    id: "PAY-005",
-    amount: 1800.0,
-    date: "2025-01-06",
-    time: "13:00",
-    customer: "Event Masters LLC",
-    venue: "Grand Conference Hall",
-    method: "Credit Card",
-    status: "completed",
-    transactionId: "TXN-12349",
-  },
-  {
-    id: "PAY-006",
-    amount: 950.0,
-    date: "2025-01-05",
-    time: "09:30",
-    customer: "David Brown",
-    venue: "Rooftop Terrace",
-    method: "Bank Transfer",
-    status: "pending",
-    transactionId: "TXN-12350",
-  },
-]
+// Define types for the API response and formatted payments
+interface Payer {
+  userId: string
+  username: string
+  fullName: string
+  email: string
+  phoneNumber: string
+  role: string
+  location: {
+    city: string
+    country: string
+  }
+}
+
+interface ApiPayment {
+  paymentId: string
+  amountPaid: number
+  paymentMethod: string
+  paymentStatus: string
+  paymentReference: string | null
+  paymentDate: string // ISO string
+  notes: string | null
+}
+
+interface Booking {
+  bookingId: string
+  bookingReason: string
+  bookingDate: string // YYYY-MM-DD
+  amountToBePaid: number
+  totalAmountPaid: number
+  remainingAmount: number
+  isFullyPaid: boolean
+  payments: ApiPayment[]
+  payer: Payer
+}
+
+interface ApiResponse {
+  success: boolean
+  data: Booking[]
+}
+
+interface FormattedPayment {
+  id: string
+  amount: number
+  date: string
+  time: string
+  customer: string
+  venue: string
+  method: string
+  status: "completed" | "pending" | "failed" | "partial"
+  transactionId?: string
+}
 
 export default function PaymentsPage() {
   const { isLoggedIn } = useAuth()
   const router = useRouter()
+  const [payments, setPayments] = useState<FormattedPayment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [methodFilter, setMethodFilter] = useState("all")
@@ -104,11 +90,73 @@ export default function PaymentsPage() {
   useEffect(() => {
     if (!isLoggedIn) {
       router.push("/login")
+      return
     }
+
+    const fetchPayments = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const token = localStorage.getItem("token") // Get token from localStorage
+        if (!token) {
+          throw new Error("No authentication token found.")
+        }
+
+        const response = await fetch(
+          "https://giraffespacev2.onrender.com/api/v1/venue-bookings/payments/manager/566439eb-33bf-4954-903d-986862dfaa5f/formatted",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`, // Add Authorization header
+            },
+          },
+        )
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        const result: ApiResponse = await response.json()
+
+        if (result.success && result.data) {
+          const formattedPayments: FormattedPayment[] = []
+          result.data.forEach((booking) => {
+            booking.payments.forEach((payment) => {
+              const paymentDateTime = parseISO(payment.paymentDate)
+              formattedPayments.push({
+                id: payment.paymentId,
+                amount: payment.amountPaid,
+                date: format(paymentDateTime, "yyyy-MM-dd"),
+                time: format(paymentDateTime, "HH:mm"),
+                customer: booking.payer.fullName,
+                venue: booking.bookingReason, // Using bookingReason as venue
+                method: payment.paymentMethod
+                  .replace(/_/g, " ")
+                  .toLowerCase()
+                  .replace(/\b\w/g, (char) => char.toUpperCase()), // Format "MOBILE_MONEY" to "Mobile Money"
+                status:
+                  payment.paymentStatus === "PAID"
+                    ? "completed"
+                    : payment.paymentStatus === "PARTIAL"
+                      ? "partial"
+                      : "failed", // Map API status to desired status
+                transactionId: payment.paymentReference || payment.paymentId,
+              })
+            })
+          })
+          setPayments(formattedPayments)
+        } else {
+          setError("Failed to fetch payments: " + ((result as any).message || "Unknown error"))
+        }
+      } catch (e: any) {
+        setError("Error fetching payments: " + e.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPayments()
   }, [isLoggedIn, router])
 
   // Filter payments based on search and filters
-  const filteredPayments = mockPayments.filter((payment) => {
+  const filteredPayments = payments.filter((payment) => {
     const matchesSearch =
       payment.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -130,13 +178,13 @@ export default function PaymentsPage() {
       if (customStartDate && customEndDate) {
         const start = parseISO(customStartDate)
         const end = parseISO(customEndDate)
-        matchesDate = (isAfter(paymentDate, start) || paymentDate.getTime() === start.getTime()) &&
-                      (isBefore(paymentDate, end) || paymentDate.getTime() === end.getTime())
+        matchesDate =
+          (isAfter(paymentDate, start) || paymentDate.getTime() === start.getTime()) &&
+          (isBefore(paymentDate, end) || paymentDate.getTime() === end.getTime())
       } else {
         matchesDate = true
       }
     }
-
     return matchesSearch && matchesStatus && matchesMethod && matchesDate
   })
 
@@ -145,11 +193,27 @@ export default function PaymentsPage() {
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedPayments = filteredPayments.slice(startIndex, startIndex + itemsPerPage)
 
+  // Calculate statistics for the cards
+  const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0)
+  const totalPayments = payments.length
+  const pendingPayments = payments.filter((payment) => payment.status === "partial").length // Using "partial" for pending
+  const averagePayment = totalPayments > 0 ? totalRevenue / totalPayments : 0
+
+  // Helper function to format numbers with thousands separator
+  const formatCurrency = (amount: number) => {
+    return `Frw ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+
+  const formatNumber = (num: number) => {
+    return num.toLocaleString()
+  }
+
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "completed":
         return "bg-green-100 text-green-800"
       case "pending":
+      case "partial": // Both pending and partial can use yellow
         return "bg-yellow-100 text-yellow-800"
       case "failed":
         return "bg-red-100 text-red-800"
@@ -162,15 +226,29 @@ export default function PaymentsPage() {
     console.log("View payment:", paymentId)
     // Navigate to payment details page
   }
-
   const handleEdit = (paymentId: string) => {
     console.log("Edit payment:", paymentId)
     // Navigate to edit payment page
   }
-
   const handleDelete = (paymentId: string) => {
     console.log("Delete payment:", paymentId)
     // Show confirmation dialog and delete
+  }
+
+  if (loading) {
+    return (
+      <main className="flex-1 p-8 flex items-center justify-center">
+        <p className="text-lg text-gray-600">Loading payments...</p>
+      </main>
+    )
+  }
+
+  if (error) {
+    return (
+      <main className="flex-1 p-8 flex items-center justify-center">
+        <p className="text-lg text-red-600">Error: {error}</p>
+      </main>
+    )
   }
 
   return (
@@ -182,11 +260,10 @@ export default function PaymentsPage() {
             href="/manage/payments/create"
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
           >
-            <span className="text-lg">+</span>
+            <span className="text-lg">{"+"}</span>
             Add Payment
           </Link>
         </div>
-
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="border rounded-lg p-4 bg-white">
@@ -194,43 +271,38 @@ export default function PaymentsPage() {
               <h2 className="text-gray-600 text-sm">Total Revenue</h2>
               <DollarSign className="h-5 w-5 text-gray-400" />
             </div>
-            <p className="text-3xl font-bold mb-1">$7,550</p>
+            <p className="text-3xl font-bold mb-1">{formatCurrency(totalRevenue)}</p>
             <p className="text-xs text-green-600">+15% from last month</p>
           </div>
-
           <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-gray-600 text-sm">Total Payments</h2>
               <CreditCard className="h-5 w-5 text-gray-400" />
             </div>
-            <p className="text-3xl font-bold mb-1">6</p>
+            <p className="text-3xl font-bold mb-1">{formatNumber(totalPayments)}</p>
             <p className="text-xs text-gray-500">This month</p>
           </div>
-
           <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-gray-600 text-sm">Pending Payments</h2>
               <Clock className="h-5 w-5 text-gray-400" />
             </div>
-            <p className="text-3xl font-bold mb-1">2</p>
+            <p className="text-3xl font-bold mb-1">{formatNumber(pendingPayments)}</p>
             <p className="text-xs text-yellow-600">Awaiting processing</p>
           </div>
-
           <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
               <h2 className="text-gray-600 text-sm">Average Payment</h2>
               <TrendingUp className="h-5 w-5 text-gray-400" />
             </div>
-            <p className="text-3xl font-bold mb-1">$1,258</p>
+            <p className="text-3xl font-bold mb-1">{formatCurrency(averagePayment)}</p>
             <p className="text-xs text-gray-500">Per transaction</p>
           </div>
         </div>
-
         {/* Payments Table */}
         <div className="border rounded-lg p-6 bg-white">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-bold">Payment History</h2>
-
             {/* Filters */}
             <div className="flex gap-4">
               {/* Search */}
@@ -244,7 +316,6 @@ export default function PaymentsPage() {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-
               {/* Status Filter */}
               <select
                 value={statusFilter}
@@ -253,10 +324,9 @@ export default function PaymentsPage() {
               >
                 <option value="all">All Status</option>
                 <option value="completed">Completed</option>
-                <option value="pending">Pending</option>
+                <option value="partial">Partial</option> {/* Changed from pending to partial */}
                 <option value="failed">Failed</option>
               </select>
-
               {/* Method Filter */}
               <select
                 value={methodFilter}
@@ -267,8 +337,8 @@ export default function PaymentsPage() {
                 <option value="Credit Card">Credit Card</option>
                 <option value="Bank Transfer">Bank Transfer</option>
                 <option value="PayPal">PayPal</option>
+                <option value="Mobile Money">Mobile Money</option> {/* Added Mobile Money */}
               </select>
-
               {/* Date Filter */}
               <select
                 value={dateFilter}
@@ -300,19 +370,16 @@ export default function PaymentsPage() {
               )}
             </div>
           </div>
-
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>
-                 
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Payment_Id</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Customer</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Venue</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Amount</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Date & Time</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Method</th>
-                   {/* <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Payment Type</th> */}
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Status</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Actions</th>
                 </tr>
@@ -323,7 +390,7 @@ export default function PaymentsPage() {
                     <td className="px-4 py-4 text-sm font-medium text-gray-900">{payment.id}</td>
                     <td className="px-4 py-4 text-sm text-gray-900">{payment.customer}</td>
                     <td className="px-4 py-4 text-sm text-gray-900">{payment.venue}</td>
-                    <td className="px-4 py-4 text-sm font-medium text-gray-900">${payment.amount.toFixed(2)}</td>
+                    <td className="px-4 py-4 text-sm font-medium text-gray-900">{formatCurrency(payment.amount)}</td>
                     <td className="px-4 py-4 text-sm text-gray-900">
                       {payment.date} • {payment.time}
                     </td>
@@ -365,14 +432,12 @@ export default function PaymentsPage() {
               </tbody>
             </table>
           </div>
-
           {/* Pagination */}
           <div className="flex items-center justify-between mt-6">
             <div className="text-sm text-gray-700">
-              Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredPayments.length)} of{" "}
-              {filteredPayments.length} results
+              Showing {formatNumber(startIndex + 1)} to {formatNumber(Math.min(startIndex + itemsPerPage, filteredPayments.length))} of{" "}
+              {formatNumber(filteredPayments.length)} results
             </div>
-
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -382,7 +447,6 @@ export default function PaymentsPage() {
                 <ChevronLeft className="h-4 w-4" />
                 Previous
               </button>
-
               <div className="flex gap-1">
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                   <button
@@ -398,7 +462,6 @@ export default function PaymentsPage() {
                   </button>
                 ))}
               </div>
-
               <button
                 onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
