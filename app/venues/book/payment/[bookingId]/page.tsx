@@ -231,7 +231,7 @@ export default function PayVenueBooking() {
              eventTitle: apiData.eventDetails.eventName,
              bookingDates: apiData.bookingDates,
              bookingReason: apiData.eventDetails.eventType,
-             venue: {
+  venue: {
                venueName: apiData.venue.venueName,
                description: apiData.eventDetails.eventDescription || "",
                capacity: 0, // Not provided in API response, using default
@@ -243,14 +243,14 @@ export default function PayVenueBooking() {
                amenities: [], // Not provided in API response
                depositRequired: apiData.venue.depositRequired,
                paymentCompletionRequired: apiData.venue.paymentCompletionRequired
-             },
-             organizer: {
+  },
+  organizer: {
                firstName: apiData.requester.firstName,
                lastName: apiData.requester.lastName,
                email: apiData.requester.email,
                phoneNumber: apiData.requester.phoneNumber
-             },
-             pricing: {
+  },
+  pricing: {
                baseAmount: apiData.venue.totalAmount,
                discountPercent: 0,
                discountAmount: 0,
@@ -316,16 +316,16 @@ export default function PayVenueBooking() {
             newErrors.installments = "Number of installments must be between 2 and 12"
           }
         }
-                 if (paymentMethod === "mobile") {
-           if (!amountPaid || amountPaid <= 0) {
-             newErrors.amountPaid = "Please enter a valid amount to pay"
+        if (paymentMethod === "mobile") {
+          if (!amountPaid || amountPaid <= 0) {
+            newErrors.amountPaid = "Please enter a valid amount to pay"
            } else {
              const maxAmount = bookingData?.paymentSummary?.remainingAmount || bookingData?.pricing.totalAmount || 0
              if (amountPaid > maxAmount) {
                newErrors.amountPaid = `Amount cannot exceed ${maxAmount} Rwf`
              }
-           }
-         }
+          }
+        }
         break
     }
 
@@ -368,8 +368,8 @@ export default function PayVenueBooking() {
 
       if (response.success) {
         toast.success("Payment processed successfully!")
-        setSuccess(true)
-        setCurrentStep(3)
+      setSuccess(true)
+      setCurrentStep(3)
       } else {
         const errorMessage = response.message || "Payment failed. Please try again."
         toast.error(errorMessage)
@@ -452,7 +452,7 @@ export default function PayVenueBooking() {
                 <Button className="w-full" onClick={() => window.history.back()}>
                   Continue Adding Event Details
                 </Button>
-                <Button variant="outline" className="w-full bg-transparent" onClick={() => window.history.back()}>
+                <Button variant="ghost" className="w-full bg-transparent" onClick={() => window.history.back()}>
                   Cancel
                 </Button>
               </div>
@@ -793,7 +793,7 @@ export default function PayVenueBooking() {
                         placeholder="Enter amount to pay"
                         className="mt-1"
                       />
-                                             <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-gray-600 mt-1">
                          {bookingData?.paymentSummary ? (
                            <>
                              Total amount: {bookingData.pricing.totalAmount} Rwf<br />
@@ -810,7 +810,7 @@ export default function PayVenueBooking() {
                              </span>
                            </>
                          )}
-                       </p>
+                      </p>
                       {errors.amountPaid && <p className="text-sm text-red-500 mt-1">{errors.amountPaid}</p>}
                     </div>
                     <div className="p-4 bg-blue-50 rounded-lg">
@@ -996,48 +996,48 @@ export default function PayVenueBooking() {
 
                     <Separator />
 
-                                         <div className="space-y-2">
-                       <div className="flex justify-between text-sm">
-                         <span>Base Amount:</span>
-                         <span>{bookingData?.pricing.baseAmount} Rwf</span>
-                       </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Base Amount:</span>
+                        <span>{bookingData?.pricing.baseAmount} Rwf</span>
+                      </div>
                        {bookingData && (bookingData.pricing.discountPercent || 0) > 0 && (
-                         <div className="flex justify-between text-sm text-green-600">
+                        <div className="flex justify-between text-sm text-green-600">
                            <span>Discount ({(bookingData.pricing.discountPercent || 0)}%):</span>
                            <span>{bookingData.pricing.discountAmount || 0} Rwf</span>
-                         </div>
-                       )}
+                        </div>
+                      )}
                        {bookingData && (bookingData.pricing.taxPercent || 0) > 0 && (
-                         <div className="flex justify-between text-sm">
+                      <div className="flex justify-between text-sm">
                            <span>Tax ({(bookingData.pricing.taxPercent || 0)}%):</span>
                            <span>{bookingData.pricing.taxAmount || 0} Rwf</span>
-                         </div>
+                      </div>
                        )}
                        {((bookingData?.pricing.discountPercent || 0) > 0 || (bookingData?.pricing.taxPercent || 0) > 0) && (
-                         <Separator />
+                      <Separator />
                        )}
-                       <div className="flex justify-between font-bold text-lg">
-                         <span>Total Amount:</span>
-                         <span className="text-purple-600">{totalAmount} Rwf</span>
-                       </div>
-                     </div>
+                      <div className="flex justify-between font-bold text-lg">
+                        <span>Total Amount:</span>
+                        <span className="text-purple-600">{totalAmount} Rwf</span>
+                      </div>
+                    </div>
 
-                                         {paymentMethod === "installment" && (
-                       <>
-                         <Separator />
-                         <div className="space-y-2">
-                           <div className="text-sm font-medium">Payment Plan</div>
-                           <div className="flex justify-between text-sm">
-                             <span>Today:</span>
-                             <span className="font-semibold">{installmentPlan.firstPaymentAmount} Rwf</span>
-                           </div>
-                           <div className="flex justify-between text-sm">
-                             <span>Monthly ({installmentPlan.numberOfInstallments - 1}x):</span>
-                             <span>{installmentPlan.monthlyAmount} Rwf</span>
-                           </div>
-                         </div>
-                       </>
-                     )}
+                    {paymentMethod === "installment" && (
+                      <>
+                        <Separator />
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium">Payment Plan</div>
+                          <div className="flex justify-between text-sm">
+                            <span>Today:</span>
+                            <span className="font-semibold">{installmentPlan.firstPaymentAmount} Rwf</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Monthly ({installmentPlan.numberOfInstallments - 1}x):</span>
+                            <span>{installmentPlan.monthlyAmount} Rwf</span>
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                      {bookingData?.paymentSummary && (
                        <>
@@ -1124,28 +1124,28 @@ export default function PayVenueBooking() {
                <Card className="bg-white shadow-md border-2 border-gray-200">
                  <CardHeader className="bg-gray-50">
                    <CardTitle className="text-lg font-bold text-gray-800">Venue Highlights</CardTitle>
-                 </CardHeader>
+                </CardHeader>
                  <CardContent className="space-y-3 p-4">
                    
                    <div className="flex items-center gap-3 text-sm">
                      <Star className="h-5 w-5 text-yellow-500" />
                      <span className="font-medium">Premium venue with modern facilities</span>
-                   </div>
+                  </div>
                    <div className="flex items-center gap-3 text-sm">
                      <DollarSign className="h-5 w-5 text-green-500" />
                      <span className="font-medium">
                        {bookingData?.venue.basePrice?.toLocaleString()} Rwf/
                        {bookingData?.venue.bookingType === 'HOURLY' ? 'hour' : 'day'} base rate
                      </span>
-                   </div>
+                  </div>
                    {bookingData?.venue.amenities && bookingData.venue.amenities.length > 0 && (
                      <div className="flex items-center gap-3 text-sm">
                        <span className="text-gray-500">Amenities:</span>
                        <span className="font-medium">{bookingData.venue.amenities.slice(0, 3).join(', ')}</span>
-                     </div>
+                  </div>
                    )}
-                 </CardContent>
-               </Card>
+                </CardContent>
+              </Card>
             </Card>
 
             </div>
