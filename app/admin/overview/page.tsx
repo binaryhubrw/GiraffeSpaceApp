@@ -508,87 +508,6 @@ export default function AdminOverview() {
         </div>
       )}
 
-      {/* Recent Organizations Section */}
-      <div className="mb-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Building2 className="h-5 w-5 mr-2" />
-              Recent Organizations
-            </CardTitle>
-            <CardDescription>Recently created organizations</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-              {recentOrganizations.length > 0 ? (
-                recentOrganizations.map((org) => (
-                  <div
-                    key={org.id || org.organizationId}
-                    className="flex items-center justify-between p-3 border rounded-lg bg-white"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <Building2 className="h-5 w-5 text-blue-600" />
-                        <div>
-                          <p className="font-medium">{org.organizationName}</p>
-                          <p className="text-sm text-gray-600">
-                            Type: {org.organizationType}
-                            <br />
-                            Status: {org.status}
-                            <br />
-                            Created: {org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'Unknown'}
-                          </p>
-                          <div className="flex items-center gap-4 mt-1">
-                            <div className="flex items-center gap-1">
-                              <Mail className="h-3 w-3 text-gray-400" />
-                              <span className="text-xs text-gray-500">{org.contactEmail}</span>
-                            </div>
-                            {org.contactPhone && (
-                              <div className="flex items-center gap-1">
-                                <Phone className="h-3 w-3 text-gray-400" />
-                                <span className="text-xs text-gray-500">{org.contactPhone}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={org.status && org.status.toLowerCase() === "approved" ? "default" : org.status && org.status.toLowerCase() === "pending" ? "secondary" : "outline"}>
-                        {org.status}
-                      </Badge>
-                      <Link href={`/admin/organization/${org.id || org.organizationId}`}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex items-center gap-2"
-                        >
-                          <Eye className="w-4 h-4" />
-                          View
-                        </Button>
-                      </Link>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-center py-4">
-                  No recent organizations found
-                </p>
-              )}
-            </div>
-            {recentOrganizations.length > 0 && (
-              <div className="mt-4 text-center">
-                <Link href="/admin/organization">
-                  <Button variant="outline" size="sm">
-                    View All Organizations
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Pending Items with Countdowns */}
       <div className="grid md:grid-cols-2 gap-8 mb-8">
         {/* Pending Events */}
@@ -756,6 +675,87 @@ export default function AdminOverview() {
                 >
                   Next
                 </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Organizations Section */}
+      <div className="mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Building2 className="h-5 w-5 mr-2" />
+              Recent Organizations
+            </CardTitle>
+            <CardDescription>Recently created organizations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              {recentOrganizations.length > 0 ? (
+                recentOrganizations.map((org) => (
+                  <div
+                    key={org.id || org.organizationId}
+                    className="flex items-center justify-between p-3 border rounded-lg bg-white"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <Building2 className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <p className="font-medium">{org.organizationName}</p>
+                          <p className="text-sm text-gray-600">
+                            Type: {org.organizationType}
+                            <br />
+                            Status: {org.status}
+                            <br />
+                            Created: {org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'Unknown'}
+                          </p>
+                          <div className="flex items-center gap-4 mt-1">
+                            <div className="flex items-center gap-1">
+                              <Mail className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-500">{org.contactEmail}</span>
+                            </div>
+                            {org.contactPhone && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3 text-gray-400" />
+                                <span className="text-xs text-gray-500">{org.contactPhone}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={org.status && org.status.toLowerCase() === "approved" ? "default" : org.status && org.status.toLowerCase() === "pending" ? "secondary" : "outline"}>
+                        {org.status}
+                      </Badge>
+                      <Link href={`/admin/organization/${org.id || org.organizationId}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <Eye className="w-4 h-4" />
+                          View
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">
+                  No recent organizations found
+                </p>
+              )}
+            </div>
+            {recentOrganizations.length > 0 && (
+              <div className="mt-4 text-center">
+                <Link href="/admin/organization">
+                  <Button variant="outline" size="sm">
+                    View All Organizations
+                  </Button>
+                </Link>
               </div>
             )}
           </CardContent>
