@@ -1001,19 +1001,19 @@ export default function PayVenueBooking() {
                          <span>Base Amount:</span>
                          <span>{bookingData?.pricing.baseAmount} Rwf</span>
                        </div>
-                       {bookingData && bookingData.pricing.discountPercent > 0 && (
+                       {bookingData && (bookingData.pricing.discountPercent || 0) > 0 && (
                          <div className="flex justify-between text-sm text-green-600">
-                           <span>Discount ({bookingData.pricing.discountPercent}%):</span>
-                           <span>{bookingData.pricing.discountAmount} Rwf</span>
+                           <span>Discount ({(bookingData.pricing.discountPercent || 0)}%):</span>
+                           <span>{bookingData.pricing.discountAmount || 0} Rwf</span>
                          </div>
                        )}
-                       {bookingData && bookingData.pricing.taxPercent > 0 && (
+                       {bookingData && (bookingData.pricing.taxPercent || 0) > 0 && (
                          <div className="flex justify-between text-sm">
-                           <span>Tax ({bookingData?.pricing.taxPercent}%):</span>
-                           <span>{bookingData?.pricing.taxAmount} Rwf</span>
+                           <span>Tax ({(bookingData.pricing.taxPercent || 0)}%):</span>
+                           <span>{bookingData.pricing.taxAmount || 0} Rwf</span>
                          </div>
                        )}
-                       {(bookingData?.pricing.discountPercent > 0 || bookingData?.pricing.taxPercent > 0) && (
+                       {((bookingData?.pricing.discountPercent || 0) > 0 || (bookingData?.pricing.taxPercent || 0) > 0) && (
                          <Separator />
                        )}
                        <div className="flex justify-between font-bold text-lg">

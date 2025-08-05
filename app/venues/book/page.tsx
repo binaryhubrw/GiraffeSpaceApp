@@ -281,125 +281,58 @@ export default function CreateEventForm() {
   const handleSubmit = async (isDraft: boolean) => {
     setIsSubmitting(true)
     try {
-      // Validate required fields before sending
-      if (!formData.eventTitle?.trim()) {
-        toast.error("Event title is required")
-        return
-      }
-      if (!formData.eventType) {
-        toast.error("Event type is required")
-        return
-      }
-      if (!formData.venueId) {
-        toast.error("Venue is required")
-        return
-      }
-      if (!formData.description?.trim()) {
-        toast.error("Event description is required")
-        return
-      }
-      if (!formData.maxAttendees?.trim()) {
-        toast.error("Maximum attendees is required")
-        return
-      }
-      if (formData.dates.filter(date => date.trim()).length === 0) {
-        toast.error("At least one event date is required")
-        return
-      }
-
       // Prepare FormData
       const formDataToSend = new FormData();
-      formDataToSend.append("eventTitle", formData.eventTitle.trim());
+      formDataToSend.append("eventTitle", formData.eventTitle);
       formDataToSend.append("eventType", formData.eventType);
       formDataToSend.append("eventOrganizerId", selectedOrgId === "none" ? (user?.userId || "") : (selectedOrgId || user?.userId || ""));
       formDataToSend.append("venueId", formData.venueId);
-      formDataToSend.append("description", formData.description.trim());
-      formDataToSend.append("maxAttendees", formData.maxAttendees.trim());
+      formDataToSend.append("description", formData.description);
+      formDataToSend.append("maxAttendees", formData.maxAttendees);
       formDataToSend.append("isEntryPaid", String(formData.isEntryPaid));
-      formDataToSend.append("specialNotes", formData.specialNotes?.trim() || "");
-      formDataToSend.append("expectedGuests", formData.expectedGuests?.trim() || "");
-      formDataToSend.append("socialMediaLinks", formData.socialMediaLinks?.trim() || "");
-      
-      // Dates - ensure proper format
-      const validDates = formData.dates.filter((date) => date.trim()).map((date) => ({ date: date.trim() }));
-      if (validDates.length === 0) {
-        toast.error("At least one valid date is required")
-        return
-      }
-      formDataToSend.append("dates", JSON.stringify(validDates));
-      
+      formDataToSend.append("specialNotes", formData.specialNotes || "");
+      formDataToSend.append("expectedGuests", formData.expectedGuests || "");
+      formDataToSend.append("socialMediaLinks", formData.socialMediaLinks || "");
+      // Dates
+      formDataToSend.append("dates", JSON.stringify(formData.dates.filter((date) => date.trim()).map((date) => ({ date }))));
       // Event Photo
       if (formData.eventPhoto && typeof formData.eventPhoto !== "string") {
         formDataToSend.append("eventPhoto", formData.eventPhoto);
       }
-      
-      // Guests - ensure proper format
-      const guestsData = formData.guests
-        .filter((guest) => guest.guestName.trim())
-        .map((guest, i) => {
-          if (guest.guestPhoto && typeof guest.guestPhoto !== "string") {
-            formDataToSend.append("guestPhotos", guest.guestPhoto);
-            return { ...guest, guestPhoto: undefined };
-          }
-          return guest;
-        });
-      formDataToSend.append("guests", JSON.stringify(guestsData));
-      
-      console.log("Sending event data:", {
-        eventTitle: formData.eventTitle,
-        eventType: formData.eventType,
-        eventOrganizerId: selectedOrgId === "none" ? (user?.userId || "") : (selectedOrgId || user?.userId || ""),
-        venueId: formData.venueId,
-        description: formData.description,
-        maxAttendees: formData.maxAttendees,
-        dates: validDates,
-        guests: guestsData
+      // Guests
+      const guestsData = formData.guests.map((guest, i) => {
+        if (guest.guestPhoto && typeof guest.guestPhoto !== "string") {
+          formDataToSend.append("guestPhotos", guest.guestPhoto);
+          return { ...guest, guestPhoto: undefined };
+        }
+        return guest;
       });
+      formDataToSend.append("guests", JSON.stringify(guestsData.filter((guest) => guest.guestName.trim())));
       
       const response = await ApiService.createEvent(formDataToSend)
+      toast.success("Event created successfully!")
       
-      if (response.success) {
-        toast.success("Event created successfully!")
+      // Extract booking ID from the response
+      const bookingId = response.data?.venueBookings?.[0]?.bookingId
+      
+      if (bookingId) {
+        // Store the response data in context
+        setBookingData({
+          event: response.data.event,
+          eventVenues: response.data.eventVenues,
+          venueBookings: response.data.venueBookings,
+          eventGuests: response.data.eventGuests
+        })
         
-        // Extract booking ID from the response
-        const bookingId = response.data?.venueBookings?.[0]?.bookingId
-        
-        if (bookingId) {
-          // Store the response data in context
-          setBookingData({
-            event: response.data.event,
-            eventVenues: response.data.eventVenues,
-            venueBookings: response.data.venueBookings,
-            eventGuests: response.data.eventGuests
-          })
-          
-          // Navigate to payment page with booking ID
-          router.push(`/venues/book/payment/${bookingId}`)
-        } else {
-          // Fallback to venue ID if booking ID is not available
-          router.push(`/venues/book/payment/${formData.venueId}`)
-        }
+        // Navigate to payment page with booking ID
+        router.push(`/venues/book/payment/${bookingId}`)
       } else {
-        toast.error(response.message || "Failed to create event")
+        // Fallback to venue ID if booking ID is not available
+        router.push(`/venues/book/payment/${formData.venueId}`)
       }
     } catch (err: any) {
-      console.error("Error creating event:", err);
-      console.error("Error response:", err?.response);
-      console.error("Error data:", err?.response?.data);
-      
-      // More detailed error handling
-      if (err?.response?.status === 400) {
-        const errorMessage = err?.response?.data?.message || "Invalid data provided. Please check your input."
-        toast.error(errorMessage)
-      } else if (err?.response?.status === 401) {
-        toast.error("Authentication failed. Please login again.")
-      } else if (err?.response?.status === 403) {
-        toast.error("You don't have permission to create events.")
-      } else if (err?.response?.status >= 500) {
-        toast.error("Server error. Please try again later.")
-      } else {
-        toast.error(err?.response?.data?.message || "Failed to create event. Please try again.")
-      }
+      console.error("Error creating event:", err?.response);
+      toast.error(err?.response?.data?.message || "Failed to create event")
     } finally {
       setIsSubmitting(false)
     }
