@@ -2,10 +2,20 @@
 
 import Link from "next/link"
 import { useState, useEffect } from "react"
-import { Menu, X, ChevronDown, LogOut, Calendar, MapPin, Shield } from "lucide-react"
+import { Menu, X, ChevronDown, LogOut, Calendar, MapPin, Shield, Building } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { Button } from "./button"
+import { useUserOrganizations } from "@/hooks/useUserOrganizations"
+import ApiService from "@/api/apiConfig"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface HeaderProps {
   activePage?: string
@@ -16,8 +26,13 @@ export function Header({ activePage }: HeaderProps) {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isManageMenuOpen, setIsManageMenuOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [showOrganizationDialog, setShowOrganizationDialog] = useState(false)
+  const [showBookingCheckDialog, setShowBookingCheckDialog] = useState(false)
   const { isLoggedIn, user, logout } = useAuth()
   const router = useRouter()
+  
+  // Get user organizations
+  const { organizations, loading: orgLoading } = useUserOrganizations(user?.userId)
 
   // Set mounted state after component mounts
   useEffect(() => {
@@ -49,6 +64,65 @@ export function Header({ activePage }: HeaderProps) {
   const handleLogout = () => {
     logout()
     setIsUserMenuOpen(false)
+    router.push("/")
+  }
+
+  const handleManageVenuesClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsManageMenuOpen(false)
+    
+    // Check if user has organizations
+    if (organizations.length === 0) {
+      setShowOrganizationDialog(true)
+    } else {
+      router.push("/manage/venues/dashboard")
+    }
+  }
+
+  const handleCreateOrganization = () => {
+    setShowOrganizationDialog(false)
+    router.push("/my-organizations")
+  }
+
+  const handleCancelOrganization = () => {
+    setShowOrganizationDialog(false)
+    router.push("/")
+  }
+
+  const handleManageEventsClick = async (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsManageMenuOpen(false)
+    
+    // Check if user exists and has userId
+    if (!user?.userId) {
+     
+      return
+    }
+    
+    try {
+      
+      const response = await ApiService.getBookingByUserId(user.userId)
+       console.log("Booking response:", response)
+      
+      if (!response.data?.bookings || response.data.bookings.length === 0) {
+        setShowBookingCheckDialog(true)
+      } else {
+        router.push("/user-dashboard")
+      }
+    } catch (error) {
+      console.error("Error checking bookings:", error)
+      // If there's an error, still allow navigation to dashboard
+      router.push("/user-dashboard")
+    }
+  }
+
+  const handleCreateBooking = () => {
+    setShowBookingCheckDialog(false)
+    router.push("/venues")
+  }
+
+  const handleCancelBookingCheck = () => {
+    setShowBookingCheckDialog(false)
     router.push("/")
   }
 
@@ -143,22 +217,20 @@ export function Header({ activePage }: HeaderProps) {
                         Admin Dashboard
                       </Link>
                     )}
-                    <Link
-                      href="/user-dashboard"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setIsManageMenuOpen(false)}
-                    >
-                      <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                      Manage Events
-                    </Link>
-                    <Link
-                      href="/manage/venues/dashboard"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setIsManageMenuOpen(false)}
+                                         <button
+                       onClick={handleManageEventsClick}
+                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                     >
+                       <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                       Manage Events
+                     </button>
+                    <button
+                      onClick={handleManageVenuesClick}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       <MapPin className="h-4 w-4 mr-2 text-gray-500" />
                       Manage Venues
-                    </Link>
+                    </button>
                   </div>
                 </div>
               )}
@@ -287,15 +359,6 @@ export function Header({ activePage }: HeaderProps) {
                 >
                   Venues
                 </Link>
-                <Link
-                  href="/organizers"
-                  className={`text-sm font-medium ${
-                    activePage === "organizers" ? "text-blue-600" : "text-gray-600 hover:text-gray-900"
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Organizers
-                </Link>
                 {/* <Link
                   href="/dashboard"
                   className={`text-sm font-medium ${
@@ -321,22 +384,54 @@ export function Header({ activePage }: HeaderProps) {
                             Admin Dashboard
                           </Link>
                         )}
-                        <Link
-                          href="/user-dashboard"
-                          className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-                          onClick={() => setIsMenuOpen(false)}
-                        >
-                          <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                          User Dashboard
-                        </Link>
-                        <Link
-                          href="/manage/venues/dashboard"
-                          className="flex items-center text-sm text-gray-600 hover:text-gray-900"
-                          onClick={() => setIsMenuOpen(false)}
+                                                 <button
+                                                       onClick={async (e) => {
+                              e.preventDefault()
+                              setIsMenuOpen(false)
+                              
+                              // Check if user exists and has userId
+                              if (!user?.userId) {
+                                console.error("User ID not available")
+                                // Don't navigate to dashboard if user ID is not available
+                                return
+                              }
+                              
+                              try {
+                                // Get user's bookings
+                                const response = await ApiService.getBookingByUserId(user.userId)
+                                
+                                // Check if there are any bookings
+                                if (!response.data?.bookings || response.data.bookings.length === 0) {
+                                  setShowBookingCheckDialog(true)
+                                } else {
+                                  router.push("/user-dashboard")
+                                }
+                              } catch (error) {
+                                console.error("Error checking bookings:", error)
+                                // If there's an error, still allow navigation to dashboard
+                                router.push("/user-dashboard")
+                              }
+                            }}
+                           className="flex items-center w-full text-sm text-gray-600 hover:text-gray-900"
+                         >
+                           <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                           User Dashboard
+                         </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            setIsMenuOpen(false)
+                            if (organizations.length === 0) {
+                              setShowOrganizationDialog(true)
+                            } else {
+                              router.push("/manage/venues/dashboard")
+                            }
+                          }}
+                          className="flex items-center w-full text-sm text-gray-600 hover:text-gray-900"
                         >
                           <MapPin className="h-4 w-4 mr-2 text-gray-500" />
                           Manage Venues
-                        </Link>
+                        </button>
                       </div>
                     </div>
                     <div className="pt-4 border-t">
@@ -421,6 +516,64 @@ export function Header({ activePage }: HeaderProps) {
           </div>
         )}
       </div>
-    </header>
-  )
-}
+
+      {/* Organization Creation Dialog */}
+      <Dialog open={showOrganizationDialog} onOpenChange={setShowOrganizationDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5 text-blue-600" />
+              Organization Required
+            </DialogTitle>
+            <DialogDescription>
+              You need to create an organization before you manage venues. 
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+                                                                                                       <button
+                 onClick={handleCancelOrganization}
+                 className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
+               >
+                 Cancel
+               </button>
+            <Button
+              onClick={handleCreateOrganization}
+              className="flex-1"
+            >
+              Create New Organization
+            </Button>
+                     </DialogFooter>
+         </DialogContent>
+       </Dialog>
+
+       {/* Booking Check Dialog */}
+       <Dialog open={showBookingCheckDialog} onOpenChange={setShowBookingCheckDialog}>
+         <DialogContent className="sm:max-w-md">
+           <DialogHeader>
+                           <DialogTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                No Bookings Found
+              </DialogTitle>
+                             <DialogDescription>
+                 You have to create booking before you manage event.
+               </DialogDescription>
+           </DialogHeader>
+           <DialogFooter className="flex gap-2">
+             <button
+               onClick={handleCancelBookingCheck}
+               className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
+             >
+               Cancel
+             </button>
+                           <Button
+                onClick={handleCreateBooking}
+                className="flex-1"
+              >
+                Create Booking
+              </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
+     </header>
+   )
+ }
