@@ -100,10 +100,10 @@ export function Header({ activePage }: HeaderProps) {
     }
     
     try {
-      // Get user's bookings
+      
       const response = await ApiService.getBookingByUserId(user.userId)
        console.log("Booking response:", response)
-      // Check if there are any bookings
+      
       if (!response.data?.bookings || response.data.bookings.length === 0) {
         setShowBookingCheckDialog(true)
       } else {
