@@ -20,6 +20,10 @@ import {
   Filter,
   Settings,
   Eye,
+  Building2,
+  Users,
+  Mail,
+  Phone,
 } from "lucide-react";
 import ApiService from "@/api/apiConfig";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +54,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 // Chart configuration
 const chartConfig: ChartConfig = {
@@ -63,10 +68,26 @@ const chartConfig: ChartConfig = {
   },
 };
 
+interface Organization {
+  id: string;
+  organizationId?: string;
+  organizationName: string;
+  description: string;
+  contactEmail: string;
+  contactPhone: string;
+  address: string;
+  organizationType: string;
+  status: string;
+  isEnabled: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export default function AdminOverview() {
   const { toast } = useToast();
   const [events, setEvents] = useState<any[]>([]);
   const [venues, setVenues] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -97,8 +118,12 @@ export default function AdminOverview() {
     if (!autoRefresh) return;
 
     const refreshTimer = setInterval(() => {
-      Promise.all([ApiService.getAllEvents(), ApiService.getAllVenueAdminOnly()])
-        .then(([eventsRes, venuesRes]) => {
+      Promise.all([
+        ApiService.getAllEvents(), 
+        ApiService.getAllVenueAdminOnly(),
+        ApiService.getAllOrganization()
+      ])
+        .then(([eventsRes, venuesRes, orgsRes]) => {
           // Handle events response
           if (eventsRes.success && eventsRes.data) {
             setEvents(eventsRes.data);
@@ -107,6 +132,11 @@ export default function AdminOverview() {
           // Handle venues response
           if (venuesRes.success && venuesRes.data) {
             setVenues(venuesRes.data);
+          }
+
+          // Handle organizations response
+          if (orgsRes.success && orgsRes.data) {
+            setOrganizations(orgsRes.data);
           }
         })
         .catch((err) => {
@@ -120,10 +150,15 @@ export default function AdminOverview() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    Promise.all([ApiService.getAllEvents(), ApiService.getAllVenueAdminOnly()])
-      .then(([eventsRes, venuesRes]) => {
+    Promise.all([
+      ApiService.getAllEvents(), 
+      ApiService.getAllVenueAdminOnly(),
+      ApiService.getAllOrganization()
+    ])
+      .then(([eventsRes, venuesRes, orgsRes]) => {
         console.log("Events API Response:", eventsRes);
         console.log("Venues API Response:", venuesRes);
+        console.log("Organizations API Response:", orgsRes);
         
         // Handle events response
         if (eventsRes.success && eventsRes.data) {
@@ -140,12 +175,20 @@ export default function AdminOverview() {
           console.error("Failed to fetch venues:", venuesRes);
           setVenues([]);
         }
+
+        // Handle organizations response
+        if (orgsRes.success && orgsRes.data) {
+          setOrganizations(orgsRes.data);
+        } else {
+          console.error("Failed to fetch organizations:", orgsRes);
+          setOrganizations([]);
+        }
         
         // Show success message
-        if (eventsRes.success && venuesRes.success) {
+        if (eventsRes.success && venuesRes.success && orgsRes.success) {
           toast({
             title: "Data Loaded",
-            description: `Loaded ${eventsRes.data?.length || 0} events and ${venuesRes.data?.length || 0} venues successfully.`,
+            description: `Loaded ${eventsRes.data?.length || 0} events, ${venuesRes.data?.length || 0} venues, and ${orgsRes.data?.length || 0} organizations successfully.`,
           });
         }
       })
@@ -163,6 +206,16 @@ export default function AdminOverview() {
   const pendingVenues = venues.filter(
     (venue) => venue.status?.toUpperCase?.() === "PENDING"
   );
+
+  // Get recent organizations (last 5 created)
+  const recentOrganizations = organizations
+    .filter(org => org.createdAt) // Only include organizations with creation date
+    .sort((a, b) => {
+      const dateA = new Date(a.createdAt || '');
+      const dateB = new Date(b.createdAt || '');
+      return dateB.getTime() - dateA.getTime(); // Sort by newest first
+    })
+    .slice(0, 5); // Get only the 5 most recent
 
   // Date filtering functions
   const isWithinDateRange = (dateString: string, filterType: string) => {
@@ -349,6 +402,7 @@ export default function AdminOverview() {
   const stats = {
     totalEvents: events.length,
     totalVenues: venues.length,
+    totalOrganizations: organizations.length,
     pendingApprovals: pendingEvents.length + pendingVenues.length,
     approvedEvents: events.filter(
       (event) => event.eventStatus === "APPROVED"
@@ -373,7 +427,7 @@ export default function AdminOverview() {
       <h2 className="text-2xl font-bold mb-4">Admin Overview</h2>
       {/* Statistics Cards */}
       {showStatistics && (
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-6 mb-8">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -393,6 +447,17 @@ export default function AdminOverview() {
                   <p className="text-2xl font-bold">{stats.totalVenues}</p>
                 </div>
                 <MapPin className="h-8 w-8 text-blue-600" />
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">Total Organizations</p>
+                  <p className="text-2xl font-bold">{stats.totalOrganizations}</p>
+                </div>
+                <Building2 className="h-8 w-8 text-blue-600" />
               </div>
             </CardContent>
           </Card>
@@ -442,6 +507,87 @@ export default function AdminOverview() {
           </Card>
         </div>
       )}
+
+      {/* Recent Organizations Section */}
+      <div className="mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Building2 className="h-5 w-5 mr-2" />
+              Recent Organizations
+            </CardTitle>
+            <CardDescription>Recently created organizations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+              {recentOrganizations.length > 0 ? (
+                recentOrganizations.map((org) => (
+                  <div
+                    key={org.id || org.organizationId}
+                    className="flex items-center justify-between p-3 border rounded-lg bg-white"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <Building2 className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <p className="font-medium">{org.organizationName}</p>
+                          <p className="text-sm text-gray-600">
+                            Type: {org.organizationType}
+                            <br />
+                            Status: {org.status}
+                            <br />
+                            Created: {org.createdAt ? new Date(org.createdAt).toLocaleDateString() : 'Unknown'}
+                          </p>
+                          <div className="flex items-center gap-4 mt-1">
+                            <div className="flex items-center gap-1">
+                              <Mail className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-500">{org.contactEmail}</span>
+                            </div>
+                            {org.contactPhone && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3 text-gray-400" />
+                                <span className="text-xs text-gray-500">{org.contactPhone}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={org.status && org.status.toLowerCase() === "approved" ? "default" : org.status && org.status.toLowerCase() === "pending" ? "secondary" : "outline"}>
+                        {org.status}
+                      </Badge>
+                      <Link href={`/admin/organization/${org.id || org.organizationId}`}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-2"
+                        >
+                          <Eye className="w-4 h-4" />
+                          View
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500 text-center py-4">
+                  No recent organizations found
+                </p>
+              )}
+            </div>
+            {recentOrganizations.length > 0 && (
+              <div className="mt-4 text-center">
+                <Link href="/admin/organization">
+                  <Button variant="outline" size="sm">
+                    View All Organizations
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Pending Items with Countdowns */}
       <div className="grid md:grid-cols-2 gap-8 mb-8">
