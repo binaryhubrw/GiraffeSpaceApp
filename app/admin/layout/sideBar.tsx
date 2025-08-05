@@ -6,12 +6,6 @@ import { useRouter, usePathname } from "next/navigation"
 
 const sidebarItems = [
   { id: "overview", label: "Overview", icon: Home, href: "/admin/overview" },
-  { id: "events", label: "Events", icon: Calendar, href: "/admin/events" },
-  { id: "registration", label: "Registration", icon: ClipboardList, href: "/admin/registration" },
-  { id: "ticket", label: "Ticket", icon: Ticket, href: "/admin/ticket" },
-  { id: "venues", label: "Venues", icon: MapPin, href: "/admin/venues" },
-  { id: "venueBooking", label: "Venue Booking", icon: Building2, href: "/admin/venuebooking" },
-  { id: "resource", label: "Resource", icon: Layers, href: "/admin/resource" },
   // Finance Dropdown
   { id: "finance", label: "Finance", icon: DollarSign, children: [
     { id: "payment", label: "Payment", icon: DollarSign, href: "/admin/payment" },
