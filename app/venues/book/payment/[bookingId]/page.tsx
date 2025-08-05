@@ -49,6 +49,15 @@ interface VenueBookingData {
     basePrice: number
     bookingType: string
     amenities: string[]
+    depositRequired?: {
+      percentage: number
+      amount: number
+      description: string
+    }
+    paymentCompletionRequired?: {
+      daysBeforeEvent: number
+      deadline: string
+    }
   }
   organizer: {
     firstName: string
@@ -64,6 +73,17 @@ interface VenueBookingData {
     taxPercent: number
     taxAmount: number
     totalAmount: number
+  }
+  paymentSummary?: {
+    totalAmount: number
+    depositAmount: number
+    totalPaid: number
+    remainingAmount: number
+    paymentStatus: string
+    paymentProgress: string
+    depositStatus: string
+    nextPaymentDue: number
+    paymentDeadline: string
   }
   bookingStatus: string
   createdAt: string
@@ -197,49 +217,56 @@ export default function PayVenueBooking() {
           }
         }
         
-        // Fallback to mock data if context data is not available
-        await new Promise((resolve) => setTimeout(resolve, 1000)) // Simulate loading
-// Mock venue booking data
-        setBookingData({
-  bookingId: "fcdc9e82-b0f6-481b-b9e8-3cb77667a6e5",
-  eventId: "980ed166-1202-4807-839c-386212d75dbf",
-  venueId: "eda25e91-ff83-4cbb-8ef6-d90503eb77a2",
-  eventTitle: "Tech Innovation Summit 2025",
-  bookingDates: [{ date: "2025-08-30" }, { date: "2025-08-31" }],
-  bookingReason: "CONFERENCE",
-  venue: {
-    venueName: "Virunga Tents",
-    description: "Premium venue perfect for conferences, meetings, and corporate events with modern facilities",
-    capacity: 1002,
-    venueLocation: "Nyarugenge, Kigali",
-    mainPhotoUrl:
-      "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082307/venues/main_photos/y6tbsfzxqouvd3v8lmcq.jpg",
-    photoGallery: [
-      "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082309/venues/gallery/l3t9thji8ahdbh8kxmxu.jpg",
-      "https://res.cloudinary.com/di5ntdtyl/image/upload/v1753082310/venues/gallery/uo5frltdutjxbrwijgem.jpg",
-    ],
-    basePrice: 2500,
-    bookingType: "DAILY",
-    amenities: ["WiFi", "Projector", "Sound System", "Catering", "Parking", "AC"],
-  },
-  organizer: {
-            firstName: "John",
-            lastName: "Doe",
-            email: "john.doe@example.com",
-            phoneNumber: "+1234567890",
-            organization: "Tech Corp",
-  },
-  pricing: {
-    baseAmount: 5000, // 2 days × $2500
-    discountPercent: 10,
-    discountAmount: 500,
-    taxPercent: 18,
-    taxAmount: 810, // (5000 - 500) × 0.18
-    totalAmount: 5310,
-  },
-  bookingStatus: "PENDING_PAYMENT",
-  createdAt: "2025-07-22T23:41:22.379Z",
-        })
+        // Fetch real booking data from API
+        const response = await ApiService.getBookingById(bookingId)
+        
+        if (response.success && response.data) {
+          const apiData = response.data
+          
+                     // Transform API data to match the expected format
+           const transformedData: VenueBookingData = {
+             bookingId: apiData.bookingId,
+             eventId: apiData.eventDetails.eventId,
+             venueId: apiData.venue.venueId,
+             eventTitle: apiData.eventDetails.eventName,
+             bookingDates: apiData.bookingDates,
+             bookingReason: apiData.eventDetails.eventType,
+             venue: {
+               venueName: apiData.venue.venueName,
+               description: apiData.eventDetails.eventDescription || "",
+               capacity: 0, // Not provided in API response, using default
+               venueLocation: apiData.venue.location,
+               mainPhotoUrl: apiData.venue.mainPhotoUrl,
+               photoGallery: apiData.venue.photoGallery || [],
+               basePrice: apiData.venue.baseAmount,
+               bookingType: apiData.venue.bookingType,
+               amenities: [], // Not provided in API response
+               depositRequired: apiData.venue.depositRequired,
+               paymentCompletionRequired: apiData.venue.paymentCompletionRequired
+             },
+             organizer: {
+               firstName: apiData.requester.firstName,
+               lastName: apiData.requester.lastName,
+               email: apiData.requester.email,
+               phoneNumber: apiData.requester.phoneNumber
+             },
+             pricing: {
+               baseAmount: apiData.venue.totalAmount,
+               discountPercent: 0,
+               discountAmount: 0,
+               taxPercent: 0,
+               taxAmount: 0,
+               totalAmount: apiData.paymentSummary.totalAmount
+             },
+             paymentSummary: apiData.paymentSummary,
+             bookingStatus: apiData.bookingStatus,
+             createdAt: apiData.createdAt
+           }
+          
+          setBookingData(transformedData)
+        } else {
+          setError("Failed to load booking data")
+        }
       } catch (err) {
         setError("Failed to load booking data")
         console.error("Error fetching booking:", err)
@@ -289,13 +316,16 @@ export default function PayVenueBooking() {
             newErrors.installments = "Number of installments must be between 2 and 12"
           }
         }
-        if (paymentMethod === "mobile") {
-          if (!amountPaid || amountPaid <= 0) {
-            newErrors.amountPaid = "Please enter a valid amount to pay"
-          } else if (amountPaid > (bookingData?.pricing.totalAmount || 0)) {
-            newErrors.amountPaid = "Amount cannot exceed the total amount due"
-          }
-        }
+                 if (paymentMethod === "mobile") {
+           if (!amountPaid || amountPaid <= 0) {
+             newErrors.amountPaid = "Please enter a valid amount to pay"
+           } else {
+             const maxAmount = bookingData?.paymentSummary?.remainingAmount || bookingData?.pricing.totalAmount || 0
+             if (amountPaid > maxAmount) {
+               newErrors.amountPaid = `Amount cannot exceed ${maxAmount} Rwf`
+             }
+           }
+         }
         break
     }
 
@@ -321,13 +351,14 @@ export default function PayVenueBooking() {
 
     try {
       const paymentData = {
-        amountPaid: paymentMethod === "mobile" ? amountPaid : bookingData?.pricing.totalAmount,
+        amountPaid: paymentMethod === "mobile" ? amountPaid : (bookingData?.paymentSummary?.remainingAmount || bookingData?.pricing.totalAmount),
         paymentMethod: paymentMethod === "mobile" ? "MOBILE_MONEY" : paymentMethod.toUpperCase(),
         paymentDetails: paymentMethod === "card" ? cardDetails : {},
         installmentPlan: paymentMethod === "installment" ? installmentPlan : null,
         specialInstructions,
         totalAmount: bookingData?.pricing.totalAmount,
         paymentType: "VENUE_BOOKING",
+        notes: specialInstructions || "Payment processed through venue booking system"
       }
 
       console.log("Processing venue booking payment:", paymentData)
@@ -337,8 +368,8 @@ export default function PayVenueBooking() {
 
       if (response.success) {
         toast.success("Payment processed successfully!")
-      setSuccess(true)
-      setCurrentStep(3)
+        setSuccess(true)
+        setCurrentStep(3)
       } else {
         const errorMessage = response.message || "Payment failed. Please try again."
         toast.error(errorMessage)
@@ -419,10 +450,10 @@ export default function PayVenueBooking() {
               </div>
               <div className="space-y-2">
                 <Button className="w-full" onClick={() => window.history.back()}>
-                  Back to Event
+                  Continue Adding Event Details
                 </Button>
-                <Button variant="outline" className="w-full bg-transparent">
-                  Download Receipt
+                <Button variant="outline" className="w-full bg-transparent" onClick={() => window.history.back()}>
+                  Cancel
                 </Button>
               </div>
             </CardContent>
@@ -762,9 +793,24 @@ export default function PayVenueBooking() {
                         placeholder="Enter amount to pay"
                         className="mt-1"
                       />
-                      <p className="text-sm text-gray-600 mt-1">
-                        Total amount due: {bookingData?.pricing.totalAmount} Rwf
-                      </p>
+                                             <p className="text-sm text-gray-600 mt-1">
+                         {bookingData?.paymentSummary ? (
+                           <>
+                             Total amount: {bookingData.pricing.totalAmount} Rwf<br />
+                             Remaining amount: {bookingData.paymentSummary.remainingAmount} Rwf
+                           </>
+                         ) : (
+                           `Total amount due: ${bookingData?.pricing.totalAmount} Rwf`
+                         )}
+                         {bookingData?.venue.depositRequired && (
+                           <>
+                             <br />
+                             <span className="text-blue-600 font-medium">
+                               Deposit required: {bookingData.venue.depositRequired.amount} Rwf ({bookingData.venue.depositRequired.percentage}%)
+                             </span>
+                           </>
+                         )}
+                       </p>
                       {errors.amountPaid && <p className="text-sm text-red-500 mt-1">{errors.amountPaid}</p>}
                     </div>
                     <div className="p-4 bg-blue-50 rounded-lg">
@@ -777,6 +823,14 @@ export default function PayVenueBooking() {
                       <p className="text-sm text-gray-600 mt-2">
                         You will receive a prompt on your mobile device to complete the payment.
                       </p>
+                      {bookingData?.venue.depositRequired && (
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-sm text-blue-800">
+                            <strong>Note:</strong> A deposit of {bookingData.venue.depositRequired.amount} Rwf ({bookingData.venue.depositRequired.percentage}%) is required to confirm your booking. 
+                            The remaining amount must be paid {bookingData.venue.paymentCompletionRequired?.daysBeforeEvent || 2} days before the event.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -807,6 +861,14 @@ export default function PayVenueBooking() {
         return null
     }
   }
+
+  const getTotalAmount = () => {
+    if (!bookingData) return 0;
+    // Use the pre-calculated total amount from the pricing structure
+    // which already includes base amount, discount, and tax
+    return bookingData.pricing.totalAmount || 0;
+  };
+  const totalAmount = getTotalAmount();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -890,7 +952,7 @@ export default function PayVenueBooking() {
 
             {/* Payment Summary Sidebar */}
             <div className="space-y-6">
-              <Card className="sticky top-6">
+              <Card className="sticky top-6 z-20">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Building className="h-5 w-5" />
@@ -934,43 +996,115 @@ export default function PayVenueBooking() {
 
                     <Separator />
 
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Base Amount:</span>
-                        <span>{bookingData?.pricing.baseAmount} Rwf</span>
-                      </div>
-                      {bookingData && bookingData.pricing.discountPercent > 0 && (
-                        <div className="flex justify-between text-sm text-green-600">
-                          <span>Discount ({bookingData.pricing.discountPercent}%):</span>
-                          <span>{bookingData.pricing.discountAmount} RWf</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-sm">
-                        <span>Tax ({bookingData?.pricing.taxPercent}%):</span>
-                        <span>{bookingData?.pricing.taxAmount} Rwf</span>
-                      </div>
-                      <Separator />
-                      <div className="flex justify-between font-bold text-lg">
-                        <span>Total Amount:</span>
-                        <span className="text-purple-600">{bookingData?.pricing.totalAmount} Rwf</span>
-                      </div>
-                    </div>
+                                         <div className="space-y-2">
+                       <div className="flex justify-between text-sm">
+                         <span>Base Amount:</span>
+                         <span>{bookingData?.pricing.baseAmount} Rwf</span>
+                       </div>
+                       {bookingData && bookingData.pricing.discountPercent > 0 && (
+                         <div className="flex justify-between text-sm text-green-600">
+                           <span>Discount ({bookingData.pricing.discountPercent}%):</span>
+                           <span>{bookingData.pricing.discountAmount} Rwf</span>
+                         </div>
+                       )}
+                       {bookingData && bookingData.pricing.taxPercent > 0 && (
+                         <div className="flex justify-between text-sm">
+                           <span>Tax ({bookingData?.pricing.taxPercent}%):</span>
+                           <span>{bookingData?.pricing.taxAmount} Rwf</span>
+                         </div>
+                       )}
+                       {(bookingData?.pricing.discountPercent > 0 || bookingData?.pricing.taxPercent > 0) && (
+                         <Separator />
+                       )}
+                       <div className="flex justify-between font-bold text-lg">
+                         <span>Total Amount:</span>
+                         <span className="text-purple-600">{totalAmount} Rwf</span>
+                       </div>
+                     </div>
 
-                    {paymentMethod === "installment" && (
-                      <>
-                        <Separator />
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium">Payment Plan</div>
-                          <div className="flex justify-between text-sm">
-                            <span>Today:</span>
-                            <span className="font-semibold">{installmentPlan.firstPaymentAmount} Rwf</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Monthly ({installmentPlan.numberOfInstallments - 1}x):</span>
-                            <span>{installmentPlan.monthlyAmount} Rwf</span>
-                          </div>
-                        </div>
-                      </>
+                                         {paymentMethod === "installment" && (
+                       <>
+                         <Separator />
+                         <div className="space-y-2">
+                           <div className="text-sm font-medium">Payment Plan</div>
+                           <div className="flex justify-between text-sm">
+                             <span>Today:</span>
+                             <span className="font-semibold">{installmentPlan.firstPaymentAmount} Rwf</span>
+                           </div>
+                           <div className="flex justify-between text-sm">
+                             <span>Monthly ({installmentPlan.numberOfInstallments - 1}x):</span>
+                             <span>{installmentPlan.monthlyAmount} Rwf</span>
+                           </div>
+                         </div>
+                       </>
+                     )}
+
+                     {bookingData?.paymentSummary && (
+                       <>
+                         <Separator />
+                         <div className="space-y-2">
+                           <div className="text-sm font-medium">Payment Progress</div>
+                           <div className="flex justify-between text-sm">
+                             <span>Total Paid:</span>
+                             <span className="text-green-600">{bookingData.paymentSummary.totalPaid} Rwf</span>
+                           </div>
+                           <div className="flex justify-between text-sm">
+                             <span>Remaining:</span>
+                             <span className="text-orange-600">{bookingData.paymentSummary.remainingAmount} Rwf</span>
+                           </div>
+                           <div className="flex justify-between text-sm">
+                             <span>Progress:</span>
+                             <span className="font-semibold">{bookingData.paymentSummary.paymentProgress}</span>
+                           </div>
+                         </div>
+                       </>
+                     )}
+
+                     {bookingData?.venue.depositRequired && (
+                       <>
+                         <Separator />
+                         <div className="space-y-2">
+                           <div className="text-sm font-medium text-blue-600">Deposit Requirements</div>
+                           <div className="flex justify-between text-sm">
+                             <span>Deposit Percentage:</span>
+                             <span className="font-semibold">{bookingData.venue.depositRequired.percentage}%</span>
+                           </div>
+                           <div className="flex justify-between text-sm">
+                             <span>Deposit Amount:</span>
+                             <span className="font-semibold text-blue-600">{bookingData.venue.depositRequired.amount} Rwf</span>
+                           </div>
+                           <div className="text-xs text-gray-600 mt-1">
+                             {bookingData.venue.depositRequired.description}
+                           </div>
+                         </div>
+                       </>
+                     )}
+
+                     {bookingData?.venue.paymentCompletionRequired && (
+                       <>
+                         <Separator />
+                         <div className="space-y-2">
+                           <div className="text-sm font-medium text-orange-600">Payment Deadline</div>
+                           <div className="flex justify-between text-sm">
+                             <span>Complete Payment:</span>
+                             <span className="font-semibold">{bookingData.venue.paymentCompletionRequired.daysBeforeEvent} days before event</span>
+                           </div>
+                           <div className="flex justify-between text-sm">
+                             <span>Deadline:</span>
+                             <span className="font-semibold text-orange-600">
+                               {new Date(bookingData.venue.paymentCompletionRequired.deadline).toLocaleDateString('en-US', { 
+                                 weekday: 'short', 
+                                 year: 'numeric', 
+                                 month: 'short', 
+                                 day: 'numeric' 
+                               })}
+                             </span>
+                           </div>
+                         </div>
+                       </>
+                     )}
+                    {bookingData?.venue.bookingType === 'HOURLY' && (
+                      <div className="text-xs text-red-500">Hourly booking: number of hours not specified, using 1 hour as default.</div>
                     )}
                   </div>
 
@@ -985,28 +1119,35 @@ export default function PayVenueBooking() {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
 
-              {/* Venue Quick Info */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Venue Highlights</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users className="h-4 w-4 text-gray-500" />
-                    <span>Capacity: {bookingData?.venue.capacity} people</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Star className="h-4 w-4 text-gray-500" />
-                    <span>Premium venue with modern facilities</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <DollarSign className="h-4 w-4 text-gray-500" />
-                    <span>{bookingData?.venue.basePrice} Rwf/day base rate</span>
-                  </div>
-                </CardContent>
-              </Card>
+               {/* Venue Highlights */}
+               <Card className="bg-white shadow-md border-2 border-gray-200">
+                 <CardHeader className="bg-gray-50">
+                   <CardTitle className="text-lg font-bold text-gray-800">Venue Highlights</CardTitle>
+                 </CardHeader>
+                 <CardContent className="space-y-3 p-4">
+                   
+                   <div className="flex items-center gap-3 text-sm">
+                     <Star className="h-5 w-5 text-yellow-500" />
+                     <span className="font-medium">Premium venue with modern facilities</span>
+                   </div>
+                   <div className="flex items-center gap-3 text-sm">
+                     <DollarSign className="h-5 w-5 text-green-500" />
+                     <span className="font-medium">
+                       {bookingData?.venue.basePrice?.toLocaleString()} Rwf/
+                       {bookingData?.venue.bookingType === 'HOURLY' ? 'hour' : 'day'} base rate
+                     </span>
+                   </div>
+                   {bookingData?.venue.amenities && bookingData.venue.amenities.length > 0 && (
+                     <div className="flex items-center gap-3 text-sm">
+                       <span className="text-gray-500">Amenities:</span>
+                       <span className="font-medium">{bookingData.venue.amenities.slice(0, 3).join(', ')}</span>
+                     </div>
+                   )}
+                 </CardContent>
+               </Card>
+            </Card>
+
             </div>
           </div>
         </div>

@@ -1543,6 +1543,23 @@ class ApiService {
   }
 
 
+  /****** geting payment details by passing booking id**** */
+  static async getPaymentDetailsByBookingId(bookingId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${this.BASE_URL}/venue-bookings/${bookingId}/payments`, {
+        headers: this.getHeader(),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching payment details for booking with ID ${bookingId}:`, error);
+      throw error;
+    }
+  }
+  
+
+
+
  
 
 
