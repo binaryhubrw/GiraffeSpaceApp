@@ -17,46 +17,175 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 import { toast } from "sonner";
 import Footer from "@/components/footer"
 
+// Import date-fns utilities
+import { format, parseISO } from 'date-fns';
+import { useAuth } from "@/contexts/auth-context"; // Import useAuth
+
+// Define comprehensive interfaces based on the new JSON structure
+interface Requester {
+  userId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+  // Assuming a default profile picture or fallback for now, as profilePictureURL isn't in requester
+  profilePictureURL?: string; // Adding it here to avoid TS error if it was expected on requester
+  username?: string; // Adding as it was used on organizer
+  bio?: string; // Adding as it was used on organizer
+  location?: {
+    city: string;
+    country: string;
+  };
+  timezone?: string; // Adding as it was used on organizer
+}
+
+interface Payer { // New Payer interface
+  payerId: string;
+  payerType: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+}
+
+interface VenueDetails {
+  venueId: string;
+  venueName: string;
+  location: string; // This is now a string like "59 KN 7 Ave, Kigali, Rwanda"
+  bookingType: string;
+  baseAmount: number;
+  totalHours: number | null;
+  totalAmount: number; // This is the total for the venue for the booking period
+  depositRequired: {
+    percentage: number;
+    amount: number;
+    description: string;
+  };
+  paymentCompletionRequired: {
+    daysBeforeEvent: number;
+    deadline: string;
+  };
+  mainPhotoUrl?: string;
+  photoGallery?: string[];
+  description?: string;
+  capacity?: number;
+  googleMapsLink?: string;
+  virtualTourUrl?: string;
+  status?: string; // e.g., "ACTIVE"
+}
+
+interface EventDetails {
+  eventId: string;
+  eventName: string;
+  eventType: string;
+  eventDescription: string;
+}
+
+interface PaymentHistoryItem {
+  paymentId: string;
+  amountPaid: string; // "800000.00" - note it's a string, need to parse to number
+  paymentDate: string;
+  paymentMethod: string;
+  paymentStatus: string;
+  paymentReference: string | null;
+  balanceAfterPayment: number;
+  notes: string | null;
+}
+
+interface PaymentSummary {
+  totalAmount: number; // Total amount of the booking
+  depositAmount: number;
+  totalPaid: number;
+  remainingAmount: number;
+  paymentStatus: string; // e.g., "PAID", "DEPOSIT_PAID"
+  paymentProgress: string; // e.g., "70.00%"
+  depositStatus: string; // e.g., "FULFILLED"
+  paymentHistory: PaymentHistoryItem[];
+  nextPaymentDue: number;
+  paymentDeadline: string;
+}
+
+interface BookingDetail {
+  bookingId: string;
+  eventDetails: EventDetails;
+  venue: VenueDetails;
+  bookingDates: { date: string }[];
+  bookingStatus: string; // e.g., "PARTIAL", "APPROVED_PAID"
+  isPaid: boolean; // boolean status based on payment
+  createdAt: string;
+  requester: Requester; // Changed from organizer to requester
+  paymentSummary: PaymentSummary;
+  cancellationReason?: string; // Optional field
+  timezone?: string; // Not explicitly in JSON, but kept for existing usage
+  bookingReason: string; // Added back bookingReason as a direct property
+  payer?: Payer; // Add payer to BookingDetail
+}
+
+interface GetBookingByIdApiResponse {
+  success: boolean;
+  data: BookingDetail; // Data is now directly the BookingDetail object
+  message?: string;
+}
+
 function getStatusBadgeVariant(status: string) {
-  switch (status.toLowerCase()) {
-    case "confirmed":
+  switch (status?.toLowerCase()) {
+    case "approved_paid":
+    case "paid": // Added 'paid' from paymentSummary
+    case "completed": // from payment history
       return "default"
+    case "partial": // from payment history
+    case "deposit_paid": // from paymentSummary
+      return "secondary"
     case "pending":
       return "secondary"
     case "cancelled":
+    case "rejected":
       return "destructive"
     default:
       return "outline"
   }
 }
 
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+function formatDate(dateString: string | undefined) {
+  if (!dateString) return "N/A";
+  try {
+    return format(parseISO(dateString), "MMM dd, yyyy");
+  } catch (e) {
+    return dateString; // Fallback to raw string if parsing fails
+  }
 }
 
-function formatCurrency(amount: number) {
+function formatCurrency(amount: number | string | null | undefined) {
+  if (amount === null || amount === undefined) {
+    return "Frw 0.00";
+  }
+  // If amount is a string (e.g., "800000.00"), parse it to a number
+  const numericAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
+
+  if (isNaN(numericAmount)) {
+    return "Frw 0.00";
+  }
+
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
-  }).format(amount)
+    currency: "RWF",
+  }).format(numericAmount);
 }
 
 export default function VenueBookingDetail() {
   const { bookingId } = useParams()
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<BookingDetail | null>(null) // Typed data state
   const [loading, setLoading] = useState(true)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [queryDialogOpen, setQueryDialogOpen] = useState(false);
   const [cancelMessage, setCancelMessage] = useState("");
   const [queryMessage, setQueryMessage] = useState("");
   const [sending, setSending] = useState(false);
+  const { user } = useAuth(); // Get user from auth context
 
   const handleSendCancel = async () => {
     setSending(true);
+    // Simulate API call
     setTimeout(() => {
       setSending(false);
       setCancelDialogOpen(false);
@@ -66,6 +195,7 @@ export default function VenueBookingDetail() {
   };
   const handleSendQuery = async () => {
     setSending(true);
+    // Simulate API call
     setTimeout(() => {
       setSending(false);
       setQueryDialogOpen(false);
@@ -78,16 +208,24 @@ export default function VenueBookingDetail() {
     const fetchBooking = async () => {
       setLoading(true)
       try {
-        const response = await ApiService.getBookingById(bookingId as string)
-        setData(response.data?.data || response.data)
+        // Fetch the specific booking directly by bookingId
+        const response: GetBookingByIdApiResponse = await ApiService.getBookingById(bookingId as string);
+
+        if (response.success && response.data) {
+          setData(response.data); // Set data directly
+          // console.log("Fetched booking details:", response.data); // Removed console.log
+        } else {
+          setData(null); // No booking found
+        }
       } catch (err) {
+        console.error("Error fetching booking details:", err);
         setData(null)
       } finally {
         setLoading(false)
       }
     }
     if (bookingId) fetchBooking()
-  }, [bookingId])
+  }, [bookingId]) // Removed user?.userId from dependencies
 
   if (loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>
@@ -101,8 +239,8 @@ export default function VenueBookingDetail() {
           Back to Bookings
         </Link>
         <div className="bg-white rounded-lg shadow p-8 text-center">
-          <h1 className="text-2xl font-bold mb-2">Venue Not Found</h1>
-          <p className="text-gray-600 mb-6">The venue for this booking doesn't exist or has been removed.</p>
+          <h1 className="text-2xl font-bold mb-2">Booking Not Found</h1> {/* Changed from Venue Not Found */}
+          <p className="text-gray-600 mb-6">The booking you are looking for doesn't exist or has been removed.</p> {/* Updated message */}
           <Link href="/manage/venues/bookings" className="bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800">
             Return to Bookings
           </Link>
@@ -123,8 +261,8 @@ export default function VenueBookingDetail() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold">{data.venue.venueName}</h1>
-           <Badge variant={getStatusBadgeVariant(data.bookingStatus)}>{data.bookingStatus}</Badge>
+          <h1 className="text-3xl font-bold">{data.eventDetails?.eventName || data.venue.venueName}</h1> {/* Display Event Name or Venue Name */}
+           <Badge variant={getStatusBadgeVariant(data.bookingStatus)}>{data.bookingStatus.replace(/_/g, ' ').toUpperCase()}</Badge> {/* Use bookingStatus */}
           <Badge variant="outline">Booking Reason: {data.bookingReason}</Badge>
         </div>
         <div className="flex items-center gap-3">
@@ -133,7 +271,7 @@ export default function VenueBookingDetail() {
               <Tooltip>
                 <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
                   <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="destructive" aria-label="Cancel Booking" title="Cancel Booking" disabled={data.bookingStatus === 'CANCELLED'}>
+                    <Button size="icon" variant="destructive" aria-label="Cancel Booking" title="Cancel Booking" disabled={data.bookingStatus === 'CANCELLED' || data.bookingStatus === 'REJECTED'}>
                       <XCircle className="w-5 h-5" />
                     </Button>
                   </AlertDialogTrigger>
@@ -215,7 +353,7 @@ export default function VenueBookingDetail() {
                   className="object-cover rounded-t-lg"
                 />
               </div>
-              {data.venue.photoGallery.length > 0 && (
+              {data.venue.photoGallery && data.venue.photoGallery.length > 0 && (
                 <div className="p-4">
                   <h3 className="font-semibold mb-3">Photo Gallery</h3>
                   <div className="grid grid-cols-3 gap-2">
@@ -256,29 +394,29 @@ export default function VenueBookingDetail() {
               <CardTitle>Venue Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-muted-foreground">{data.venue.description}</p>
+              <p className="text-muted-foreground">{data.venue.description || 'No description available.'}</p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4" />
-                  <span>Capacity: {data.venue.capacity.toLocaleString()}</span>
+                  <span>Capacity: {data.venue.capacity?.toLocaleString() || "N/A"}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4" />
-                  <span>{data.venue.venueLocation}</span>
+                  <span>{data.venue.location}</span> {/* Changed to data.venue.location */}
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4" />
                   <span>Booking Type: {data.venue.bookingType}</span>
                 </div>
                 <Badge variant="outline" className="w-fit">
-                  {data.venue.status}
+                  {data.venue.status || 'N/A'}
                 </Badge>
               </div>
 
               <div className="flex gap-2">
                 <Button asChild size="sm" variant="outline">
-                  <Link href={data.venue.googleMapsLink} target="_blank">
+                  <Link href={data.venue.googleMapsLink || '#'} target="_blank">
                     <ExternalLink className="h-4 w-4 mr-1" />
                     View on Maps
                   </Link>
@@ -295,48 +433,48 @@ export default function VenueBookingDetail() {
             </CardContent>
           </Card>
 
-          {/* Organizer Information */}
+          {/* Requester Information (formerly Organizer) */}
           <Card>
             <CardHeader>
-              <CardTitle>Event Organizer</CardTitle>
+              <CardTitle>Requester Details</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-start gap-4">
                 <Avatar className="h-12 w-12">
-                  <AvatarImage src={data.organizer.profilePictureURL || undefined} />
+                  <AvatarImage src={data.requester?.profilePictureURL || undefined} />
                   <AvatarFallback>
-                    {data.organizer.firstName.charAt(0)}
-                    {data.organizer.lastName.charAt(0)}
+                    {data.requester?.firstName?.charAt(0)}
+                    {data.requester?.lastName?.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-3">
                   <div>
                     <h3 className="font-semibold">
-                      {data.organizer.firstName} {data.organizer.lastName}
+                      {data.requester?.firstName} {data.requester?.lastName}
                     </h3>
-                    <p className="text-sm text-muted-foreground">@{data.organizer.username}</p>
+                    <p className="text-sm text-muted-foreground">@{data.requester?.username || 'N/A'}</p>
                   </div>
 
-                  <p className="text-sm">{data.organizer.bio}</p>
+                  <p className="text-sm">{data.requester?.bio || 'No bio available.'}</p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4" />
-                      <span>{data.organizer.email}</span>
+                      <span>{data.requester?.email || 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4" />
-                      <span>{data.organizer.phoneNumber}</span>
+                      <span>{data.requester?.phoneNumber || 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
                       <span>
-                        {data.organizer.city}, {data.organizer.country}
+                        {data.requester?.location?.city || 'N/A'}, {data.requester?.location?.country || 'N/A'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
-                      <span>{data.organizer.timezone}</span>
+                      <span>{data.requester?.timezone || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
@@ -368,39 +506,99 @@ export default function VenueBookingDetail() {
 
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Amount</span>
-                  <span className="font-semibold">{formatCurrency(data.amountToBePaid)}</span>
+                  <span className="text-sm text-muted-foreground">Total Amount</span>
+                  <span className="font-semibold">{formatCurrency(data.paymentSummary?.totalAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Total Paid</span>
+                  <span className="font-semibold text-green-700">{formatCurrency(data.paymentSummary?.totalPaid)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Remaining Amount</span>
+                  <span className="font-semibold text-red-600">{formatCurrency(data.paymentSummary?.remainingAmount)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Payment Status</span>
-                  <Badge variant={data.isPaid ? "default" : "secondary"}>{data.isPaid ? "Paid" : "Unpaid"}</Badge>
+                  <Badge variant={getStatusBadgeVariant(data.paymentSummary?.paymentStatus || '')}>{data.paymentSummary?.paymentStatus?.replace(/_/g, ' ').toUpperCase() || 'N/A'}</Badge>
                 </div>
+                {data.paymentSummary?.nextPaymentDue > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Next Payment Due</span>
+                    <span className="font-semibold">{formatCurrency(data.paymentSummary?.nextPaymentDue)}</span>
+                  </div>
+                )}
+                {data.paymentSummary?.paymentDeadline && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Payment Deadline</span>
+                    <span className="font-semibold">{formatDate(data.paymentSummary.paymentDeadline)}</span>
+                  </div>
+                )}
               </div>
 
               <Separator />
 
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Created</span>
+                  <span className="text-muted-foreground">Created At</span>
                   <span>{formatDate(data.createdAt)}</span>
                 </div>
+                {/* Timezone is not in new JSON, remove or handle if needed */}
+                {/*
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Timezone</span>
                   <span>{data.timezone}</span>
                 </div>
+                */}
               </div>
             </CardContent>
           </Card>
 
           {/* Event Info Card in Sidebar */}
-          {data.eventTitle && (
+          {data.eventDetails && data.eventDetails.eventName && (
             <Card>
               <CardHeader>
                 <CardTitle>Event Information</CardTitle>
               </CardHeader>
               <CardContent>
-                <h2 className="text-xl font-bold mb-2">{data.eventTitle}</h2>
-                <p className="text-gray-700">{data.eventDescription}</p>
+                <h2 className="text-xl font-bold mb-2">{data.eventDetails.eventName}</h2>
+                <p className="text-gray-700">{data.eventDetails.eventDescription}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Payment History */}
+          {data.paymentSummary?.paymentHistory && data.paymentSummary.paymentHistory.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment History</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {data.paymentSummary.paymentHistory.map((payment, index) => (
+                  <div key={payment.paymentId || index} className="border-b pb-2 last:border-b-0 last:pb-0">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Amount Paid</span>
+                      <span className="font-semibold">{formatCurrency(payment.amountPaid)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Date</span>
+                      <span>{formatDate(payment.paymentDate)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Method</span>
+                      <span>{payment.paymentMethod?.replace(/_/g, ' ').toUpperCase() || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge variant={getStatusBadgeVariant(payment.paymentStatus)}>{payment.paymentStatus?.replace(/_/g, ' ').toUpperCase() || 'N/A'}</Badge>
+                    </div>
+                    {payment.notes && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Notes</span>
+                        <span>{payment.notes}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}
@@ -412,12 +610,14 @@ export default function VenueBookingDetail() {
             </CardHeader>
             <CardContent className="space-y-2">
            
-           <Link href={`/venues/book/payment/${bookingId}`} className="w-full">
-              <Button className="w-full" disabled={data.bookingStatus === "CANCELLED"}>
+           {bookingId && (
+             <Link href={`/venues/book/payment/${bookingId}`} className="w-full">
+              <Button className="w-full" disabled={data.bookingStatus === "CANCELLED" || data.bookingStatus === "REJECTED" || data.paymentSummary?.remainingAmount === 0}>
                 <DollarSign className="h-4 w-4 mr-2" />
-                Process Payment
+                {data.paymentSummary?.remainingAmount === 0 ? "Payment Completed" : "Process Payment"}
               </Button>
            </Link>
+           )}
         
             </CardContent>
           </Card>

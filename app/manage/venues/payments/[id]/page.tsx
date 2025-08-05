@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, DollarSign, Calendar, Clock, User, MapPin, Receipt, Package, CheckCircle, XCircle, Wallet, RefreshCcw } from "lucide-react" // Added RefreshCcw for refund
 import Link from "next/link"
-import { format, parseISO } from "date-fns"
+import { format, parseISO, isValid } from "date-fns" // Added isValid
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog" // Import Dialog components
 import RefundForm from "@/components/RefundForm" // Import RefundForm
 
@@ -60,7 +60,7 @@ interface FormattedPaymentDetails {
   customer: string // payer.fullName
   venue: string // bookingReason
   method: string // formatted paymentMethod
-  status: "completed" | "pending" | "failed" | "partial" // formatted paymentStatus
+  status: string // Changed from specific union types to string
   transactionId?: string // paymentReference or paymentId
   remainingAmount: number // booking.remainingAmount
   bookingDate: string // booking.bookingDate
@@ -128,7 +128,7 @@ export default function PaymentDetailsPage() {
                 customer: booking.payer.fullName,
                 venue: booking.bookingReason,
                 method: "N/A",
-                status: booking.remainingAmount > 0 ? "partial" : "completed",
+                status: booking.remainingAmount > 0 ? "PARTIAL" : "COMPLETED", // Use uppercase consistent with backend
                 transactionId: booking.bookingId,
                 remainingAmount: booking.remainingAmount,
                 bookingDate: booking.bookingDate,
@@ -159,12 +159,7 @@ export default function PaymentDetailsPage() {
                   .replace(/_/g, " ")
                   .toLowerCase()
                   .replace(/\b\w/g, (char) => char.toUpperCase()),
-                status:
-                  payment.paymentStatus === "PAID"
-                    ? "completed"
-                    : payment.paymentStatus === "PARTIAL"
-                      ? "partial"
-                      : "failed",
+                status: payment.paymentStatus, // Directly use backend status
                 transactionId: payment.paymentReference || payment.paymentId,
                 remainingAmount: booking.remainingAmount,
                 bookingDate: booking.bookingDate,
@@ -204,12 +199,12 @@ export default function PaymentDetailsPage() {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
+    switch (status.toUpperCase()) { // Convert to uppercase for consistent matching
+      case "COMPLETED":
         return "bg-green-100 text-green-800"
-      case "partial":
+      case "PARTIAL":
         return "bg-yellow-100 text-yellow-800"
-      case "failed":
+      case "FAILED":
         return "bg-red-100 text-red-800"
       default:
         return "bg-gray-100 text-gray-800"
@@ -282,11 +277,11 @@ export default function PaymentDetailsPage() {
       
       // Determine new status based on remaining amount (e.g., if fully refunded, it might go to 'refunded' or 'partial')
       // For simplicity, let's assume if remainingAmount becomes positive after refund, it's partial, otherwise completed/refunded.
-      let newStatus: FormattedPaymentDetails["status"] = "partial"; // Default to partial after a refund
+      let newStatus: FormattedPaymentDetails["status"] = "PARTIAL"; // Default to partial after a refund
       if (newTotalAmountPaidBooking <= 0) {
-        newStatus = "completed"; // Or a new 'refunded' status if applicable
+        newStatus = "COMPLETED"; // Or a new 'refunded' status if applicable
       } else if (newRemainingAmount === paymentDetails.amountToBePaid) {
-        newStatus = "failed"; // All amount refunded back
+        newStatus = "FAILED"; // All amount refunded back
       }
       
 
@@ -329,7 +324,11 @@ export default function PaymentDetailsPage() {
             <div className="flex items-center text-sm">
               <Clock className="h-4 w-4 text-gray-500 mr-2 flex-shrink-0" />
               <strong className="text-gray-700">Payment Date & Time:</strong>
-              <span className="ml-auto font-medium">{format(parseISO(paymentDetails.paymentDateFull), "PPP p")}</span>
+              <span className="ml-auto font-medium">
+                {paymentDetails.paymentDateFull && isValid(parseISO(paymentDetails.paymentDateFull))
+                  ? format(parseISO(paymentDetails.paymentDateFull), "PPP p")
+                  : "N/A"}
+              </span>
             </div>
             <div className="flex items-center text-sm">
               <Wallet className="h-4 w-4 text-gray-500 mr-2 flex-shrink-0" />
@@ -392,7 +391,11 @@ export default function PaymentDetailsPage() {
             <div className="flex items-center text-sm">
               <Calendar className="h-4 w-4 text-gray-500 mr-2 flex-shrink-0" />
               <strong className="text-gray-700">Booking Date:</strong>
-              <span className="ml-auto font-medium">{format(parseISO(paymentDetails.bookingDate), "PPP")}</span>
+              <span className="ml-auto font-medium">
+                {paymentDetails.bookingDate && isValid(parseISO(paymentDetails.bookingDate))
+                  ? format(parseISO(paymentDetails.bookingDate), "PPP")
+                  : "N/A"}
+              </span>
             </div>
             <div className="flex items-center text-sm">
               <DollarSign className="h-4 w-4 text-gray-500 mr-2 flex-shrink-0" />

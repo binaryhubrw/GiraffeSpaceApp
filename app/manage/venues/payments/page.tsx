@@ -17,7 +17,7 @@ import {
   RefreshCcw, // Added RefreshCcw icon
 } from "lucide-react"
 import Link from "next/link"
-import { format, isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
+import { format, isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore, isValid } from "date-fns"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog" // Import Dialog components
 import RefundForm from "@/components/RefundForm" // Import RefundForm
 
@@ -71,7 +71,7 @@ interface FormattedPayment {
   customer: string // payer.fullName
   venue: string // bookingReason
   method: string // formatted paymentMethod
-  status: "completed" | "pending" | "failed" | "partial" // formatted paymentStatus
+  status: string // Changed from specific union types to string
   transactionId?: string // paymentReference or paymentId
   remainingAmount: number // booking.remainingAmount
   bookingDate: string // booking.bookingDate (for monthly calculation)
@@ -83,6 +83,7 @@ export default function PaymentsPage() {
   const { isLoggedIn } = useAuth()
   const router = useRouter()
   const [payments, setPayments] = useState<FormattedPayment[]>([])
+  const [bookingsData, setBookingsData] = useState<Booking[]>([]) // New state for raw booking data
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
@@ -122,6 +123,7 @@ export default function PaymentsPage() {
       const result: ApiResponse = await response.json()
 
       if (result.success && result.data) {
+        setBookingsData(result.data) // Store raw booking data
         const formattedPayments: FormattedPayment[] = []
         result.data.forEach((booking) => {
           // If a booking has no payments, we still want to represent it
@@ -136,7 +138,7 @@ export default function PaymentsPage() {
               customer: booking.payer.fullName,
               venue: booking.bookingReason,
               method: "N/A",
-              status: booking.remainingAmount > 0 ? "partial" : "completed",
+              status: booking.remainingAmount > 0 ? "PARTIAL" : "COMPLETED", // Use uppercase consistent with backend
               transactionId: booking.bookingId,
               remainingAmount: booking.remainingAmount,
               bookingDate: booking.bookingDate,
@@ -157,12 +159,7 @@ export default function PaymentsPage() {
                   .replace(/_/g, " ")
                   .toLowerCase()
                   .replace(/\b\w/g, (char) => char.toUpperCase()), // Format "MOBILE_MONEY" to "Mobile Money"
-                status:
-                  payment.paymentStatus === "PAID"
-                    ? "completed"
-                    : payment.paymentStatus === "PARTIAL"
-                      ? "partial"
-                      : "failed", // Map API status to desired status
+                status: payment.paymentStatus, // Directly use backend status
                 transactionId: payment.paymentReference || payment.paymentId,
                 remainingAmount: booking.remainingAmount, // Take remainingAmount from booking
                 bookingDate: booking.bookingDate,
@@ -231,22 +228,24 @@ export default function PaymentsPage() {
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedPayments = filteredPayments.slice(startIndex, startIndex + itemsPerPage)
 
-  // Calculate statistics for the cards
-  const totalRevenue = payments.reduce((sum, payment) => sum + payment.amount, 0)
-  const totalPayments = payments.length
-  const pendingPayments = payments.filter((payment) => payment.status === "partial").length // Using "partial" for pending
+  // Calculate statistics for the cards based on bookingsData
+  const totalAmountPaidOverall = bookingsData.reduce((sum, booking) => sum + booking.totalAmountPaid, 0)
+  const totalAmountRemainingOverall = bookingsData.reduce((sum, booking) => sum + booking.remainingAmount, 0)
+  const totalBookingsCount = bookingsData.length
 
-  // Calculate Total Amount in This Month
-  const totalAmountThisMonth = payments.reduce((sum, payment) => {
-    const bookingDate = parseISO(payment.bookingDate)
-    if (isThisMonth(bookingDate)) {
-      return sum + payment.amountToBePaid
+  // Calculate Total Amount for bookings in the current Month (based on booking date)
+  const totalAmountThisMonthBookings = bookingsData.reduce((sum, booking) => {
+    const bookingDate = parseISO(booking.bookingDate)
+    // Check if bookingDate is a valid date before calling isThisMonth
+    if (isValid(bookingDate) && isThisMonth(bookingDate)) {
+      return sum + booking.amountToBePaid
     }
     return sum
   }, 0)
 
   // Helper function to format numbers with thousands separator
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | null | undefined) => {
+    if (amount === null || amount === undefined) return "Frw 0.00"; // Handle null/undefined
     return `Frw ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
   const formatNumber = (num: number) => {
@@ -254,13 +253,13 @@ export default function PaymentsPage() {
   }
 
   const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "completed":
+    switch (status.toUpperCase()) { // Convert to uppercase for consistent matching
+      case "COMPLETED":
         return "bg-green-100 text-green-800"
-      case "pending":
-      case "partial":
+      case "PENDING":
+      case "PARTIAL":
         return "bg-yellow-100 text-yellow-800"
-      case "failed":
+      case "FAILED":
         return "bg-red-100 text-red-800"
       default:
         return "bg-gray-100 text-gray-800"
@@ -319,34 +318,34 @@ export default function PaymentsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
-              <h2 className="text-gray-600 text-sm">Total Revenue</h2>
+              <h2 className="text-gray-600 text-sm">Total Amount Paid</h2>
               <DollarSign className="h-5 w-5 text-gray-400" />
             </div>
-            <p className="text-3xl font-bold mb-1">{formatCurrency(totalRevenue)}</p>
-            <p className="text-xs text-green-600">+15% from last month</p>
+            <p className="text-3xl font-bold mb-1">{formatCurrency(totalAmountPaidOverall)}</p>
+            <p className="text-xs text-green-600">Overall payments</p>
           </div>
           <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
-              <h2 className="text-gray-600 text-sm">Total Payments</h2>
+              <h2 className="text-gray-600 text-sm">Total Bookings</h2>
               <CreditCard className="h-5 w-5 text-gray-400" />
             </div>
-            <p className="text-3xl font-bold mb-1">{formatNumber(totalPayments)}</p>
-            <p className="text-xs text-gray-500">This month</p>
+            <p className="text-3xl font-bold mb-1">{formatNumber(totalBookingsCount)}</p>
+            <p className="text-xs text-gray-500">All bookings</p>
           </div>
           <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
-              <h2 className="text-gray-600 text-sm">Partial Payments</h2>
+              <h2 className="text-gray-600 text-sm">Total Amount Remaining</h2>
               <Clock className="h-5 w-5 text-gray-400" />
             </div>
-            <p className="text-3xl font-bold mb-1">{formatNumber(pendingPayments)}</p>
-            <p className="text-xs text-yellow-600">half payments</p>
+            <p className="text-3xl font-bold mb-1">{formatCurrency(totalAmountRemainingOverall)}</p>
+            <p className="text-xs text-red-600">Unpaid amounts</p>
           </div>
           <div className="border rounded-lg p-4 bg-white">
             <div className="flex justify-between items-start mb-2">
-              <h2 className="text-gray-600 text-sm">Total Amount This Month</h2>
+              <h2 className="text-gray-600 text-sm">Amount Due This Month</h2>
               <TrendingUp className="h-5 w-5 text-gray-400" />
             </div>
-            <p className="text-3xl font-bold mb-1">{formatCurrency(totalAmountThisMonth)}</p>
+            <p className="text-3xl font-bold mb-1">{formatCurrency(totalAmountThisMonthBookings)}</p>
             <p className="text-xs text-gray-500">Based on booking date</p>
           </div>
         </div>
@@ -374,9 +373,9 @@ export default function PaymentsPage() {
                 className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Status</option>
-                <option value="completed">Completed</option>
-                <option value="partial">Partial</option>
-                <option value="failed">Failed</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="PARTIAL">Partial</option>
+                <option value="FAILED">Failed</option>
               </select>
               {/* Method Filter */}
               <select
