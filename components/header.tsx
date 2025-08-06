@@ -79,16 +79,6 @@ export function Header({ activePage }: HeaderProps) {
     }
   }
 
-  const handleCreateOrganization = () => {
-    setShowOrganizationDialog(false)
-    router.push("/my-organizations")
-  }
-
-  const handleCancelOrganization = () => {
-    setShowOrganizationDialog(false)
-    router.push("/")
-  }
-
   const handleManageEventsClick = async (e: React.MouseEvent) => {
     e.preventDefault()
     setIsManageMenuOpen(false)
@@ -114,6 +104,16 @@ export function Header({ activePage }: HeaderProps) {
       // If there's an error, still allow navigation to dashboard
       router.push("/user-dashboard")
     }
+  }
+
+  const handleCreateOrganization = () => {
+    setShowOrganizationDialog(false)
+    router.push("/my-organizations")
+  }
+
+  const handleCancelOrganization = () => {
+    setShowOrganizationDialog(false)
+    router.push("/")
   }
 
   const handleCreateBooking = () => {
@@ -217,13 +217,13 @@ export function Header({ activePage }: HeaderProps) {
                         Admin Dashboard
                       </Link>
                     )}
-                                         <button
-                       onClick={handleManageEventsClick}
-                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                     >
-                       <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                       Manage Events
-                     </button>
+                    <button
+                      onClick={handleManageEventsClick}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                      Manage Events
+                    </button>
                     <button
                       onClick={handleManageVenuesClick}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -294,6 +294,35 @@ export function Header({ activePage }: HeaderProps) {
                     >
                       My Organization
                     </Link>
+                    {/* Duplicate Manage section links within user dropdown */}
+                    {(user && user.roles && (user.roles.roleName === "ADMIN" || user.roles.roleName === "MANAGER")) && (
+                      <div className="border-t mt-2 pt-2">
+                        {user.roles.roleName === "ADMIN" && (
+                          <Link
+                            href="/admin/overview"
+                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Shield className="h-4 w-4 mr-2 text-gray-500" />
+                            Admin Dashboard
+                          </Link>
+                        )}
+                        <button
+                          onClick={handleManageEventsClick}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                          Manage Events
+                        </button>
+                        <button
+                          onClick={handleManageVenuesClick}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+                          Manage Venues
+                        </button>
+                      </div>
+                    )}
 
                     <button
                       onClick={handleLogout}
@@ -384,39 +413,14 @@ export function Header({ activePage }: HeaderProps) {
                             Admin Dashboard
                           </Link>
                         )}
-                                                 <button
-                                                       onClick={async (e) => {
-                              e.preventDefault()
-                              setIsMenuOpen(false)
-                              
-                              // Check if user exists and has userId
-                              if (!user?.userId) {
-                                console.error("User ID not available")
-                                // Don't navigate to dashboard if user ID is not available
-                                return
-                              }
-                              
-                              try {
-                                // Get user's bookings
-                                const response = await ApiService.getBookingByUserId(user.userId)
-                                
-                                // Check if there are any bookings
-                                if (!response.data?.bookings || response.data.bookings.length === 0) {
-                                  setShowBookingCheckDialog(true)
-                                } else {
-                                  router.push("/user-dashboard")
-                                }
-                              } catch (error) {
-                                console.error("Error checking bookings:", error)
-                                // If there's an error, still allow navigation to dashboard
-                                router.push("/user-dashboard")
-                              }
-                            }}
-                           className="flex items-center w-full text-sm text-gray-600 hover:text-gray-900"
-                         >
-                           <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                           User Dashboard
-                         </button>
+                                                 <Link
+                                                       href="/user-dashboard"
+                                                       className="flex items-center w-full text-sm text-gray-600 hover:text-gray-900"
+                                                       onClick={() => setIsMenuOpen(false)}
+                                                     >
+                                                       <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                                                       User Dashboard
+                                                     </Link>
                         <button
                           onClick={(e) => {
                             e.preventDefault()
@@ -434,6 +438,38 @@ export function Header({ activePage }: HeaderProps) {
                         </button>
                       </div>
                     </div>
+                    {/* Duplicate Manage section links within mobile user dropdown */}
+                    {(user?.roles.roleName === "ADMIN" || user?.roles.roleName === "MANAGER") && (
+                      <div className="pt-4 border-t">
+                        <p className="text-sm font-medium text-gray-900 mb-2">Manage</p>
+                        <div className="pl-2 space-y-2">
+                          {user?.roles.roleName === "ADMIN" && (
+                            <Link
+                              href="/admin/overview"
+                              className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+                              onClick={() => setIsMenuOpen(false)}
+                            >
+                              <Shield className="h-4 w-4 mr-2 text-gray-500" />
+                              Admin Dashboard
+                            </Link>
+                          )}
+                          <button
+                            onClick={handleManageEventsClick}
+                            className="flex items-center w-full text-sm text-gray-600 hover:text-gray-900"
+                          >
+                            <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                            Manage Events
+                          </button>
+                          <button
+                            onClick={handleManageVenuesClick}
+                            className="flex items-center w-full text-sm text-gray-600 hover:text-gray-900"
+                          >
+                            <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+                            Manage Venues
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="pt-4 border-t">
                       <div className="flex items-center space-x-2 mb-4">
                         <div className="w-8 h-8 bg-blue-500 rounded-full overflow-hidden flex items-center justify-center text-white text-sm font-medium">
@@ -476,7 +512,63 @@ export function Header({ activePage }: HeaderProps) {
                         >
                           Settings
                         </Link>
+                        {/* Add My tickets and My Organization */}
+                        <Link
+                          href="/my-tickets"
+                          className="block text-sm text-gray-600 hover:text-gray-900"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          My tickets
+                        </Link>
+                        <Link
+                          href="/my-organizations"
+                          className="block text-sm text-gray-600 hover:text-gray-900"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          My Organization
+                        </Link>
                       </div>
+                      {/* New: Manage section links within mobile user dropdown (duplicate) */}
+                      {(user && user.roles && (user.roles.roleName === "ADMIN" || user.roles.roleName === "MANAGER")) && (
+                        <div className="pt-4 border-t">
+                          <p className="text-sm font-medium text-gray-900 mb-2">Manage</p>
+                          <div className="pl-2 space-y-2">
+                            {/* User Dashboard */}
+                            <Link
+                              href="/user-dashboard"
+                              className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+                              onClick={() => setIsMenuOpen(false)}
+                            >
+                              <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                              User Dashboard
+                            </Link>
+                            {user.roles.roleName === "ADMIN" && (
+                              <Link
+                                href="/admin/overview"
+                                className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+                                onClick={() => setIsMenuOpen(false)}
+                              >
+                                <Shield className="h-4 w-4 mr-2 text-gray-500" />
+                                Admin Dashboard
+                              </Link>
+                            )}
+                            <button
+                              onClick={handleManageEventsClick}
+                              className="flex items-center w-full text-sm text-gray-600 hover:text-gray-900"
+                            >
+                              <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                              Manage Events
+                            </button>
+                            <button
+                              onClick={handleManageVenuesClick}
+                              className="flex items-center w-full text-sm text-gray-600 hover:text-gray-900"
+                            >
+                              <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+                              Manage Venues
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       <button
                         onClick={() => {
                           handleLogout()
