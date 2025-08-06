@@ -23,6 +23,7 @@ export default function InvitationScanner({
   const [error, setError] = useState<string | null>(null);
   const [scanningInterval, setScanningInterval] = useState<NodeJS.Timeout | null>(null);
   const [isMounted, setIsMounted] = useState(false);
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -30,55 +31,91 @@ export default function InvitationScanner({
 
   useEffect(() => {
     if (isMounted) {
-      // Add a small delay to ensure the video element is rendered
-      const timer = setTimeout(() => {
-        startCamera();
-      }, 100);
-      
-      return () => {
-        clearTimeout(timer);
-        stopCamera();
-      };
+      // Check existing permission first
+      checkExistingPermission();
     }
-  }, [scanMode, isMounted]);
+  }, [isMounted]);
+
+  const checkExistingPermission = async () => {
+    try {
+      // Check if we can enumerate devices (this requires permission)
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      
+      if (videoDevices.length > 0) {
+        // We have permission, start camera
+        startCamera();
+      } else {
+        // No permission yet, show permission dialog
+        setShowPermissionDialog(true);
+      }
+    } catch (error) {
+      console.error("Error checking existing permission:", error);
+      // Show permission dialog if we can't check
+      setShowPermissionDialog(true);
+    }
+  };
+
+  const requestCameraPermission = async () => {
+    try {
+      console.log("Requesting camera permission...");
+      
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera access is not supported in this browser");
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment", // Use back camera on mobile
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+      
+      console.log("Camera permission granted");
+      setHasPermission(true);
+      setShowPermissionDialog(false);
+      return stream;
+    } catch (error: any) {
+      console.error("Camera permission error:", error);
+      
+      // Handle specific permission errors
+      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+        setHasPermission(false);
+        setError("Camera access denied. Please allow camera permission and try again.");
+        onError("Camera access denied. Please allow camera permission and try again.");
+      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
+        setHasPermission(false);
+        setError("No camera found on this device.");
+        onError("No camera found on this device.");
+      } else if (error.name === "NotSupportedError" || error.name === "ConstraintNotSatisfiedError") {
+        setHasPermission(false);
+        setError("Camera not supported or constraints not satisfied.");
+        onError("Camera not supported or constraints not satisfied.");
+      } else {
+        setHasPermission(false);
+        setError("Failed to access camera: " + (error.message || "Unknown error"));
+        onError("Failed to access camera: " + (error.message || "Unknown error"));
+      }
+      
+      return null;
+    }
+  };
 
     const startCamera = async () => {
     try {
       setError(null);
       console.log('Starting camera...');
       
-      // Check if mediaDevices is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera not supported in this browser');
+      const stream = await requestCameraPermission();
+      if (!stream) {
+        console.log('No camera stream available');
+        return;
       }
-      
-      let stream;
-      try {
-        // Try environment camera first (back camera on mobile)
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          } 
-        });
-      } catch (envError) {
-        console.log('Environment camera failed, trying user camera...');
-        // Fallback to user camera (front camera)
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'user',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          } 
-        });
-      }
-      
-      console.log('Camera stream obtained:', stream);
       
       // Set scanning state first to ensure video element is rendered
       setIsScanning(true);
-      setHasPermission(true);
       
       // Wait for the next render cycle to ensure video element is in DOM
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -92,7 +129,6 @@ export default function InvitationScanner({
           console.error('Video element still not found after waiting');
           stream.getTracks().forEach(track => track.stop());
           setIsScanning(false);
-          setHasPermission(false);
           setError('Failed to initialize camera. Please try again.');
           return;
         }
@@ -194,20 +230,82 @@ export default function InvitationScanner({
 
 
 
+  const handlePermissionGranted = async () => {
+    setShowPermissionDialog(false);
+    
+    // Small delay to let the user prepare
+    setTimeout(async () => {
+      await startCamera();
+    }, 500);
+  };
+
+  const handlePermissionDenied = () => {
+    setShowPermissionDialog(false);
+    setHasPermission(false);
+  };
+
+  // Permission Dialog
+  if (showPermissionDialog) {
+    return (
+      <div className="text-center py-8">
+        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Camera className="h-8 w-8 text-blue-600" />
+        </div>
+        <h3 className="font-semibold text-foreground mb-2">Camera Permission Required</h3>
+        <p className="text-muted-foreground mb-4 text-sm">
+          To scan {scanMode === 'qr' ? 'QR codes' : 'barcodes'}, we need camera access. 
+          Your browser will ask for permission.
+        </p>
+        
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-left">
+          <h4 className="font-medium text-blue-900 mb-2 text-sm">How to enable camera access:</h4>
+          <ul className="text-xs text-blue-800 space-y-1">
+            <li>• Click the camera icon in your browser's address bar</li>
+            <li>• Select "Allow" for camera access</li>
+            <li>• The camera will start automatically</li>
+          </ul>
+        </div>
+
+        <div className="flex gap-2">
+          <Button onClick={handlePermissionGranted} className="flex-1">
+            Allow Camera Access
+          </Button>
+          <Button onClick={handlePermissionDenied} variant="outline" className="flex-1">
+            Cancel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (hasPermission === false) {
     return (
       <div className="text-center py-8">
         <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
           <AlertCircle className="h-8 w-8 text-destructive" />
         </div>
-        <h3 className="font-semibold text-foreground mb-2">Camera Access Required</h3>
+        <h3 className="font-semibold text-foreground mb-2">Camera Access Denied</h3>
         <p className="text-muted-foreground mb-4 text-sm">
-          To scan {scanMode === 'qr' ? 'QR codes' : 'barcodes'}, please allow camera access
+          Camera access was denied. To scan {scanMode === 'qr' ? 'QR codes' : 'barcodes'}, please allow camera access in your browser settings.
         </p>
-        <Button onClick={startCamera} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Try Again
-        </Button>
+        
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-left">
+          <h4 className="font-medium text-yellow-900 mb-2 text-sm">To enable camera access:</h4>
+          <ul className="text-xs text-yellow-800 space-y-1">
+            <li>• Click the camera icon in your browser's address bar</li>
+            <li>• Select "Allow" for camera access</li>
+            <li>• Refresh the page and try again</li>
+          </ul>
+        </div>
+
+        <div className="flex gap-2">
+          <Button onClick={() => setHasPermission(null)} className="flex-1">
+            Try Again
+          </Button>
+          <Button onClick={() => setShowPermissionDialog(true)} variant="outline" className="flex-1">
+            Request Permission
+          </Button>
+        </div>
       </div>
     );
   }
