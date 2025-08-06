@@ -40,8 +40,6 @@ interface FormData {
   bookingDates: BookingDate[];
   startTime: string;
   endTime: string;
-  isFeatured?: boolean;
-  eventStatus?: string;
 }
 
 interface VenueData {
@@ -63,7 +61,7 @@ interface OrganizerData {
 const EventDetailsPage: React.FC = () => {
   const params = useParams();
   const router = useRouter();
-  const eventId = params.id as string;
+  const eventId = params.eventId as string;
   
   const [currentStep, setCurrentStep] = useState(1);
   const [success, setSuccess] = useState(false);
@@ -134,28 +132,25 @@ const EventDetailsPage: React.FC = () => {
             });
           }
           
-                     // Transform API data to form data
-           console.log("API Event Data:", eventData);
-           console.log("Event Guests from API:", eventData.eventGuests);
-           
-           setFormData({
-             eventTitle: eventData.eventName || '',
-             eventDescription: eventData.eventDescription || '',
-             eventType: eventData.eventType || '',
-             eventPhoto: eventData.eventPhoto || '',
-             maxAttendees: eventData.maxAttendees?.toString() || '',
-             guests: eventData.eventGuests?.map((guest: any) => ({
-               guestName: guest.guestName || '',
-               guestPhoto: guest.guestPhoto || ''
-             })) || [],
-             isEntryPaid: eventData.isEntryPaid || false,
-             specialNotes: eventData.specialNotes || '',
-             expectedGuests: eventData.expectedGuests?.toString() || '',
-             socialMediaLinks: eventData.socialMediaLinks || '',
-             bookingDates: eventData.bookingDates || [],
-             startTime: eventData.startTime || '', // Set from API data
-             endTime: eventData.endTime || ''      // Set from API data
-           });
+          // Transform API data to form data
+          setFormData({
+            eventTitle: eventData.eventName || '',
+            eventDescription: eventData.eventDescription || '',
+            eventType: eventData.eventType || '',
+            eventPhoto: eventData.eventPhoto || '',
+            maxAttendees: eventData.maxAttendees?.toString() || '',
+            guests: eventData.eventGuests?.map((guest: any) => ({
+              guestName: guest.guestName || '',
+              guestPhoto: guest.guestPhoto || ''
+            })) || [],
+            isEntryPaid: eventData.isEntryPaid || false,
+            specialNotes: eventData.specialNotes || '',
+            expectedGuests: eventData.expectedGuests?.toString() || '',
+            socialMediaLinks: eventData.socialMediaLinks || '',
+            bookingDates: eventData.bookingDates || [],
+            startTime: '', // Will be set from booking dates if available
+            endTime: ''    // Will be set from booking dates if available
+          });
         } else {
           setError('Failed to load event data');
         }
@@ -210,65 +205,36 @@ const EventDetailsPage: React.FC = () => {
 
   const handleCreateEvent = async () => {
     setProcessing(true);
+    
     try {
-      const formDataToSend = new FormData();
+      // Prepare update data (excluding bookingDates and eventType as requested)
+      const updateData = {
+        eventName: formData.eventTitle,
+        eventDescription: formData.eventDescription,
+        eventPhoto: formData.eventPhoto,
+        maxAttendees: parseInt(formData.maxAttendees),
+        isEntryPaid: formData.isEntryPaid,
+        specialNotes: formData.specialNotes,
+        expectedGuests: parseInt(formData.expectedGuests),
+        socialMediaLinks: formData.socialMediaLinks,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        guests: formData.guests.map(guest => ({
+          guestName: guest.guestName
+        })),
+        guestPhotos: formData.guests
+          .filter(guest => guest.guestPhoto)
+          .map(guest => guest.guestPhoto)
+      };
 
-      // Basic fields
-      formDataToSend.append("eventName", formData.eventTitle);
-      formDataToSend.append("eventDescription", formData.eventDescription);
-      formDataToSend.append("maxAttendees", formData.maxAttendees);
-      formDataToSend.append("isEntryPaid", String(formData.isEntryPaid));
-      formDataToSend.append("specialNotes", formData.specialNotes);
-      formDataToSend.append("expectedGuests", formData.expectedGuests);
-      formDataToSend.append("socialMediaLinks", formData.socialMediaLinks);
-      formDataToSend.append("startTime", formData.startTime);
-      formDataToSend.append("endTime", formData.endTime);
-
-      // Event photo (file or string)
-      if (formData.eventPhoto && typeof formData.eventPhoto !== "string") {
-        formDataToSend.append("eventPhoto", formData.eventPhoto);
-      } else if (formData.eventPhoto && typeof formData.eventPhoto === "string") {
-        formDataToSend.append("eventPhoto", formData.eventPhoto);
-      }
-
-      // Guests as JSON string (only guestName)
-      formDataToSend.append(
-        "guests",
-        JSON.stringify(formData.guests.map(guest => ({ guestName: guest.guestName })))
-      );
-
-      // Guest photos: append each file separately
-      formData.guests.forEach(guest => {
-        if (guest.guestPhoto && typeof guest.guestPhoto !== "string") {
-          formDataToSend.append("guestPhotos", guest.guestPhoto);
-        }
-      });
-
-      // Add any other fields as needed (e.g., isFeatured, eventStatus)
-      if (typeof formData.isFeatured !== 'undefined') {
-        formDataToSend.append("isFeatured", String(formData.isFeatured));
-      }
-      if (typeof formData.eventStatus !== 'undefined') {
-        formDataToSend.append("eventStatus", String(formData.eventStatus));
-      }
-
-      // Debug: log FormData entries
-      console.log("FormData entries:");
-      for (let [key, value] of formDataToSend.entries()) {
-        console.log(key, value);
-      }
-
-      // Call updateEventById API with FormData
-      const response = await ApiService.updateEventById(eventId, formDataToSend);
-      console.log("API Response:", response);
-      console.log("API Response Data:", response.data);
-
+      // Call updateEventById API
+      const response = await ApiService.updateEventById(eventId, updateData);
+      
       if (response.success) {
         toast.success('Event updated successfully!');
         setSuccess(true);
-        setTimeout(() => {
-          router.push('/user-dashboard/events');
-        }, 1500);
+        // Navigate to user dashboard events page
+       
       } else {
         toast.error(response.message || 'Failed to update event');
       }
@@ -280,6 +246,31 @@ const EventDetailsPage: React.FC = () => {
       setProcessing(false);
     }
   };
+
+  const handleInvitePeople = () => {
+  }
+
+  const handlePublishRequest = async () => {
+    try {
+      setProcessing(true);
+      const response = await ApiService.requestEventPublication(eventId, {});
+      
+      if (response.success) {
+        toast.success('Event publication request sent successfully!');
+        setTimeout(() => {
+          router.push('/user-dashboard/events');
+        }, 1500);
+      } else {
+        toast.error(response.message || 'Failed to send publication request');
+      }
+    } catch (error: any) {
+      console.error('Error requesting event publication:', error);
+      const errorMessage = error?.response?.data?.message || 'Failed to send publication request';
+      toast.error(errorMessage);
+    } finally {
+      setProcessing(false);
+    }
+  }
 
   const validateStep = (step: number) => {
     const newErrors: Record<string, string> = {};
@@ -815,14 +806,14 @@ const EventDetailsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-      
+        <Header />
         <main className="flex-1 bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
           <div className="text-center space-y-4">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
             <p className="text-gray-600">Loading event details...</p>
           </div>
         </main>
-        
+        <Footer />
       </div>
     );
   }
@@ -830,7 +821,7 @@ const EventDetailsPage: React.FC = () => {
   if (error) {
     return (
       <div className="min-h-screen flex flex-col">
-     
+        <Header />
         <main className="flex-1 bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
           <div className="text-center space-y-4">
             <h2 className="text-xl font-semibold text-gray-900">Error Loading Event</h2>
@@ -840,7 +831,7 @@ const EventDetailsPage: React.FC = () => {
              </Button>
           </div>
         </main>
-       
+        <Footer />
       </div>
     );
   }
@@ -848,7 +839,7 @@ const EventDetailsPage: React.FC = () => {
   if (success) {
     return (
       <div className="min-h-screen flex flex-col">
-      
+        <Header />
         <main className="flex-1 bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
           <div className="max-w-md w-full mx-4">
             <div className="bg-white rounded-lg shadow-lg p-8 text-center space-y-4">
@@ -857,7 +848,7 @@ const EventDetailsPage: React.FC = () => {
               </div>
               <h2 className="text-2xl font-bold text-gray-900">Event Updated Successfully!</h2>
               <p className="text-gray-600">
-                Your event has been updated successfully. If you want to publish your event, create tickets.
+                Your event has been updated successfully. If you want to publish your event, create tickets or Invite people.
               </p>
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-600">Event Details</p>
@@ -865,31 +856,55 @@ const EventDetailsPage: React.FC = () => {
                 <p className="text-sm text-gray-500">{formData.eventType}</p>
               </div>
               <div className="flex gap-4 pt-6">
-                                 <Button 
-                   variant="ghost" 
-                   className="flex-1 h-12 bg-transparent" 
-                   onClick={() => router.push("/user-dashboard/events")}
-                 >
-                   Cancel
-                 </Button>
-                 <Button 
-                   className="flex-1 h-12 bg-blue-600 hover:bg-blue-700" 
-                   onClick={() => router.push(`/events/create-ticket/${eventId}`)}
-                 >
-                  Create Event Ticket
+                <Button 
+                  variant="ghost" 
+                  className="flex-1 h-12 bg-transparent" 
+                  onClick={() => router.push("/user-dashboard/events")}
+                >
+                  Cancel
                 </Button>
+                <Button 
+                  className="flex-1 h-12 bg-green-600 hover:bg-green-700" 
+                  onClick={handleInvitePeople}
+                >
+                  Invite People
+                </Button>
+                
+                {!formData.isEntryPaid ? (
+                  <Button 
+                    className="flex-1 h-12 bg-blue-600 hover:bg-blue-700" 
+                    onClick={handlePublishRequest}
+                    disabled={processing}
+                  >
+                    {processing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Publishing...
+                      </>
+                    ) : (
+                      'Publish Event'
+                    )}
+                  </Button>
+                ) : (
+                  <Button 
+                    className="flex-1 h-12 bg-blue-600 hover:bg-blue-700" 
+                    onClick={() => router.push(`/events/create-ticket/${eventId}`)}
+                  >
+                    Create Event Ticket and Publish your event
+                  </Button>
+                )}
               </div>
             </div>
           </div>
         </main>
-        
+        <Footer />
       </div>
     );
   }
 
   return (
     <>
-      
+      <Header />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Progress Steps */}
@@ -986,7 +1001,7 @@ const EventDetailsPage: React.FC = () => {
           </div>
         </div>
       </div>
-    
+      <Footer/>
     </>
   );
 };

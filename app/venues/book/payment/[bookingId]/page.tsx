@@ -23,6 +23,7 @@ import {
   DollarSign,
   FileText,
   Calculator,
+  Link,
 } from "lucide-react"
 import Image from "next/image"
 import { Header } from "@/components/header"
@@ -219,6 +220,7 @@ export default function PayVenueBooking() {
         
         // Fetch real booking data from API
         const response = await ApiService.getBookingById(bookingId)
+        console.log("Booking data response:", response)
         
         if (response.success && response.data) {
           const apiData = response.data
@@ -448,14 +450,22 @@ export default function PayVenueBooking() {
                   </p>
                 )}
               </div>
-              <div className="space-y-2">
-                <Button className="w-full" onClick={() => window.history.back()}>
-                  Continue Adding Event Details
-                </Button>
-                <Button variant="ghost" className="w-full bg-transparent" onClick={() => window.history.back()}>
+              <p>Create Event,If you want to : invite people, Publish and sell ticket or get registered user on your event  on our platform.</p>
+                           <div className="flex gap-4 pt-6">
+                 <Button variant="ghost" className="flex-1 h-12 bg-transparent" onClick={() => window.location.href = "/user-dashboard/booking"}>
                   Cancel
                 </Button>
+                
+                 <Button className="flex-1 h-12" onClick={() => window.location.href = `/events/event-data/${bookingData?.eventId}`}>
+                  
+                  Create Event based on your booking
+                    
+                </Button>
+               
               </div>
+
+
+
             </CardContent>
           </Card>
         </main>
@@ -1056,6 +1066,43 @@ export default function PayVenueBooking() {
                              <span>Progress:</span>
                              <span className="font-semibold">{bookingData.paymentSummary.paymentProgress}</span>
                            </div>
+                           <div className="flex justify-between text-sm">
+                             <span>Next Payment Due:</span>
+                             <span className="text-blue-600 font-semibold">{bookingData.paymentSummary.nextPaymentDue} Rwf</span>
+                           </div>
+                           <div className="flex justify-between text-sm">
+                             <span>Payment Deadline:</span>
+                             <span className="text-orange-600 font-semibold">
+                               {new Date(bookingData.paymentSummary.paymentDeadline).toLocaleDateString('en-US', { 
+                                 weekday: 'short', 
+                                 year: 'numeric', 
+                                 month: 'short', 
+                                 day: 'numeric' 
+                               })}
+                             </span>
+                           </div>
+                         </div>
+                       </>
+                     )}
+
+                     {bookingData?.paymentSummary && (
+                       <>
+                         <Separator />
+                         <div className="space-y-2">
+                           <div className="text-sm font-medium text-blue-600">Deposit Status</div>
+                           <div className="flex justify-between text-sm">
+                             <span>Deposit Amount:</span>
+                             <span className="font-semibold text-blue-600">{bookingData.paymentSummary.depositAmount} Rwf</span>
+                           </div>
+                           <div className="flex justify-between text-sm">
+                             <span>Status:</span>
+                             <span className={`font-semibold ${
+                               bookingData.paymentSummary.depositStatus === 'FULFILLED' ? 'text-green-600' : 
+                               bookingData.paymentSummary.depositStatus === 'PENDING' ? 'text-orange-600' : 'text-red-600'
+                             }`}>
+                               {bookingData.paymentSummary.depositStatus}
+                             </span>
+                           </div>
                          </div>
                        </>
                      )}
@@ -1099,10 +1146,10 @@ export default function PayVenueBooking() {
                                  day: 'numeric' 
                                })}
                              </span>
-                           </div>
-                         </div>
-                       </>
-                     )}
+                          </div>
+                        </div>
+                      </>
+                    )}
                     {bookingData?.venue.bookingType === 'HOURLY' && (
                       <div className="text-xs text-red-500">Hourly booking: number of hours not specified, using 1 hour as default.</div>
                     )}

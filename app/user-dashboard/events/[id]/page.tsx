@@ -2,8 +2,8 @@
 
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter, useParams } from "next/navigation"
-import { useEffect, useState } from "react"
-import { ArrowLeft, Calendar, MapPin, Users, Edit, Share2, Trash2, DollarSign, AlertCircle, Home, Ticket, CheckCircle, Building2, Building2Icon, Eye, Pencil } from "lucide-react"
+import { Key, useEffect, useState } from "react"
+import { ArrowLeft, Calendar, MapPin, Users, Edit, Share2, Trash2, DollarSign, AlertCircle, Home, Ticket, CheckCircle, Building2, Building2Icon, Eye, Pencil, Twitter, Facebook, Linkedin } from "lucide-react"
 import Link from "next/link"
 import {
   Table,
@@ -24,6 +24,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import {
   Pagination,
   PaginationContent,
@@ -34,6 +35,8 @@ import {
 } from "@/components/ui/pagination"
 import ApiService from "@/api/apiConfig"
 import EventTicketsManagement from "./event-tickets-management"
+import AttendancePage from "./event-attendance"
+
 
 
 export default function EventDetails({ params }: { params: { id: string } }) {
@@ -170,12 +173,22 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               >
                 <Edit className="mr-2 h-4 w-4" /> Edit
               </Link>
-              <Link 
-                href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
-                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"
-              >
-                <Ticket className="mr-2 h-4 w-4" /> Create Ticket
-              </Link>
+              {!event.isEntryPaid && (
+                <Link 
+                  href={`/events/check-invitation`} className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"  >
+                    
+                  <CheckCircle className="mr-2 h-4 w-4" /> Check Invitation
+               
+                  </Link>
+              )}
+              {event.isEntryPaid && (
+                <Link 
+                  href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
+                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"
+                >
+                  <Ticket className="mr-2 h-4 w-4" /> Create Ticket
+                </Link>
+              )}
               <button className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center">
                 <Share2 className="mr-2 h-4 w-4" /> Share
               </button>
@@ -192,12 +205,22 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               <Link href={`/user-dashboard/events/${event.eventId}/edit`} className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center">
                 <Edit className="mr-2 h-5 w-5" /> Edit
               </Link>
-              <Link 
-                href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
-                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
-              >
-                <Ticket className="mr-2 h-5 w-5" /> Create Ticket
-              </Link>
+              {!event.isEntryPaid && (
+                <Link 
+                  href={`/events/check-invitation`}
+                  className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
+                >
+                  <CheckCircle className="mr-2 h-5 w-5" /> Check Invitation
+                </Link>
+              )}
+              {event.isEntryPaid && (
+                <Link 
+                  href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
+                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
+                >
+                  <Ticket className="mr-2 h-5 w-5" /> Create Ticket
+                </Link>
+              )}
               <button className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md flex items-center">
                 <Share2 className="mr-2 h-5 w-5" /> Share
               </button>
@@ -288,6 +311,12 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                 <p className="text-xs md:text-sm text-gray-500">Type</p>
                 <p className="font-medium text-sm md:text-base break-words">{event.eventType}</p>
               </div>
+                {event.startTime && (
+              <div><span className="font-medium">Start Time:</span> {event.startTime}</div>
+            )}
+            {event.endTime && (
+              <div><span className="font-medium">End Time:</span> {event.endTime}</div>
+            )}
               <div>
                 <p className="text-xs md:text-sm text-gray-500">Visibility</p>
                 <p className="font-medium text-sm md:text-base break-words">{event.visibilityScope}</p>
@@ -297,8 +326,42 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                 <p className="font-medium text-sm md:text-base break-words">{event.specialNotes}</p>
               </div>
               <div>
-                <p className="text-xs md:text-sm text-gray-500">Social Media Links</p>
-                <p className="font-medium text-sm md:text-base break-words">{event.socialMediaLinks}</p>
+                <p className="text-xs md:text-sm text-gray-500 mb-1">Social Media Links</p>
+                <div className="flex flex-wrap gap-2">
+                  {(() => {
+                    const getSocialIcon = (url: string | string[]) => {
+                      if (url.includes("twitter.com")) return <Twitter className="h-4 w-4 text-blue-400" />;
+                      if (url.includes("facebook.com")) return <Facebook className="h-4 w-4 text-blue-600" />;
+                      if (url.includes("linkedin.com")) return <Linkedin className="h-4 w-4 text-blue-700" />;
+                      return null;
+                    };
+                    let links = [];
+                    try {
+                      links = JSON.parse(event.socialMediaLinks);
+                      if (!Array.isArray(links)) throw new Error();
+                    } catch {
+                      links = event.socialMediaLinks
+                        .replace(/[\[\]"]/g, "")
+                        .split(",")
+                        .map((l: string) => l.trim())
+                        .filter(Boolean);
+                    }
+                    return links
+                      .filter((link: any): link is string => typeof link === "string" && link.trim() !== "")
+                      .map((link: string, idx: number) => (
+                        <a
+                          key={idx}
+                          href={link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gray-100 hover:bg-blue-50 text-blue-700 text-xs md:text-sm font-medium transition"
+                        >
+                          {getSocialIcon(link)}
+                          {link.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]}
+                        </a>
+                      ));
+                  })()}
+                </div>
               </div>
               <div>
                 <p className="text-xs md:text-sm text-gray-500">Created On</p>
@@ -382,16 +445,18 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               >
                 Attendees
               </button>
-              <button
-                onClick={() => setActiveTab("tickets")}
-                className={`py-3 md:py-4 px-2 md:px-4 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  activeTab === "tickets"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                Tickets
-              </button>
+              {event.isEntryPaid && (
+                <button
+                  onClick={() => setActiveTab("tickets")}
+                  className={`py-3 md:py-4 px-2 md:px-4 border-b-2 font-medium text-sm whitespace-nowrap ${
+                    activeTab === "tickets"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  Tickets
+                </button>
+              )}
             </nav>
           </div>
           
@@ -546,14 +611,14 @@ export default function EventDetails({ params }: { params: { id: string } }) {
             )}
             
             {activeTab === "attendees" && (
-              <div className="text-center text-gray-500 py-8">
-                <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-sm md:text-base">No attendees data available.</p>
+              <div className="space-y-6">
+                {/* Import and render the full attendance component */}
+                <AttendancePage />
               </div>
             )}
 
             {/* Tickets tab section */}
-            {activeTab === "tickets" && (
+            {activeTab === "tickets" && event.isEntryPaid && (
               <div className="space-y-4">
                 <h3 className="text-base md:text-lg font-semibold">Event Tickets</h3>
                 <EventTicketsManagement eventId={id as string} />
@@ -561,6 +626,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
             )}
           </div>
         </div>
+      
         {/* Delete Confirmation Modal */}
         <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
           <AlertDialogContent>

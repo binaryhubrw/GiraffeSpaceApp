@@ -233,6 +233,7 @@ export default function Home() {
                       registeredCount={0}
                       imageSrc={event.eventPhoto || "/placeholder.svg"}
                       imageAlt={event.eventName}
+                      isEntryPaid={event.isEntryPaid}
                     />
                   )
                 })}

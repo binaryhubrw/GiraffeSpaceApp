@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { Header } from "@/components/header"
 import Footer from "@/components/footer"
 import Link from "next/link"
+import { toast } from "sonner";
 
 interface EventData {
   eventId: string
@@ -38,11 +39,23 @@ interface EventData {
   }>
 }
 
+interface Address {
+  street: string;
+  province: string;
+  district: string;
+  sector: string;
+  country: string;
+}
+
 interface AttendeeData {
-  firstName: string
-  lastName: string
-  email: string
-  phoneNumber: string
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
+  email: string;
+  phoneNumber: string;
+  nationalId: string;
+  gender: string;
+  address: Address;
 }
 
 interface LoggedInUser {
@@ -73,10 +86,20 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
   const [registeringForSelf, setRegisteringForSelf] = useState(true)
   const [attendees, setAttendees] = useState<AttendeeData[]>([
     {
+      fullName: "",
       firstName: "",
       lastName: "",
       email: "",
       phoneNumber: "",
+      nationalId: "",
+      gender: "",
+      address: {
+        street: "",
+        province: "",
+        district: "",
+        sector: "",
+        country: "RWANDA",
+      },
     },
   ])
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -119,27 +142,68 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
     if (registeringForSelf && fullUser) {
       setAttendees([
         {
+          fullName: `${fullUser.firstName || ""} ${fullUser.lastName || ""}`.trim(),
           firstName: fullUser.firstName || "",
           lastName: fullUser.lastName || "",
           email: fullUser.email || "",
           phoneNumber: fullUser.phoneNumber || "",
+          nationalId: "",
+          gender: "",
+          address: {
+            street: "",
+            province: "",
+            district: "",
+            sector: "",
+            country: "RWANDA",
+          },
         },
       ])
     } else if (!registeringForSelf) {
       setAttendees([
         {
+          fullName: "",
           firstName: "",
           lastName: "",
           email: "",
           phoneNumber: "",
+          nationalId: "",
+          gender: "",
+          address: {
+            street: "",
+            province: "",
+            district: "",
+            sector: "",
+            country: "RWANDA",
+          },
         },
       ])
     }
   }, [registeringForSelf, fullUser?.firstName, fullUser?.lastName, fullUser?.email, fullUser?.phoneNumber])
 
-  const handleAttendeeChange = (index: number, field: keyof AttendeeData, value: string) => {
+  const handleAttendeeChange = (index: number, field: keyof AttendeeData | keyof Address, value: string) => {
     const newAttendees = [...attendees]
-    newAttendees[index] = { ...newAttendees[index], [field]: value }
+    if (
+      field === "street" ||
+      field === "province" ||
+      field === "district" ||
+      field === "sector" ||
+      field === "country"
+    ) {
+      newAttendees[index].address = {
+        ...newAttendees[index].address,
+        [field]: value,
+      };
+    } else {
+      // Type-safe assignment for AttendeeData fields
+      const attendee = newAttendees[index];
+      if (field === "fullName") attendee.fullName = value;
+      else if (field === "firstName") attendee.firstName = value;
+      else if (field === "lastName") attendee.lastName = value;
+      else if (field === "email") attendee.email = value;
+      else if (field === "phoneNumber") attendee.phoneNumber = value;
+      else if (field === "nationalId") attendee.nationalId = value;
+      else if (field === "gender") attendee.gender = value;
+    }
     setAttendees(newAttendees)
 
     // Clear error for this field
@@ -153,10 +217,20 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
     setAttendees([
       ...attendees,
       {
+        fullName: "",
         firstName: "",
         lastName: "",
         email: "",
         phoneNumber: "",
+        nationalId: "",
+        gender: "",
+        address: {
+          street: "",
+          province: "",
+          district: "",
+          sector: "",
+          country: "RWANDA",
+        },
       },
     ])
   }
@@ -172,11 +246,10 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
     const newErrors: Record<string, string> = {}
 
     attendees.forEach((attendee, index) => {
-      if (!attendee.firstName.trim()) {
-        newErrors[`attendee-${index}-firstName`] = "First name is required"
-      }
-      if (!attendee.lastName.trim()) {
-        newErrors[`attendee-${index}-lastName`] = "Last name is required"
+      console.log(`Validating attendee ${index}:`, attendee); // Debug log
+      
+      if (!attendee.fullName?.trim()) {
+        newErrors[`attendee-${index}-fullName`] = "Full name is required"
       }
       if (!attendee.email.trim()) {
         newErrors[`attendee-${index}-email`] = "Email is required"
@@ -186,8 +259,32 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
       if (!attendee.phoneNumber.trim()) {
         newErrors[`attendee-${index}-phoneNumber`] = "Phone number is required"
       }
+      if (!attendee.nationalId.trim()) {
+        newErrors[`attendee-${index}-nationalId`] = "National ID is required";
+      } else if (!/^\d{16}$/.test(attendee.nationalId.trim())) {
+        newErrors[`attendee-${index}-nationalId`] = "National ID must be exactly 16 numbers";
+      }
+      if (!attendee.gender.trim()) {
+        newErrors[`attendee-${index}-gender`] = "Gender is required";
+      }
+      if (!attendee.address.street.trim()) {
+        newErrors[`attendee-${index}-street`] = "Street is required";
+      }
+      if (!attendee.address.province.trim()) {
+        newErrors[`attendee-${index}-province`] = "Province is required";
+      }
+      if (!attendee.address.district.trim()) {
+        newErrors[`attendee-${index}-district`] = "District is required";
+      }
+      if (!attendee.address.sector.trim()) {
+        newErrors[`attendee-${index}-sector`] = "Sector is required";
+      }
+      if (!attendee.address.country.trim()) {
+        newErrors[`attendee-${index}-country`] = "Country is required";
+      }
     })
 
+    console.log('Validation errors:', newErrors); // Debug log
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -200,23 +297,31 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
     setSubmitting(true)
 
     try {
-      const registrationData = {
-        eventId,
-        registeredBy: fullUser?.userId || null,
-        registeringForSelf,
-        attendees: attendees.map((attendee) => ({
-          ...attendee,
-          userId: registeringForSelf ? fullUser?.userId : null,
-        })),
-      }
+      const registrationData = attendees.map((attendee) => ({
+        fullName: attendee.fullName?.trim()
+          ? attendee.fullName
+          : `${attendee.firstName || ""} ${attendee.lastName || ""}`.trim(),
+        email: attendee.email,
+        phoneNumber: attendee.phoneNumber,
+        nationalId: attendee.nationalId,
+        gender: attendee.gender,
+        address: [
+          {
+            street: attendee.address.street,
+            province: attendee.address.province,
+            district: attendee.address.district,
+            sector: attendee.address.sector,
+            country: attendee.address.country,
+          },
+        ],
+      }));
 
-      // Simulate registration API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Registration successful
-      setSuccess(true)
+      await ApiService.registerOnFreeEvent(eventId, registrationData);
+      toast.success("Registration successful!");
+      setSuccess(true);
     } catch (err) {
-      setError("Failed to register for the event. Please try again.")
+      toast.error("Failed to register for the event. Please try again.");
+      setError("Failed to register for the event. Please try again.");
     } finally {
       setSubmitting(false)
     }
@@ -261,9 +366,9 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
               You have successfully registered {attendees.length} attendee{attendees.length > 1 ? "s" : ""} for {eventData?.eventName}.
             </p>
             <div className="space-y-2">
-              <Link href={`/events/${eventId}/buy-tickets`}>
+              <Link href={`/events`}>
                 <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                  Go to Buy Tickets
+                  back to Event 
                 </Button>
               </Link>
               <Button variant="outline" className="w-full bg-transparent" onClick={() => setSuccess(false)}>
@@ -404,38 +509,32 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor={`firstName-${index}`}>First Name *</Label>
-                              <Input
-                                id={`firstName-${index}`}
-                                value={attendee.firstName}
-                                onChange={(e) => handleAttendeeChange(index, "firstName", e.target.value)}
-                                placeholder="Enter first name"
-                                className={`mt-1 ${errors[`attendee-${index}-firstName`] ? "border-red-500" : ""}`}
-                                disabled={registeringForSelf}
-                              />
-                              {errors[`attendee-${index}-firstName`] && (
-                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-firstName`]}</p>
-                              )}
-                            </div>
+                            {registeringForSelf && index === 0 ? (
+                              <div>
+                                <Label htmlFor={`fullName-${index}`}>Full Name *</Label>
+                                <Input
+                                  id={`fullName-${index}`}
+                                  value={`${fullUser?.firstName || ""} ${fullUser?.lastName || ""}`}
+                                  disabled
+                                  className="mt-1"
+                                />
+                              </div>
+                            ) : (
+                              <div>
+                                <Label htmlFor={`fullName-${index}`}>Full Name *</Label>
+                                <Input
+                                  id={`fullName-${index}`}
+                                  value={attendee.fullName}
+                                  onChange={(e) => handleAttendeeChange(index, "fullName", e.target.value)}
+                                  placeholder="Enter full name"
+                                  className={`mt-1 ${errors[`attendee-${index}-fullName`] ? "border-red-500" : ""}`}
+                                />
+                                {errors[`attendee-${index}-fullName`] && (
+                                  <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-fullName`]}</p>
+                                )}
+                              </div>
+                            )}
 
-                            <div>
-                              <Label htmlFor={`lastName-${index}`}>Last Name *</Label>
-                              <Input
-                                id={`lastName-${index}`}
-                                value={attendee.lastName}
-                                onChange={(e) => handleAttendeeChange(index, "lastName", e.target.value)}
-                                placeholder="Enter last name"
-                                className={`mt-1 ${errors[`attendee-${index}-lastName`] ? "border-red-500" : ""}`}
-                                disabled={registeringForSelf}
-                              />
-                              {errors[`attendee-${index}-lastName`] && (
-                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-lastName`]}</p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <Label htmlFor={`email-${index}`}>Email Address *</Label>
                               <Input
@@ -445,13 +544,15 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                                 onChange={(e) => handleAttendeeChange(index, "email", e.target.value)}
                                 placeholder="Enter email address"
                                 className={`mt-1 ${errors[`attendee-${index}-email`] ? "border-red-500" : ""}`}
-                                disabled={registeringForSelf}
+                                disabled={registeringForSelf && index === 0}
                               />
                               {errors[`attendee-${index}-email`] && (
                                 <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-email`]}</p>
                               )}
                             </div>
+                          </div>
 
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <Label htmlFor={`phoneNumber-${index}`}>Phone Number *</Label>
                               <Input
@@ -460,10 +561,118 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                                 onChange={(e) => handleAttendeeChange(index, "phoneNumber", e.target.value)}
                                 placeholder="Enter phone number"
                                 className={`mt-1 ${errors[`attendee-${index}-phoneNumber`] ? "border-red-500" : ""}`}
-                                disabled={registeringForSelf}
+                                disabled={registeringForSelf && index === 0}
                               />
                               {errors[`attendee-${index}-phoneNumber`] && (
                                 <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-phoneNumber`]}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor={`nationalId-${index}`}>National ID *</Label>
+                              <Input
+                                id={`nationalId-${index}`}
+                                value={attendee.nationalId}
+                                onChange={(e) => handleAttendeeChange(index, "nationalId", e.target.value)}
+                                placeholder="Enter national ID"
+                                className={`mt-1 ${errors[`attendee-${index}-nationalId`] ? "border-red-500" : ""}`}
+                              />
+                              {errors[`attendee-${index}-nationalId`] && (
+                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-nationalId`]}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor={`gender-${index}`}>Gender *</Label>
+                              <select
+                                id={`gender-${index}`}
+                                value={attendee.gender}
+                                onChange={(e) => handleAttendeeChange(index, "gender", e.target.value)}
+                                className={`mt-1 w-full border rounded-md p-2 ${errors[`attendee-${index}-gender`] ? "border-red-500" : ""}`}
+                              >
+                                <option value="">Select gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                              </select>
+                              {errors[`attendee-${index}-gender`] && (
+                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-gender`]}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor={`street-${index}`}>Street *</Label>
+                              <Input
+                                id={`street-${index}`}
+                                value={attendee.address.street}
+                                onChange={(e) => handleAttendeeChange(index, "street", e.target.value)}
+                                placeholder="Enter street"
+                                className={`mt-1 ${errors[`attendee-${index}-street`] ? "border-red-500" : ""}`}
+                              />
+                              {errors[`attendee-${index}-street`] && (
+                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-street`]}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor={`province-${index}`}>Province *</Label>
+                              <Input
+                                id={`province-${index}`}
+                                value={attendee.address.province}
+                                onChange={(e) => handleAttendeeChange(index, "province", e.target.value)}
+                                placeholder="Enter province"
+                                className={`mt-1 ${errors[`attendee-${index}-province`] ? "border-red-500" : ""}`}
+                              />
+                              {errors[`attendee-${index}-province`] && (
+                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-province`]}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor={`district-${index}`}>District *</Label>
+                              <Input
+                                id={`district-${index}`}
+                                value={attendee.address.district}
+                                onChange={(e) => handleAttendeeChange(index, "district", e.target.value)}
+                                placeholder="Enter district"
+                                className={`mt-1 ${errors[`attendee-${index}-district`] ? "border-red-500" : ""}`}
+                              />
+                              {errors[`attendee-${index}-district`] && (
+                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-district`]}</p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor={`sector-${index}`}>Sector *</Label>
+                              <Input
+                                id={`sector-${index}`}
+                                value={attendee.address.sector}
+                                onChange={(e) => handleAttendeeChange(index, "sector", e.target.value)}
+                                placeholder="Enter sector"
+                                className={`mt-1 ${errors[`attendee-${index}-sector`] ? "border-red-500" : ""}`}
+                              />
+                              {errors[`attendee-${index}-sector`] && (
+                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-sector`]}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor={`country-${index}`}>Country *</Label>
+                              <Input
+                                id={`country-${index}`}
+                                value={attendee.address.country}
+                                onChange={(e) => handleAttendeeChange(index, "country", e.target.value)}
+                                placeholder="Enter country"
+                                className={`mt-1 ${errors[`attendee-${index}-country`] ? "border-red-500" : ""}`}
+                              />
+                              {errors[`attendee-${index}-country`] && (
+                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-country`]}</p>
                               )}
                             </div>
                           </div>

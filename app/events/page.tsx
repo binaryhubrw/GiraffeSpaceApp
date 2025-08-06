@@ -250,6 +250,7 @@ export default function EventsPage() {
                       registeredCount={event.registeredCount || 0}
                       imageSrc={imageSrc}
                       imageAlt={event.eventName}
+                      isEntryPaid={event.isEntryPaid}
                     />
                   </div>
                 )
