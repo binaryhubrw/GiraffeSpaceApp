@@ -171,12 +171,22 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               >
                 <Edit className="mr-2 h-4 w-4" /> Edit
               </Link>
-              <Link 
-                href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
-                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"
-              >
-                <Ticket className="mr-2 h-4 w-4" /> Create Ticket
-              </Link>
+              {!event.isEntryPaid && (
+                <Link 
+                  href={`/events/check-invitation`} className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"  >
+                    
+                  <CheckCircle className="mr-2 h-4 w-4" /> Check Invitation
+               
+                  </Link>
+              )}
+              {event.isEntryPaid && (
+                <Link 
+                  href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
+                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"
+                >
+                  <Ticket className="mr-2 h-4 w-4" /> Create Ticket
+                </Link>
+              )}
               <button className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center">
                 <Share2 className="mr-2 h-4 w-4" /> Share
               </button>
@@ -193,12 +203,22 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               <Link href={`/user-dashboard/events/${event.eventId}/edit`} className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center">
                 <Edit className="mr-2 h-5 w-5" /> Edit
               </Link>
-              <Link 
-                href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
-                className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
-              >
-                <Ticket className="mr-2 h-5 w-5" /> Create Ticket
-              </Link>
+              {!event.isEntryPaid && (
+                <Link 
+                  href={`/events/check-invitation`}
+                  className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
+                >
+                  <CheckCircle className="mr-2 h-5 w-5" /> Check Invitation
+                </Link>
+              )}
+              {event.isEntryPaid && (
+                <Link 
+                  href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
+                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
+                >
+                  <Ticket className="mr-2 h-5 w-5" /> Create Ticket
+                </Link>
+              )}
               <button className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md flex items-center">
                 <Share2 className="mr-2 h-5 w-5" /> Share
               </button>
@@ -423,16 +443,18 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               >
                 Attendees
               </button>
-              <button
-                onClick={() => setActiveTab("tickets")}
-                className={`py-3 md:py-4 px-2 md:px-4 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  activeTab === "tickets"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                Tickets
-              </button>
+              {event.isEntryPaid && (
+                <button
+                  onClick={() => setActiveTab("tickets")}
+                  className={`py-3 md:py-4 px-2 md:px-4 border-b-2 font-medium text-sm whitespace-nowrap ${
+                    activeTab === "tickets"
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  Tickets
+                </button>
+              )}
             </nav>
           </div>
           
@@ -594,7 +616,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
             )}
 
             {/* Tickets tab section */}
-            {activeTab === "tickets" && (
+            {activeTab === "tickets" && event.isEntryPaid && (
               <div className="space-y-4">
                 <h3 className="text-base md:text-lg font-semibold">Event Tickets</h3>
                 <EventTicketsManagement eventId={id as string} />
