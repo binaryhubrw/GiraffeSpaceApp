@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Calendar, MapPin, Users, Phone, Mail, ExternalLink, AlertCircle, DollarSign, Clock, User, ArrowLeft, XCircle, MessageCircle } from "lucide-react"
+import { Calendar, MapPin, Users, Phone, Mail, ExternalLink, AlertCircle, DollarSign, Clock, User, ArrowLeft, XCircle } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -177,31 +177,52 @@ export default function VenueBookingDetail() {
   const [data, setData] = useState<BookingDetail | null>(null) // Typed data state
   const [loading, setLoading] = useState(true)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [queryDialogOpen, setQueryDialogOpen] = useState(false);
   const [cancelMessage, setCancelMessage] = useState("");
-  const [queryMessage, setQueryMessage] = useState("");
   const [sending, setSending] = useState(false);
   const { user } = useAuth(); // Get user from auth context
 
   const handleSendCancel = async () => {
     setSending(true);
-    // Simulate API call
-    setTimeout(() => {
-      setSending(false);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Authentication token not found. Please log in.");
+        setSending(false);
+        return;
+      }
+
+      const response = await fetch(
+        `https://giraffespacev2.onrender.com/api/v1/venue-bookings/${bookingId}/cancel-by-manager-without-slot-deletion`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason: cancelMessage }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      // Re-fetch booking details after successful cancellation
+      const updatedBookingResponse: GetBookingByIdApiResponse = await ApiService.getBookingById(bookingId as string);
+      if (updatedBookingResponse.success && updatedBookingResponse.data) {
+        setData(updatedBookingResponse.data);
+      }
+
       setCancelDialogOpen(false);
       setCancelMessage("");
-      toast.success("Cancellation message sent to the user.");
-    }, 1000);
-  };
-  const handleSendQuery = async () => {
-    setSending(true);
-    // Simulate API call
-    setTimeout(() => {
+      toast.success("Booking cancelled successfully.");
+    } catch (error: any) {
+      console.error("Error sending cancellation message:", error);
+      toast.error(error.message || "Failed to cancel booking.");
+    } finally {
       setSending(false);
-      setQueryDialogOpen(false);
-      setQueryMessage("");
-      toast.success("Query/feedback message sent to the user.");
-    }, 1000);
+    }
   };
 
   useEffect(() => {
@@ -271,8 +292,17 @@ export default function VenueBookingDetail() {
               <Tooltip>
                 <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
                   <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="destructive" aria-label="Cancel Booking" title="Cancel Booking" disabled={data.bookingStatus === 'CANCELLED' || data.bookingStatus === 'REJECTED'}>
-                      <XCircle className="w-5 h-5" />
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-8 px-3 py-2 text-destructive-foreground hover:bg-destructive/90 flex items-center gap-1"
+                      onClick={() => {}}
+                      aria-label="Cancel Booking"
+                      title="Cancel Booking"
+                      disabled={!(data.bookingStatus === 'APPROVED_PAID' || data.bookingStatus === 'APPROVED_NOT_PAID')}
+                    >
+                      <XCircle className="w-4 h-4" />
+                      <span>Cancel</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -299,41 +329,6 @@ export default function VenueBookingDetail() {
                   </AlertDialogContent>
                 </AlertDialog>
                 <TooltipContent>Cancel Booking</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            {/* Query/Feedback Action with Dialog */}
-            <TooltipProvider>
-              <Tooltip>
-                <AlertDialog open={queryDialogOpen} onOpenChange={setQueryDialogOpen}>
-                  <AlertDialogTrigger asChild>
-                    <Button size="icon" variant="outline" aria-label="Query/Feedback" title="Query/Feedback">
-                      <MessageCircle className="w-5 h-5" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Send Query / Feedback</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Please provide your query or feedback for the user:
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <textarea
-                      className="w-full border rounded p-2 mt-2"
-                      rows={4}
-                      placeholder="Enter your message..."
-                      value={queryMessage}
-                      onChange={e => setQueryMessage(e.target.value)}
-                      disabled={sending}
-                    />
-                    <AlertDialogFooter>
-                      <AlertDialogCancel disabled={sending}>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleSendQuery} disabled={sending || !queryMessage.trim()} className="bg-primary text-white">
-                        {sending ? "Sending..." : "Send Message"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                <TooltipContent>Query / Feedback</TooltipContent>
               </Tooltip>
             </TooltipProvider>
         </div>

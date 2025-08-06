@@ -19,6 +19,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { format, isToday, isThisWeek, isSameMonth, parseISO } from "date-fns"; // Added parseISO for date parsing and other date functions
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Payer {
   userId: string
@@ -107,6 +118,11 @@ export default function BookingRequestsPage() {
   const ITEMS_PER_PAGE = 6;
   const [page, setPage] = useState(1);
 
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [bookingToCancelId, setBookingToCancelId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
+
   // Helper to normalize date string to YYYY-MM-DD
   function normalizeDateString(dateStr: string) {
     if (!dateStr) return '';
@@ -183,21 +199,70 @@ export default function BookingRequestsPage() {
   }, [isLoggedIn, router]);
 
   // Fetch bookings for manager
+  const fetchBookings = async () => {
+    if (!user?.userId) return;
+    setLoading(true);
+    try {
+      const response: AllBookingsApiResponse = await ApiService.getAllBookingsByManager(user.userId);
+      setBookings(response.data.bookings || []);
+    } catch (err) {
+      toast.error("Failed to fetch bookings. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchBookings = async () => {
-      if (!user?.userId) return;
-      setLoading(true);
-      try {
-        const response: AllBookingsApiResponse = await ApiService.getAllBookingsByManager(user.userId);
-        setBookings(response.data.bookings || []);
-      } catch (err) {
-        toast.error("Failed to fetch bookings. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    };
     if (user?.userId) fetchBookings();
   }, [user?.userId]);
+
+  // Handle cancellation directly from the table
+  const handleCancelBooking = (bookingId: string) => {
+    setBookingToCancelId(bookingId);
+    setCancelDialogOpen(true);
+  };
+
+  const confirmCancelBooking = async () => {
+    if (!bookingToCancelId || !cancelReason.trim()) return;
+
+    setIsCancelling(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Authentication token not found. Please log in.");
+        setIsCancelling(false);
+        return;
+      }
+
+      const response = await fetch(
+        `https://giraffespacev2.onrender.com/api/v1/venue-bookings/${bookingToCancelId}/cancel-by-manager-without-slot-deletion`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ reason: cancelReason }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      toast.success("Booking cancelled successfully.");
+      fetchBookings(); // Re-fetch data to update the table
+      setCancelDialogOpen(false);
+      setBookingToCancelId(null);
+      setCancelReason("");
+    } catch (error: any) {
+      console.error("Error cancelling booking:", error);
+      toast.error(error.message || "Failed to cancel booking.");
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   // Date filter logic
   const now = new Date();
@@ -271,11 +336,6 @@ export default function BookingRequestsPage() {
     { value: "CANCELLED", label: "Cancelled" },
     { value: "REJECTED", label: "Rejected" },
   ];
-
-  const handleCancelBooking = (bookingId: string) => {
-    // TODO: Implement cancel logic or open a dialog
-    alert(`Cancel booking ${bookingId}`);
-  };
 
   return (
     <>
@@ -379,6 +439,9 @@ export default function BookingRequestsPage() {
                       Date
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Amount Paid
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Amount Remained
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -391,71 +454,15 @@ export default function BookingRequestsPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {loading ? (
-                    <tr>
-                      <td colSpan={7} className="text-center py-8">Loading...</td>
-                    </tr>
+                    <tr><td colSpan={8} className="text-center py-8">Loading...</td></tr>
                   ) : paginated.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="text-center py-8">No bookings found.</td>
-                    </tr>
+                    <tr><td colSpan={8} className="text-center py-8">No bookings found.</td></tr>
                   ) : (
                     paginated.map((booking, idx) => {
                       const statusInfo = getStatusInfo(booking.bookingStatus || "UNKNOWN");
+                      const isCancellable = booking.bookingStatus === 'APPROVED_PAID' || booking.bookingStatus === 'APPROVED_NOT_PAID';
                       return (
-                        <tr key={booking.bookingId || idx}>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
-                            {(page - 1) * ITEMS_PER_PAGE + idx + 1}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap max-w-[200px] truncate">
-                            <div className="text-sm font-medium text-gray-900">
-                              {booking.eventDetails?.eventName || '-'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap max-w-[160px] truncate">
-                            <div className="text-sm text-gray-900">
-                              {booking.venue?.venueName || '-'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap max-w-[120px] truncate">
-                            <div className="text-sm text-gray-900">
-                              {booking.bookingDates?.[0]?.date || '-'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                            {formatCurrency(booking.paymentSummary?.remainingAmount || 0)}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <Badge variant={statusInfo.variant as any} className={statusInfo.className}>
-                              {statusInfo.label}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              asChild
-                            >
-                              <a
-                                href={`/manage/venues/bookings/${booking.bookingId || ''}`}
-                                aria-label="View Booking"
-                                title="View Booking"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </a>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                              onClick={() => handleCancelBooking(booking.bookingId)}
-                              aria-label="Cancel Booking"
-                              title="Cancel Booking"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </Button>
-                          </td>
-                        </tr>
+                        <tr key={booking.bookingId || idx}><td className="px-4 py-3 whitespace-nowrap text-center">{(page - 1) * ITEMS_PER_PAGE + idx + 1}</td><td className="px-4 py-3 whitespace-nowrap max-w-[200px] truncate"><div className="text-sm font-medium text-gray-900">{booking.eventDetails?.eventName || '-'}</div></td><td className="px-4 py-3 whitespace-nowrap max-w-[160px] truncate"><div className="text-sm text-gray-900">{booking.venue?.venueName || '-'}</div></td><td className="px-4 py-3 whitespace-nowrap max-w-[120px] truncate"><div className="text-sm text-gray-900">{booking.bookingDates?.[0]?.date || '-'}</div></td><td className="px-4 py-3 whitespace-nowrap text-sm font-medium">{formatCurrency(booking.paymentSummary?.totalPaid || 0)}</td><td className="px-4 py-3 whitespace-nowrap text-sm font-medium">{formatCurrency(booking.paymentSummary?.remainingAmount || 0)}</td><td className="px-4 py-3 whitespace-nowrap"><Badge variant={statusInfo.variant as any} className={statusInfo.className}>{statusInfo.label}</Badge></td><td className="px-4 py-3 whitespace-nowrap text-sm font-medium flex gap-2"><Button variant="outline" size="sm" className="h-8 px-3" asChild><a href={`/manage/venues/bookings/${booking.bookingId || ''}`} aria-label="View Booking" title="View Booking"><Eye className="w-4 h-4 mr-1" />View More</a></Button></td></tr>
                       );
                     })
                   )}

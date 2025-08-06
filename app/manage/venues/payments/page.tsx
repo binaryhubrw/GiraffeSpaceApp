@@ -49,6 +49,7 @@ interface Booking {
   bookingId: string
   bookingReason: string
   bookingDate: string; // Corrected: bookingDate is a direct property
+  venueName: string; // Corrected: venueName is a direct property
   bookingDates: Array<{ date: string; hours?: number[] }>; // Keep for other parts if needed, but primary date is bookingDate
   amountToBePaid: number
   totalAmountPaid: number
@@ -56,24 +57,7 @@ interface Booking {
   isFullyPaid: boolean
   payments: ApiPayment[]
   payer: Payer
-  venue: { // Fully typed venue object as per backend response
-    venueId: string;
-    venueName: string;
-    location: string;
-    bookingType: string;
-    baseAmount: number;
-    totalHours: number | null;
-    totalAmount: number;
-    depositRequired: { 
-      percentage: number;
-      amount: number;
-      description: string;
-    };
-    paymentCompletionRequired: { 
-      daysBeforeEvent: number;
-      deadline: string;
-    };
-  };
+  // Removed: venue object no longer present at this level
 }
 
 interface ApiResponse {
@@ -88,6 +72,7 @@ interface FormattedPayment {
   time: string
   customer: string
   venue: string // Will store venue.venueName
+  venueName: string; // Added to resolve the error
   method: string
   status: string
   transactionId?: string
@@ -155,7 +140,8 @@ export default function PaymentsPage() {
               date: booking.bookingDate || "N/A", // Use direct bookingDate
               time: "00:00", // Default time
               customer: booking.payer.fullName,
-              venue: booking.venue?.venueName || "N/A", // Safely access venueName
+              venue: booking.venueName || "N/A", // Safely access venueName
+              venueName: booking.venueName || "N/A", // Safely access venueName
               method: "N/A",
               status: booking.remainingAmount > 0 ? "PARTIAL" : "COMPLETED", // Use uppercase consistent with backend
               transactionId: booking.bookingId,
@@ -173,7 +159,8 @@ export default function PaymentsPage() {
                 date: format(paymentDateTime, "yyyy-MM-dd"),
                 time: format(paymentDateTime, "HH:mm"),
                 customer: booking.payer.fullName,
-                venue: booking.venue?.venueName || "N/A", // Safely access venueName
+                venue: booking.venueName || "N/A", // Safely access venueName
+                venueName: booking.venueName || "N/A", // Safely access venueName
                 method: payment.paymentMethod
                   .replace(/_/g, " ")
                   .toLowerCase()
@@ -212,9 +199,12 @@ export default function PaymentsPage() {
     const matchesSearch =
       payment.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
       payment.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.venue.toLowerCase().includes(searchTerm.toLowerCase())
+      payment.venueName.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesStatus = statusFilter === "all" || payment.status === statusFilter
+    const matchesStatus = 
+      statusFilter === "all" ||
+      (statusFilter === "Holdings" && (payment.status === "PENDING" || payment.status === "PARTIAL")) ||
+      (statusFilter !== "Holdings" && payment.status === statusFilter);
     const matchesMethod = methodFilter === "all" || payment.method === methodFilter
 
     let matchesDate = true
@@ -326,13 +316,13 @@ export default function PaymentsPage() {
       <div className="p-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-2xl font-bold">Payments Management</h1>
-          <Link
+          {/* <Link
             href="/manage/payments/create"
             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
           >
             <span className="text-lg">{"+"}</span>
             Add Payment
-          </Link>
+          </Link> */}
         </div>
         
         {/* Stats Cards */}
@@ -395,6 +385,7 @@ export default function PaymentsPage() {
                 <option value="COMPLETED">Completed</option>
                 <option value="PARTIAL">Partial</option>
                 <option value="FAILED">Failed</option>
+                <option value="Holdings">Holdings</option>
               </select>
               <select
                 value={methodFilter}
@@ -454,7 +445,7 @@ export default function PaymentsPage() {
                 {paginatedPayments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-gray-50">
                     <td className="px-4 py-4 text-sm text-gray-900">{payment.customer}</td>
-                    <td className="px-4 py-4 text-sm text-gray-900">{payment.venue}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900">{payment.venueName}</td>
                     <td className="px-4 py-4 text-sm font-medium text-gray-900">{formatCurrency(payment.amount)}</td>
                     <td className="px-4 py-4 text-sm text-gray-900">
                       {payment.date} • {payment.time}
