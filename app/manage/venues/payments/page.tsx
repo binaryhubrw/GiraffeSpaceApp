@@ -80,6 +80,7 @@ interface FormattedPayment {
   bookingDate: string // Corrected: Will store booking.bookingDate
   amountToBePaid: number
   bookingId: string
+  statusDisplay: string; // New field for formatted status
 }
 
 export default function PaymentsPage() {
@@ -143,12 +144,13 @@ export default function PaymentsPage() {
               venue: booking.venueName || "N/A", // Safely access venueName
               venueName: booking.venueName || "N/A", // Safely access venueName
               method: "N/A",
-              status: booking.remainingAmount > 0 ? "PARTIAL" : "COMPLETED", // Use uppercase consistent with backend
+              status: booking.remainingAmount > 0 ? "PARTIAL" : "COMPLETED", // Backend status
               transactionId: booking.bookingId,
               remainingAmount: booking.remainingAmount,
               bookingDate: booking.bookingDate || "N/A", // Use direct bookingDate
               amountToBePaid: booking.amountToBePaid,
               bookingId: booking.bookingId, // Add bookingId
+              statusDisplay: booking.remainingAmount > 0 ? "Partially Paid" : "Paid", // Display for UI
             })
           } else {
             booking.payments.forEach((payment) => {
@@ -171,6 +173,18 @@ export default function PaymentsPage() {
                 bookingDate: booking.bookingDate || "N/A", // Use direct bookingDate
                 amountToBePaid: booking.amountToBePaid,
                 bookingId: booking.bookingId, // Add bookingId
+                statusDisplay: (() => {
+                  switch (payment.paymentStatus.toUpperCase()) {
+                    case "COMPLETED":
+                      return "Paid";
+                    case "PARTIAL":
+                      return "Partially Paid";
+                    case "PENDING":
+                      return "Pending";
+                    default:
+                      return payment.paymentStatus; // Fallback for unexpected statuses
+                  }
+                })(),
               })
             })
           }
@@ -268,11 +282,9 @@ export default function PaymentsPage() {
     switch (status.toUpperCase()) {
       case "COMPLETED":
         return "bg-green-100 text-green-800"
-      case "PENDING":
       case "PARTIAL":
+      case "PENDING":
         return "bg-yellow-100 text-yellow-800"
-      case "FAILED":
-        return "bg-red-100 text-red-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -377,17 +389,6 @@ export default function PaymentsPage() {
                 />
               </div>
               <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Status</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="PARTIAL">Partial</option>
-                <option value="FAILED">Failed</option>
-                <option value="Holdings">Holdings</option>
-              </select>
-              <select
                 value={methodFilter}
                 onChange={(e) => setMethodFilter(e.target.value)}
                 className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -455,7 +456,7 @@ export default function PaymentsPage() {
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${getStatusColor(payment.status)}`}
                       >
-                        {payment.status}
+                        {payment.statusDisplay}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-sm">

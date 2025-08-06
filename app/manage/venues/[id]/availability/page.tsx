@@ -112,6 +112,7 @@ export default function Page() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const ITEMS_PER_PAGE = 5
+  const [monthFilter, setMonthFilter] = useState<string>("all"); // New state for month filter
 
   // Helper function to get display status for UI
   const getDisplayStatus = (apiStatus: string): string => {
@@ -244,6 +245,12 @@ export default function Page() {
   );
 
   function generateMonthOffsets() {
+    if (monthFilter !== "all") {
+      const selectedMonth = parseInt(monthFilter, 10) - 1; // Convert to 0-indexed month
+      const currentMonth = currentDate.getMonth();
+      const offset = selectedMonth - currentMonth;
+      return [offset -1 , offset]; // Display previous month and selected month
+    } 
     // Returns offsets for current and next month
     return [0, 1];
   }
@@ -312,7 +319,7 @@ function getCellClass(day: typeof days[number]) {
   const hasCancelledOrRejected = day.bookingsForDay.some(b => b.status === "CANCELLED" || b.status === "REJECTED");
 
   if (hasPendingOrPartial) return "bg-yellow-500 text-white border-2 border-blue-500";
-  if (hasApproved) return "bg-green-500 text-white border-2 border-blue-500";
+  if (hasApproved) return "bg-blue-500 text-white border-2 border-blue-500";
   if (hasCancelledOrRejected) return "bg-red-500 text-white border-2 border-blue-500";
 
   if (day.isBooked) return "border-2 border-blue-500"; // Fallback if somehow a booked item doesn't fit above
@@ -335,7 +342,7 @@ function getCellClass(day: typeof days[number]) {
       <div className="grid grid-cols-7 gap-1">
         {days.map((day, idx) => (
           <button
-            key={`day-${year}-${month}-${idx}`}
+            key={day.date ? day.date.toISOString() : `empty-day-${offset}-${idx}`}
             className={`h-12 w-full rounded flex flex-col items-center justify-center cursor-pointer ${getCellClass(day)}`}
             disabled={!day.date}
             onClick={() => day.date && handleDateSelect(day.date)}
@@ -425,6 +432,29 @@ function getCellClass(day: typeof days[number]) {
                   <h2 className="text-lg font-bold">Calendar View</h2>
                   <p className="text-sm text-gray-600">View and manage bookings</p>
                 </div>
+                <Select
+                  value={monthFilter}
+                  onValueChange={(value) => {
+                    setMonthFilter(value);
+                    if (value !== "all") {
+                      const newDate = new Date(currentDate);
+                      newDate.setMonth(parseInt(value, 10) - 1); // Set month (0-indexed)
+                      setCurrentDate(newDate);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Months</SelectItem>
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <SelectItem key={i + 1} value={String(i + 1)}>
+                        {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => navigateMonth("prev")}>
                     <ChevronLeft className="h-4 w-4" />
@@ -448,7 +478,7 @@ function getCellClass(day: typeof days[number]) {
                   <span className="text-gray-600">Available</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded"></div>
+                  <div className="w-3 h-3 bg-blue-500 rounded"></div>
                   <span className="text-gray-600">Paid</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -511,21 +541,6 @@ function getCellClass(day: typeof days[number]) {
                     <SelectItem value="PARTIAL">Partial</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select
-                  value="all" // No venue filter for a single venue
-                  onValueChange={(value) => {
-                    // setVenueFilter(value); // No venue filter for a single venue
-                    setCurrentPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by venue" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Venues</SelectItem>
-                    <SelectItem value={venueId}>{venueName || "Unknown Venue"}</SelectItem>
-                  </SelectContent>
-                </Select>
                 {selectedDate && (
                   <Button
                     variant="outline"
@@ -567,7 +582,7 @@ function getCellClass(day: typeof days[number]) {
                         <TableHead>Date & Time</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Amount</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        {/* <TableHead className="text-right">Actions</TableHead> */}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -614,7 +629,7 @@ function getCellClass(day: typeof days[number]) {
                           <TableCell>
                             <div className="font-medium">Frw {booking.amount.toLocaleString()}</div>
                           </TableCell>
-                          <TableCell className="text-right">
+                          {/* <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                                 <Eye className="h-4 w-4" />
@@ -630,7 +645,7 @@ function getCellClass(day: typeof days[number]) {
                                 </>
                               )}
                             </div>
-                          </TableCell>
+                          </TableCell> */}
                         </TableRow>
                       ))}
                     </TableBody>

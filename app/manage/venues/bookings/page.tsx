@@ -149,7 +149,7 @@ export default function BookingRequestsPage() {
         };
       case "APPROVED_PAID":
         return {
-          label: "Approved - Paid",
+          label: "Fully Paid",
           variant: "default",
           className: "bg-green-100 text-green-800 border-green-200",
         };
@@ -173,7 +173,7 @@ export default function BookingRequestsPage() {
         };
       case "PARTIAL": // Added partial status
         return {
-          label: "Partial",
+          label: "Partially Paid",
           variant: "secondary",
           className: "bg-blue-100 text-blue-800 border-blue-200",
         };
@@ -329,12 +329,10 @@ export default function BookingRequestsPage() {
   // Status filter options - Now directly mapping to backend bookingStatus
   const statusFilterOptions = [
     { value: "all", label: "All Statuses" },
-    { value: "PENDING", label: "Pending" },
-    { value: "APPROVED_NOT_PAID", label: "Approved - Unpaid" },
-    { value: "APPROVED_PAID", label: "Approved - Paid" },
-    { value: "PARTIAL", label: "Partial" },
+    { value: "HOLDING", label: "Pending" },
+    { value: "APPROVED_PAID", label: "Fully Paid" },
+    { value: "PARTIAL", label: "Partially Paid" },
     { value: "CANCELLED", label: "Cancelled" },
-    { value: "REJECTED", label: "Rejected" },
   ];
 
   return (
@@ -376,18 +374,6 @@ export default function BookingRequestsPage() {
                   </SelectContent>
                 </Select>
 
-                {/* Payment Status Filter (New) */}
-                <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by payment status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Payment Statuses</SelectItem>
-                    <SelectItem value="PAID">Paid</SelectItem>
-                    <SelectItem value="PARTIAL">Partial</SelectItem>
-                    <SelectItem value="FAILED">Failed</SelectItem>
-                  </SelectContent>
-                </Select>
 
                 {/* Date Filter */}
                 <Select value={dateFilter} onValueChange={setDateFilter}>

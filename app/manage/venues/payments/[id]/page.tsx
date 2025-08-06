@@ -432,7 +432,7 @@ export default function PaymentDetailsPage() {
         <Card className="lg:col-span-2 shadow-lg">
           <CardHeader className="border-b pb-4">
             <CardTitle className="text-xl font-semibold flex items-center gap-2">
-              <User className="h-5 w-5 text-blue-600" /> Payer Details
+              <User className="h-5 w-5 text-blue-600" /> Customer Details
             </CardTitle>
             <CardDescription className="text-sm text-gray-600">Information about the person who made the payment.</CardDescription>
           </CardHeader>
