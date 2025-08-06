@@ -343,11 +343,22 @@ export default function AdminEvents() {
                         <TableCell>
                           {event.bookingDates && event.bookingDates.length > 0 ? (
                             <div>
-                              {event.bookingDates.map((date, index) => (
-                                <div key={index} className="text-sm">
-                                  {format(parseISO(date.date), 'MMM dd, yyyy')}
-                                </div>
-                              ))}
+                              {event.bookingDates.map((date, index) => {
+                                try {
+                                  if (!date.date) return <div key={index} className="text-sm">No date</div>
+                                  const parsedDate = parseISO(date.date)
+                                  if (isNaN(parsedDate.getTime())) {
+                                    return <div key={index} className="text-sm">Invalid date</div>
+                                  }
+                                  return (
+                                    <div key={index} className="text-sm">
+                                      {format(parsedDate, 'MMM dd, yyyy')}
+                                    </div>
+                                  )
+                                } catch (error) {
+                                  return <div key={index} className="text-sm">Invalid date</div>
+                                }
+                              })}
                             </div>
                           ) : (
                             <span className="text-gray-500">No dates</span>
