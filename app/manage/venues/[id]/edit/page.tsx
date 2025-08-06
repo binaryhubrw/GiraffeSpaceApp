@@ -11,7 +11,6 @@ import { ArrowLeft, Upload, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import MapPicker from "../../create/MapPicker";
 import ApiService from "@/api/apiConfig";
-import MapPicker from "../../create/MapPicker";
 
 import { toast } from '@/hooks/use-toast';
 
