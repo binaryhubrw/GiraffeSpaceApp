@@ -29,19 +29,73 @@ import { Sidebar } from "@/components/sidebar"
 import { useParams } from "next/navigation"
 
 interface Booking {
-  id: string
-  date: Date
-  clientName: string
-  eventType: string
-  guests: number
-  amount: number
-  status: string // Changed to string to store original API status
-  timeSlot: string
-  contactEmail: string
-  contactPhone: string
-  specialRequests?: string
-  venueId?: string
-  venueName?: string
+  bookingId: string;
+  date: Date;
+  clientName: string;
+  eventType: string;
+  guests: number; // This will likely remain 0 or be derived if needed
+  amount: number;
+  status: string;
+  timeSlot: string; // This will likely remain "All Day" or be derived if needed
+  contactEmail: string; // From user.email
+  contactPhone: string; // From user.phoneNumber
+  specialRequests?: string | null;
+  venueId: string;
+  venueName: string;
+  totalPaid: number;
+  remainingAmount: number;
+  holdingExpiresAt: string | null;
+}
+
+interface VenueSummary {
+  venueId: string;
+  venueName: string;
+  capacity: number;
+  location: string;
+  totalBookings: number;
+  fullPaidCount: number;
+  partialPaidCount: number;
+  unpaidCount: number;
+  totalRevenue: number;
+  totalExpectedRevenue: number;
+  totalPaidBookings: number;
+  totalUnpaidAmount: number;
+  occupancyRate: string;
+}
+
+interface ApiBooking {
+  bookingId: string;
+  venueId: string;
+  bookingReason: string;
+  otherReason: string | null;
+  eventId: string;
+  createdBy: string;
+  bookingDates: Array<{ date: string }>;
+  venueStatus: string | null;
+  venueDiscountPercent: number | null;
+  timezone: string;
+  bookingStatus: string;
+  holdingExpiresAt: string | null;
+  paymentConfirmationDate: string | null;
+  amountToBePaid: number;
+  isPaid: boolean;
+  cancellationReason: string | null;
+  createdAt: string;
+  user: {
+    userId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+  };
+  totalPaid: number;
+  remainingAmount: number;
+}
+
+interface ApiAvailabilityResponse {
+  success: boolean;
+  venueSummary: VenueSummary;
+  bookings: ApiBooking[];
 }
 
 export default function Page() {
@@ -72,10 +126,14 @@ export default function Page() {
         return "Cancelled"
       case "REJECTED":
         return "Rejected"
+      case "PARTIAL":
+        return "Partial"
       default:
         return apiStatus
     }
   }
+
+  const [venueSummaryData, setVenueSummaryData] = useState<VenueSummary | null>(null);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -88,48 +146,53 @@ export default function Page() {
         }
 
         // Fetch bookings for this specific venue
-        const bookingsResponse = await ApiService.getBookingByVenueId(venueId)
+        const bookingsResponse: ApiAvailabilityResponse = await ApiService.getBookingByVenueId(venueId)
         console.log("Bookings response:", bookingsResponse)
         
-        if (bookingsResponse.success && Array.isArray(bookingsResponse.bookings)) {
+        if (bookingsResponse.success && bookingsResponse.venueSummary && Array.isArray(bookingsResponse.bookings)) {
           // Set venue name from the bookings response
-          setVenueName(bookingsResponse.venueSummary?.venueName || "Unknown Venue")
+          setVenueName(bookingsResponse.venueSummary.venueName || "Unknown Venue")
+          setVenueSummaryData(bookingsResponse.venueSummary); // Store the summary data
           
           // Transform API data to match our Booking interface
           const transformedBookings: Booking[] = []
           
-          bookingsResponse.bookings.forEach((booking: any) => {
+          bookingsResponse.bookings.forEach((booking: ApiBooking) => {
             // Handle multiple booking dates for the same booking
-            booking.bookingDates.forEach((bookingDate: any) => {
+            booking.bookingDates.forEach((bookingDate: { date: string }) => {
               transformedBookings.push({
-                id: booking.bookingId,
+                bookingId: booking.bookingId,
                 date: new Date(bookingDate.date),
-                clientName: booking.createdBy || "Unknown Client",
+                clientName: `${booking.user.firstName} ${booking.user.lastName}` || "Unknown Client",
                 eventType: booking.bookingReason || "Event",
-                guests: 0,
+                guests: 0, // Not available in new API response
                 amount: booking.amountToBePaid || 0,
                 status: booking.bookingStatus,
-                timeSlot: "All Day",
-                contactEmail: "",
-                contactPhone: "",
-                specialRequests: booking.otherReason || "",
-                venueId: venueId,
-                venueName: bookingsResponse.venueSummary?.venueName || "Unknown Venue"
+                timeSlot: "All Day", // Not available in new API response
+                contactEmail: booking.user.email || "",
+                contactPhone: booking.user.phoneNumber || "",
+                specialRequests: booking.otherReason || null,
+                venueId: booking.venueId,
+                venueName: bookingsResponse.venueSummary.venueName || "Unknown Venue",
+                totalPaid: booking.totalPaid || 0,
+                remainingAmount: booking.remainingAmount || 0,
+                holdingExpiresAt: booking.holdingExpiresAt || null,
               })
             })
           })
           
           setBookings(transformedBookings)
         } else {
-          console.log("No bookings found or invalid response")
+          console.log("No bookings found or invalid response structure")
           setBookings([])
-          // Set a default venue name even if no bookings
           setVenueName("Unknown Venue")
+          setVenueSummaryData(null);
         }
       } catch (error) {
         console.error("Error fetching bookings:", error)
         setBookings([])
         setVenueName("Unknown Venue")
+        setVenueSummaryData(null);
       } finally {
         setLoading(false)
       }
@@ -212,19 +275,19 @@ function renderMonth(offset: number): JSX.Element {
 
   const days: Array<{
     date: Date | null;
-    booking?: Booking;
+    bookingsForDay: Booking[];
     isToday: boolean;
     isBooked: boolean;
     isPast: boolean;
   }> = [];
 
   for (let i = 0; i < startDayOfWeek; i++) {
-    days.push({ date: null, isToday: false, isBooked: false, isPast: false });
+    days.push({ date: null, bookingsForDay: [], isToday: false, isBooked: false, isPast: false });
   }
 
   for (let d = 1; d <= daysInMonth; d++) {
     const date = new Date(year, month, d);
-    const booking = bookings.find(
+    const bookingsForDay = bookings.filter(
       b => b.date.getFullYear() === year &&
            b.date.getMonth() === month &&
            b.date.getDate() === d
@@ -235,21 +298,26 @@ function renderMonth(offset: number): JSX.Element {
 
     const isToday = date.getTime() === today.getTime();
     const isPast = date < today;
-    const isBooked = !!booking;
+    const isBooked = bookingsForDay.length > 0;
 
-    days.push({ date, booking, isToday, isBooked, isPast });
+    days.push({ date, bookingsForDay, isToday, isBooked, isPast });
   }
 function getCellClass(day: typeof days[number]) {
   if (!day.date) return "bg-transparent";
   if (day.isPast) return "bg-gray-200 text-gray-400";
   if (day.isToday) return "ring-2 ring-primary";
-  if (day.booking && (day.booking.status === "APPROVED_PAID" || day.booking.status === "APPROVED_NOT_PAID")) return "bg-green-500 text-white border-2 border-blue-500";
- 
-  if (day.booking && day.booking.status === "PENDING") return "bg-yellow-500 text-white border-2 border-blue-500";
-  if (day.booking && (day.booking.status === "CANCELLED" || day.booking.status === "REJECTED")) return "bg-red-500 text-white border-2 border-blue-500";
-  if (day.isBooked) return "border-2 border-blue-500";
-  if (!day.booking) return "bg-white border";
-  return "bg-white border";
+  
+  const hasPendingOrPartial = day.bookingsForDay.some(b => b.status === "PENDING" || b.status === "PARTIAL");
+  const hasApproved = day.bookingsForDay.some(b => b.status === "APPROVED_PAID" || b.status === "APPROVED_NOT_PAID");
+  const hasCancelledOrRejected = day.bookingsForDay.some(b => b.status === "CANCELLED" || b.status === "REJECTED");
+
+  if (hasPendingOrPartial) return "bg-yellow-500 text-white border-2 border-blue-500";
+  if (hasApproved) return "bg-green-500 text-white border-2 border-blue-500";
+  if (hasCancelledOrRejected) return "bg-red-500 text-white border-2 border-blue-500";
+
+  if (day.isBooked) return "border-2 border-blue-500"; // Fallback if somehow a booked item doesn't fit above
+  if (!day.bookingsForDay.length) return "bg-white border";
+  return "bg-white border"; // Default for any remaining case
 }
 
   return (
@@ -271,14 +339,20 @@ function getCellClass(day: typeof days[number]) {
             className={`h-12 w-full rounded flex flex-col items-center justify-center cursor-pointer ${getCellClass(day)}`}
             disabled={!day.date}
             onClick={() => day.date && handleDateSelect(day.date)}
-            title={day.booking ? `${day.booking.clientName} (${getDisplayStatus(day.booking.status)})` : undefined}
+            title={day.bookingsForDay.length > 0 ? 
+                     day.bookingsForDay.map(b => `${b.clientName} (${getDisplayStatus(b.status)})`).join("\n") 
+                     : undefined
+                   }
           >
             {day.date && (
               <>
                 <span className="font-medium">{day.date.getDate()}</span>
-                {day.booking && (
+                {day.bookingsForDay.length > 0 && (
                   <span className="text-[10px]">
-                    {getDisplayStatus(day.booking.status)}
+                    {day.bookingsForDay.length === 1 
+                       ? getDisplayStatus(day.bookingsForDay[0].status)
+                       : "Booked"
+                    }
                   </span>
                 )}
               </>
@@ -307,22 +381,22 @@ function getCellClass(day: typeof days[number]) {
               <h1 className="text-2xl font-bold">
                 {venueName ? `${venueName} Availability` : "Loading venue..."}
               </h1>
-              <p className="text-gray-600 text-sm">View and manage your venue bookings</p>
+              <p className="text-sm text-gray-600">View and manage your venue bookings</p>
             </div>
-            <Button className="bg-primary text-white hover:bg-primary/90">
+            {/* <Button className="bg-primary text-white hover:bg-primary/90">
               <Plus className="h-4 w-4 mr-2" />
               Add New Booking
-            </Button>
+            </Button> */}
           </div>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Bookings</p>
-                    <p className="text-2xl font-bold">{bookings.length}</p>
+                    <p className="text-2xl font-bold">{venueSummaryData?.totalBookings || 0}</p>
                   </div>
                   <Calendar className="h-8 w-8 text-blue-600" />
                 </div>
@@ -332,38 +406,12 @@ function getCellClass(day: typeof days[number]) {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Confirmed</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {bookings.filter(b => b.status === "APPROVED_PAID" || b.status === "APPROVED_NOT_PAID").length}
-                    </p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Pending</p>
+                    <p className="text-sm font-medium text-gray-600">Total Holdings</p>
                     <p className="text-2xl font-bold text-yellow-600">
-                      {bookings.filter(b => b.status === "PENDING").length}
+                      {bookings.filter(b => b.status === "PENDING" || b.status === "HOLDING").length}
                     </p>
                   </div>
                   <Clock className="h-8 w-8 text-yellow-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-green-600">
-                      ${bookings.reduce((sum, b) => sum + b.amount, 0).toLocaleString()}
-                    </p>
-                  </div>
-                  <DollarSign className="h-8 w-8 text-green-600" />
                 </div>
               </CardContent>
             </Card>
@@ -401,15 +449,15 @@ function getCellClass(day: typeof days[number]) {
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-green-500 rounded"></div>
-                  <span className="text-gray-600">Approved (Paid/Unpaid)</span>
+                  <span className="text-gray-600">Paid</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 bg-yellow-500 rounded"></div>
-                  <span className="text-gray-600">Pending</span>
+                  <span className="text-gray-600">Holdings</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-500 rounded"></div>
-                  <span className="text-gray-600">Cancelled/Rejected</span>
+                  <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                  <span className="text-gray-600">Partial</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 ring-2 ring-primary rounded"></div>
@@ -460,6 +508,7 @@ function getCellClass(day: typeof days[number]) {
                     <SelectItem value="PENDING">Pending</SelectItem>
                     <SelectItem value="CANCELLED">Cancelled</SelectItem>
                     <SelectItem value="REJECTED">Rejected</SelectItem>
+                    <SelectItem value="PARTIAL">Partial</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select
@@ -523,7 +572,7 @@ function getCellClass(day: typeof days[number]) {
                     </TableHeader>
                     <TableBody>
                       {paginatedBookings.map((booking) => (
-                        <TableRow key={booking.id}>
+                        <TableRow key={booking.bookingId}>
                           <TableCell>
                             <div>
                               <div className="font-medium">{booking.clientName}</div>
@@ -536,7 +585,7 @@ function getCellClass(day: typeof days[number]) {
                           <TableCell>
                             <div>
                               <div className="font-medium">{booking.eventType}</div>
-                              <div className="text-sm text-gray-500">{booking.guests} guests</div>
+                              {/* <div className="text-sm text-gray-500">{booking.guests} guests</div> */}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -544,7 +593,7 @@ function getCellClass(day: typeof days[number]) {
                               <div className="font-medium">
                                 {booking.date.toLocaleDateString()}
                               </div>
-                              <div className="text-sm text-gray-500">{booking.timeSlot}</div>
+                              {/* <div className="text-sm text-gray-500">{booking.timeSlot}</div> */}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -554,6 +603,8 @@ function getCellClass(day: typeof days[number]) {
                                   ? "default"
                                   : booking.status === "PENDING"
                                   ? "secondary"
+                                  : booking.status === "PARTIAL"
+                                  ? "outline" // Or another suitable variant for partial
                                   : "destructive"
                               }
                             >
@@ -561,7 +612,7 @@ function getCellClass(day: typeof days[number]) {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="font-medium">${booking.amount}</div>
+                            <div className="font-medium">Frw {booking.amount.toLocaleString()}</div>
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">

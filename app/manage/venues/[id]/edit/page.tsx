@@ -9,7 +9,7 @@ import { useRouter, useParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { ArrowLeft, Upload, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { MapPicker } from "../../create/MapPicker";
+import MapPicker from "../../create/MapPicker";
 import ApiService from "@/api/apiConfig";
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { toast } from 'sonner';

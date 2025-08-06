@@ -1,11 +1,11 @@
 "use client"
 
-import { useAuth } from "@/contexts/auth-context" // Assuming this path is correct
+import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { useEffect, useState, useMemo } from "react"
 import { Eye, XCircle, DollarSign, Building, Calendar, BookOpen, Home, MinusCircle, CheckCircle, AlertCircle, Clock } from "lucide-react"
 import Link from "next/link"
-import ApiService from "@/api/apiConfig" // Assuming this path is correct
+import ApiService from "@/api/apiConfig"
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table"
 import {
   Pagination,
@@ -28,13 +28,14 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog"
-import { format, isSameMonth, parseISO } from "date-fns" // Added parseISO for date parsing
+import { format, isSameMonth, parseISO } from "date-fns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import * as RechartsPrimitive from "recharts"
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart"
 
 const ITEMS_PER_PAGE = 5
 
-// Define interfaces for API response structures
 interface Payer {
   userId: string
   username: string
@@ -54,14 +55,14 @@ interface ApiPayment {
   paymentMethod: string
   paymentStatus: string
   paymentReference: string | null
-  paymentDate: string // ISO string
+  paymentDate: string
   notes: string | null
 }
 
 interface BookingPaymentInfo {
   bookingId: string
   bookingReason: string
-  bookingDate: string // YYYY-MM-DD
+  bookingDate: string
   amountToBePaid: number
   totalAmountPaid: number
   remainingAmount: number
@@ -97,13 +98,12 @@ interface BookingSummary {
 interface AllBookingsApiResponse {
   success: boolean
   data: {
-    bookings: any[]; // Or define a more specific type if needed for the table
+    bookings: any[];
     summary: BookingSummary;
   };
   message: string;
 }
 
-// Define the interface for Venue based on the provided JSON response
 interface Venue {
   venueId: string
   venueName: string
@@ -125,7 +125,7 @@ interface Venue {
   }[]
   contactEmail: string
   contactPhone: string
-  status: "PENDING" | "APPROVED" | "REJECTED" // Matches API response
+  status: "PENDING" | "APPROVED" | "REJECTED"
   createdAt: string
   updatedAt: string
   deletedAt: string | null
@@ -147,7 +147,7 @@ interface Venue {
     venueId: string
     Date: string
     bookedHours: string | null
-    status: "BOOKED" | "TRANSITION" | "HOLDING" // Important for availability
+    status: "BOOKED" | "TRANSITION" | "HOLDING"
     slotType: string
     notes: string
     metadata: any
@@ -159,16 +159,29 @@ interface Venue {
   venueDocuments: string | null
 }
 
+const bookingRateChartConfig = {
+  totalBookings: {
+    label: "Total Bookings",
+    color: "hsl(var(--chart-1))",
+  },
+} satisfies ChartConfig
+
+const venueEarningsChartConfig: ChartConfig = {
+  totalPaid: {
+    label: "Total Paid",
+  },
+}
+
 export default function DashboardPage() {
   const { isLoggedIn, user } = useAuth()
   const router = useRouter()
   const [bookings, setBookings] = useState<any[]>([])
-  const [allVenues, setAllVenues] = useState<Venue[]>([]) // Now holds real venue data
-  const [paymentsData, setPaymentsData] = useState<BookingPaymentInfo[]>([]) // New state for payments from formatted API
-  const [bookingSummary, setBookingSummary] = useState<BookingSummary | null>(null) // New state for booking summary
-  const [loadingBookingsAndSummary, setLoadingBookingsAndSummary] = useState(true) // Combined loading state
+  const [allVenues, setAllVenues] = useState<Venue[]>([])
+  const [paymentsData, setPaymentsData] = useState<BookingPaymentInfo[]>([])
+  const [bookingSummary, setBookingSummary] = useState<BookingSummary | null>(null)
+  const [loadingBookingsAndSummary, setLoadingBookingsAndSummary] = useState(true)
   const [loadingAllVenues, setLoadingAllVenues] = useState(true)
-  const [loadingPaymentsData, setLoadingPaymentsData] = useState(true) // New loading state
+  const [loadingPaymentsData, setLoadingPaymentsData] = useState(true)
 
   const [bookingFilter, setBookingFilter] = useState("")
   const [bookingDateFilter, setBookingDateFilter] = useState("")
@@ -179,14 +192,16 @@ export default function DashboardPage() {
   const [cancelingId, setCancelingId] = useState<string | null>(null)
   const [canceling, setCanceling] = useState(false)
 
-  // Redirect if not logged in
+  const bluePalette = [
+    '#1e3a8a', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#2563eb', '#1d4ed8'
+  ];
+
   useEffect(() => {
     if (!isLoggedIn) {
       router.push("/login")
     }
   }, [isLoggedIn, router])
 
-  // Fetch bookings and summary for manager
   useEffect(() => {
     const fetchManagerBookingsAndSummary = async () => {
       if (!user?.userId) return
@@ -205,7 +220,6 @@ export default function DashboardPage() {
     if (user?.userId) fetchManagerBookingsAndSummary()
   }, [user?.userId])
 
-  // Fetch all managed venues from the real API
   useEffect(() => {
     const fetchAllManagedVenues = async () => {
       if (!user?.userId) return
@@ -223,17 +237,16 @@ export default function DashboardPage() {
     if (user?.userId) fetchAllManagedVenues()
   }, [user?.userId])
 
-  // Fetch payments data from the formatted endpoint
   useEffect(() => {
     const fetchPaymentsFormatted = async () => {
       if (!user?.userId) return
       setLoadingPaymentsData(true)
       try {
-        const response: PaymentsApiResponse = await ApiService.getFormattedManagerPayments(user.userId) // Ensure getFormattedManagerPayments exists in ApiService
+        const response: PaymentsApiResponse = await ApiService.getFormattedManagerPayments(user.userId)
         if (response.success) {
           setPaymentsData(response.data || [])
         } else {
-          toast.error("Failed to fetch payments data.") // Simplified error message
+          toast.error("Failed to fetch payments data.")
         }
       } catch (err) {
         console.error("Error fetching formatted payments:", err)
@@ -245,7 +258,30 @@ export default function DashboardPage() {
     if (user?.userId) fetchPaymentsFormatted()
   }, [user?.userId])
 
-  // Filtered bookings (pending only, with text and date filter)
+  const bookingsByVenueForCharts = useMemo(() => {
+    if (!bookingSummary?.bookingsByVenue) return []
+
+    const chartData = bookingSummary.bookingsByVenue.map((venueStats, index) => {
+      const formattedVenueName = venueStats.venueName.replace(/\s/g, '');
+      const color = bluePalette[index % bluePalette.length];
+      
+      venueEarningsChartConfig[formattedVenueName] = {
+        label: venueStats.venueName,
+        color: color,
+      };
+
+      return {
+        venueName: venueStats.venueName,
+        totalBookings: venueStats.totalBookings,
+        totalAmount: venueStats.totalAmount,
+        totalPaid: venueStats.totalPaid,
+        color: color,
+      }
+    })
+
+    return chartData
+  }, [bookingSummary])
+
   const filteredBookings = useMemo(() => {
     return bookings
       .filter((b) => b.bookingStatus === "PENDING")
@@ -263,11 +299,9 @@ export default function DashboardPage() {
   const totalBookingPages = Math.max(1, Math.ceil(filteredBookings.length / ITEMS_PER_PAGE))
   const paginatedBookings = filteredBookings.slice((bookingPage - 1) * ITEMS_PER_PAGE, bookingPage * ITEMS_PER_PAGE)
 
-  // Filter bookings for the current month for financial cards
   const currentMonthBookings = useMemo(() => {
     const now = new Date()
     return bookings.filter((b) => {
-      // Assuming bookingDates[0].date is the relevant date for the booking
       if (b.bookingDates?.[0]?.date) {
         const bookingDate = parseISO(b.bookingDates[0].date)
         return isSameMonth(bookingDate, now)
@@ -276,7 +310,6 @@ export default function DashboardPage() {
     })
   }, [bookings])
 
-  // Stats calculations for financial cards using paymentsData
   const totalAmountPaidOverall = useMemo(() => {
     return paymentsData.reduce((sum, booking) => sum + (booking.totalAmountPaid || 0), 0)
   }, [paymentsData])
@@ -285,17 +318,9 @@ export default function DashboardPage() {
     return paymentsData.reduce((sum, booking) => sum + (booking.remainingAmount || 0), 0)
   }, [paymentsData])
 
-
-  // Venue Management Statistics
-  const totalNumberOfVenues = bookingSummary?.totalVenues || 0 // Use data from summary
-
-  // Venues booked - now derived from bookingSummary, or a direct count of pending/approved bookings
-  // Since the summary gives totalBookings, we can infer booked venues from there, or keep current logic if distinct
-  // For now, let's use the simple calculation from bookings or redefine if summary directly gives it.
-  // Given the current summary data, `totalBookings` and `pendingBookings` are available.
-  const venuesBookedCount = bookingSummary?.approvedBookings || 0 + (bookingSummary?.partialBookings || 0); // Sum of approved and partial bookings as 'booked'
-
-  const pendingBookingsCount = bookingSummary?.pendingBookings || 0; // Directly from summary
+  const totalNumberOfVenues = bookingSummary?.totalVenues || 0
+  const venuesBookedCount = (bookingSummary?.approvedBookings || 0) + (bookingSummary?.partialBookings || 0)
+  const pendingBookingsCount = bookingSummary?.pendingBookings || 0
 
   const venuesAvailable = useMemo(() => {
     let availableCount = 0
@@ -314,11 +339,9 @@ export default function DashboardPage() {
     return allVenues.filter((v) => v.status === "REJECTED").length
   }, [allVenues])
 
-  // Calculate total venues and bookings count for the top cards
   const totalVenuesCardValue = bookingSummary?.totalVenues || 0
   const totalBookingsCardValue = bookingSummary?.totalBookings || 0
 
-  // Cancel booking handler
   const handleCancelBooking = async () => {
     if (!cancelingId) return
     setCanceling(true)
@@ -328,20 +351,18 @@ export default function DashboardPage() {
       setCancelDialogOpen(false)
       setCancelReason("")
       setCancelingId(null)
-      // Refresh bookings and summary
+      
       if (user?.userId) {
         const response: AllBookingsApiResponse = await ApiService.getAllBookingsByManager(user.userId)
         setBookings(response.data.bookings || [])
         setBookingSummary(response.data.summary || null)
 
-        // Also refresh payments data if it's affected by booking cancellations
         const paymentsResponse: PaymentsApiResponse = await ApiService.getFormattedManagerPayments(user.userId);
         if (paymentsResponse.success) {
           setPaymentsData(paymentsResponse.data || []);
         } else {
-          // Handle error case for fetching payments after cancellation
-          console.error("Failed to refresh payments data after booking cancellation:", paymentsResponse); // Log the response
-          toast.error("Failed to refresh payments data after cancellation.");
+          console.error("Failed to refresh payments data:", paymentsResponse);
+          toast.error("Failed to refresh payments data.");
         }
       }
     } catch (err) {
@@ -352,230 +373,243 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex-1 p-4 md:p-6">
-      <div className="grid gap-6">
+    <div className="flex-1 p-4 md:p-6 space-y-6">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <Card className="min-h-[120px] hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
               <CardTitle className="text-sm font-medium">Total Venues</CardTitle>
-              <Building className="h-5 w-5 text-muted-foreground" />
+            <Building className="h-5 w-5 text-blue-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalVenuesCardValue}</div>
-              <Link href="/manage/venues" className="text-xs text-muted-foreground hover:underline">
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold text-black">{totalVenuesCardValue}</div>
+            <Link href="/manage/venues" className="text-xs text-blue-600 hover:underline mt-2 block">
                 View all venues
               </Link>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+
+        <Card className="min-h-[120px] hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
               <CardTitle className="text-sm font-medium">Total Bookings</CardTitle>
-              <Calendar className="h-5 w-5 text-muted-foreground" />
+            <Calendar className="h-5 w-5 text-blue-600" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalBookingsCardValue}</div>
-              <Link href="/manage/bookings" className="text-xs text-muted-foreground hover:underline">
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold text-black">{totalBookingsCardValue}</div>
+            <Link href="/manage/bookings" className="text-xs text-blue-600 hover:underline mt-2 block">
                 View all bookings
               </Link>
             </CardContent>
           </Card>
-          {/* Removed Pending Bookings Card */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Amount Paid</CardTitle>
-              <DollarSign className="h-5 w-5 text-muted-foreground" />
+
+        <Card className="min-h-[120px] hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
+            <CardTitle className="text-sm font-medium">Total Paid</CardTitle>
+            <span className="text-sm font-medium">FRW</span>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {totalAmountPaidOverall.toLocaleString("en-US", { style: "currency", currency: "RWF" })}
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold text-black">
+              {totalAmountPaidOverall.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </div>
-              <CardDescription className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-2">
                 Overall from all bookings
-              </CardDescription>
+            </p>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Amount Remaining</CardTitle>
-              <DollarSign className="h-5 w-5 text-muted-foreground" />
+
+        <Card className="min-h-[120px] hover:shadow-md transition-shadow">
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
+            <CardTitle className="text-sm font-medium">Total Remaining</CardTitle>
+            <span className="text-sm font-medium">FRW</span>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {overallTotalAmountRemaining.toLocaleString("en-US", { style: "currency", currency: "RWF" })}
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-bold text-black">
+              {overallTotalAmountRemaining.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </div>
-              <CardDescription className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-2">
                 Overall from all bookings
-              </CardDescription>
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* {bookingSummary && (
+          <Card className="min-h-[120px] hover:shadow-md transition-shadow">
+            <CardHeader className="flex flex-row items-center justify-between p-4 pb-2">
+              <CardTitle className="text-sm font-medium">Collection Rate</CardTitle>
+              <BookOpen className="h-5 w-5 text-blue-600" />
+            </CardHeader>
+            <CardContent className="p-4 pt-0">
+              <div className="text-2xl font-bold text-blue-800">
+                {bookingSummary.paymentSummary.collectionProgress || '0%'}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Of expected payments collected
+              </p>
             </CardContent>
           </Card>
+        )} */}
         </div>
 
-        {/* Tables Section */}
-        <div className="grid grid-cols-1 gap-6">
-          {/* Pending Bookings Table */}
-          <Card className="flex flex-col">
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="hover:shadow-md transition-shadow">
             <CardHeader>
-              <CardTitle>Pending Bookings</CardTitle>
-              <CardDescription>Bookings awaiting your approval.</CardDescription>
+            <CardTitle className="text-blue-800">Venue Booking Rate</CardTitle>
+            <CardDescription>Number of bookings per venue</CardDescription>
             </CardHeader>
-            <CardContent className="flex-1 flex flex-col">
-              <div className="mb-4 flex flex-col md:flex-row gap-4 items-center">
-                <Command className="flex-1 w-full">
-                  <CommandInput
-                    placeholder="Filter bookings by event, venue, or status..."
-                    value={bookingFilter}
-                    onValueChange={setBookingFilter}
-                    className="w-full"
-                  />
-                </Command>
-                <div className="w-full md:w-auto flex items-center gap-2">
-                  <label htmlFor="booking-date-filter" className="text-sm text-muted-foreground whitespace-nowrap">
-                    Filter by date:
-                  </label>
-                  <Input
-                    id="booking-date-filter"
-                    type="date"
-                    value={bookingDateFilter}
-                    onChange={(e) => setBookingDateFilter(e.target.value)}
-                    className="border rounded px-2 py-1 text-sm"
-                  />
+          <CardContent className="h-[300px]">
+            {loadingBookingsAndSummary ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                <div className="animate-pulse flex space-x-4">
+                  <div className="flex-1 space-y-4 py-1">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded"></div>
+                      <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="overflow-x-auto flex-1">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>Event</TableHead>
-                      <TableHead>Venue</TableHead>
-                      <TableHead>Date & Time</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loadingBookingsAndSummary ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center">
-                          Loading bookings...
-                        </TableCell>
-                      </TableRow>
-                    ) : paginatedBookings.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center">
-                          No pending bookings found.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginatedBookings.map((b, idx) => (
-                        <TableRow key={b.bookingId}>
-                          <TableCell>{(bookingPage - 1) * ITEMS_PER_PAGE + idx + 1}</TableCell>
-                          <TableCell>{b.eventDetails?.eventName}</TableCell>
-                          <TableCell>{b.venue?.venueName}</TableCell>
-                          <TableCell>
-                            {b.bookingDates?.[0]?.date ? format(new Date(b.bookingDates[0].date), "PPP") : "N/A"}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                b.bookingStatus === "PENDING"
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : b.bookingStatus === "APPROVED"
-                                    ? "bg-green-100 text-green-800"
-                                    : b.bookingStatus === "CANCELLED"
-                                      ? "bg-red-100 text-red-800"
-                                      : "bg-gray-100 text-gray-800"
-                              }`}
-                            >
-                              {b.bookingStatus}
-                            </span>
-                          </TableCell>
-                          <TableCell className="flex gap-2">
-                            <Button size="icon" variant="outline" asChild>
-                              <Link href={`/manage/bookings/${b.bookingId}`} title="View Booking">
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            <AlertDialog
-                              open={cancelDialogOpen && cancelingId === b.bookingId}
-                              onOpenChange={setCancelDialogOpen}
-                            >
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  size="icon"
-                                  variant="destructive"
-                                  onClick={() => {
-                                    setCancelingId(b.bookingId)
-                                    setCancelDialogOpen(true)
-                                  }}
-                                  title="Cancel Booking"
-                                  disabled={b.bookingStatus === "CANCELLED"}
-                                >
-                                  <XCircle className="h-4 w-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Cancel Booking</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Please provide a reason for canceling this booking:
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <textarea
-                                  className="w-full border rounded p-2 mt-2 text-sm"
-                                  rows={3}
-                                  placeholder="Enter reason for cancellation..."
-                                  value={cancelReason}
-                                  onChange={(e) => setCancelReason(e.target.value)}
-                                  disabled={canceling}
-                                />
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel disabled={canceling}>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={handleCancelBooking}
-                                    disabled={canceling || !cancelReason.trim()}
-                                    className="bg-destructive text-white"
-                                  >
-                                    {canceling ? "Canceling..." : "Cancel Booking"}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-              {/* Pagination for Bookings */}
-              <div className="py-4 w-full flex justify-end">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious onClick={() => setBookingPage((p) => Math.max(1, p - 1))} />
-                    </PaginationItem>
-                    {Array.from({ length: totalBookingPages }).map((_, i) => (
-                      <PaginationItem key={i}>
-                        <Button
-                          size="icon"
-                          variant={bookingPage === i + 1 ? "default" : "outline"}
-                          onClick={() => setBookingPage(i + 1)}
-                        >
-                          {i + 1}
-                        </Button>
-                      </PaginationItem>
+            ) : (bookingSummary?.bookingsByVenue?.length || 0) > 0 ? (
+              <ChartContainer
+                config={bookingRateChartConfig}
+                className="h-full w-full"
+              >
+                <RechartsPrimitive.BarChart
+                  data={bookingsByVenueForCharts}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
+                >
+                  <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <RechartsPrimitive.XAxis
+                    dataKey="venueName"
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <RechartsPrimitive.YAxis
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => value.toLocaleString()}
+                  />
+                  <RechartsPrimitive.Tooltip
+                    content={<ChartTooltipContent hideLabel indicator="dot" />}
+                    cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                  />
+                  <RechartsPrimitive.Bar
+                    dataKey="totalBookings"
+                    fill="#3b82f6"
+                    radius={[4, 4, 0, 0]}
+                    animationDuration={1500}
+                  >
+                    {bookingsByVenueForCharts.map((entry, index) => (
+                      <RechartsPrimitive.Cell
+                        key={`cell-${index}`}
+                        fill={entry.color || '#3b82f6'}
+                      />
                     ))}
-                    <PaginationItem>
-                      <PaginationNext onClick={() => setBookingPage((p) => Math.min(totalBookingPages, p + 1))} />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+                  </RechartsPrimitive.Bar>
+                </RechartsPrimitive.BarChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2">
+                <BookOpen className="h-8 w-8" />
+                <p>No booking data available</p>
               </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <CardTitle className="text-blue-800">Revenue Distribution</CardTitle>
+            <CardDescription>Total amount paid per venue</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            {loadingBookingsAndSummary ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                <div className="animate-pulse flex space-x-4">
+                  <div className="flex-1 space-y-4 py-1">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="space-y-2">
+                      <div className="h-4 bg-gray-200 rounded"></div>
+                      <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (bookingsByVenueForCharts.length || 0) > 0 ? (
+              <div className="flex flex-col h-full">
+                <div className="flex-1">
+                  <ChartContainer
+                    config={venueEarningsChartConfig}
+                    className="h-full w-full"
+                  >
+                    <RechartsPrimitive.PieChart>
+                      <RechartsPrimitive.Pie
+                        data={bookingsByVenueForCharts}
+                        dataKey="totalPaid"
+                        nameKey="venueName"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={90}
+                        paddingAngle={2}
+                        labelLine={false}
+                      >
+                        {bookingsByVenueForCharts.map((entry, index) => (
+                          <RechartsPrimitive.Cell
+                            key={`cell-${index}`}
+                            fill={entry.color || bluePalette[index % bluePalette.length]}
+                          />
+                        ))}
+                      </RechartsPrimitive.Pie>
+                      <RechartsPrimitive.Tooltip
+                        formatter={(value, name, props) => [
+                          value.toLocaleString("en-US", { style: "currency", currency: "RWF" }),
+                          name,
+                        ]}
+                        contentStyle={{
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                          border: '1px solid #e2e8f0',
+                        }}
+                      />
+                      <RechartsPrimitive.Legend
+                        layout="horizontal"
+                        verticalAlign="bottom"
+                        align="center"
+                        wrapperStyle={{ paddingTop: '20px' }}
+                        content={({ payload }) => (
+                          <div className="flex flex-wrap justify-center gap-2 mt-4">
+                            {payload?.map((entry, index) => (
+                              <div key={`legend-${index}`} className="flex items-center text-xs">
+                                <div
+                                  className="w-3 h-3 rounded-full mr-1"
+                                  style={{ backgroundColor: entry.color }}
+                                />
+                                {entry.value}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      />
+                    </RechartsPrimitive.PieChart>
+                  </ChartContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-2">
+                <DollarSign className="h-8 w-8" />
+                <p>No payment data available</p>
+              </div>
+            )}
             </CardContent>
           </Card>
-        </div>
       </div>
     </div>
   )

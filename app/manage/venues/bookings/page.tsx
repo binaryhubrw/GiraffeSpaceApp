@@ -44,20 +44,50 @@ interface ApiPayment {
 }
 
 interface BookingPaymentInfo {
-  bookingId: string
-  bookingReason: string
-  bookingDate: string // YYYY-MM-DD
-  amountToBePaid: number
-  totalAmountPaid: number
-  remainingAmount: number
-  isFullyPaid: boolean
-  payments: ApiPayment[]
-  payer: Payer
+  bookingId: string;
+  eventDetails?: {
+    eventId: string;
+    eventName: string;
+    eventType: string;
+    eventDescription: string;
+  };
+  venue?: {
+    venueId: string;
+    venueName: string;
+    location: string;
+    bookingType: string;
+    baseAmount: number;
+    totalHours: number | null;
+    totalAmount: number;
+    depositRequired: any;
+    paymentCompletionRequired: any;
+  };
+  bookingDates: Array<{ date: string; hours?: number[] }>;
+  bookingStatus: string; // Directly use the status from the API
+  isPaid: boolean; // From the API, indicates if any payment has been made
+  createdAt: string;
+  requester: Payer; // Assuming Payer interface is defined elsewhere
+  paymentSummary: { // This object holds payment details
+    totalAmount: number;
+    depositAmount: number;
+    totalPaid: number;
+    remainingAmount: number;
+    paymentStatus: string;
+    paymentProgress: string;
+    depositStatus: string;
+    paymentHistory: ApiPayment[];
+    nextPaymentDue: number;
+    paymentDeadline: string;
+  };
 }
 
-interface PaymentsApiResponse {
-  success: boolean
-  data: BookingPaymentInfo[]
+interface AllBookingsApiResponse {
+  success: boolean;
+  data: {
+    bookings: BookingPaymentInfo[];
+    summary: any;
+  };
+  message: string;
 }
 
 export default function BookingRequestsPage() {
@@ -72,7 +102,7 @@ export default function BookingRequestsPage() {
   const [eventTypeFilter, setEventTypeFilter] = useState("");
   const [bookingStatusFilter, setBookingStatusFilter] = useState("all");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
-  const [bookings, setBookings] = useState<BookingPaymentInfo[]>([]); // Changed type to BookingPaymentInfo[]
+  const [bookings, setBookings] = useState<BookingPaymentInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const ITEMS_PER_PAGE = 6;
   const [page, setPage] = useState(1);
@@ -142,7 +172,7 @@ export default function BookingRequestsPage() {
 
   // Helper function to format currency
   const formatCurrency = (amount: number) => {
-    return `Frw ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `Frw ${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
   }
 
   // Redirect if not logged in
@@ -152,18 +182,16 @@ export default function BookingRequestsPage() {
     }
   }, [isLoggedIn, router]);
 
-  // Fetch bookings for manager (using formatted payments endpoint for remainingAmount)
+  // Fetch bookings for manager
   useEffect(() => {
     const fetchBookings = async () => {
       if (!user?.userId) return;
       setLoading(true);
       try {
-        const response: PaymentsApiResponse = await ApiService.getFormattedManagerPayments(user.userId); // Use the payments API
-        console.log("Fetched bookings (from payments API):", response.data);
-        setBookings(response.data || []); // Set directly from data
+        const response: AllBookingsApiResponse = await ApiService.getAllBookingsByManager(user.userId);
+        setBookings(response.data.bookings || []);
       } catch (err) {
         toast.error("Failed to fetch bookings. Please try again later.");
-        console.error("Error fetching bookings:", err);
       } finally {
         setLoading(false);
       }
@@ -174,7 +202,7 @@ export default function BookingRequestsPage() {
   // Date filter logic
   const now = new Date();
   const filteredByDate = bookings.filter((booking) => {
-    const bookingDateRaw = booking.bookingDate || ""; // Use bookingDate directly
+    const bookingDateRaw = booking.bookingDates?.[0]?.date || "";
     const bookingDateStr = normalizeDateString(bookingDateRaw);
     const bookingDate = bookingDateStr ? new Date(bookingDateStr) : null;
 
@@ -208,68 +236,46 @@ export default function BookingRequestsPage() {
 
   // Filter bookings based on search query and status
   const filteredBookings = filteredByDate.filter((booking) => {
-    const search = searchQuery.toLowerCase()
+    const search = searchQuery.toLowerCase();
     const matchesSearch =
-      (booking.bookingReason?.toLowerCase() || "").includes(search) || // Use bookingReason as event/venue name
-      (booking.payer?.fullName?.toLowerCase() || "").includes(search) || // Search by payer name
-      (booking.bookingId?.toLowerCase() || "").includes(search) // Search by booking ID
+      (booking.eventDetails?.eventName?.toLowerCase() || "").includes(search) ||
+      (booking.venue?.venueName?.toLowerCase() || "").includes(search) ||
+      (booking.requester?.fullName?.toLowerCase() || "").includes(search) || // Use requester.fullName
+      (booking.bookingId?.toLowerCase() || "").includes(search);
 
-    // Derive a unified booking status for filtering and display
-    let derivedBookingStatus: "PENDING" | "PARTIAL" | "COMPLETED" | "UNKNOWN" = "UNKNOWN";
-    if (booking.isFullyPaid) {
-      derivedBookingStatus = "COMPLETED";
-    } else if (booking.remainingAmount > 0) {
-      derivedBookingStatus = "PARTIAL";
-    } else if (booking.totalAmountPaid === 0) { // If nothing paid and not fully paid, consider pending
-      derivedBookingStatus = "PENDING";
-    }
-
-    // Enhanced status filtering
-    let matchesStatus = true
+    // Use booking.bookingStatus directly from API for primary status filtering
+    let matchesStatus = true;
     if (bookingStatusFilter !== "all") {
-      switch (bookingStatusFilter) {
-        case "pending":
-          matchesStatus = derivedBookingStatus === "PENDING"
-          break
-        case "approved_paid": // Mapping to COMPLETED as per new data structure
-          matchesStatus = derivedBookingStatus === "COMPLETED"
-          break
-        case "partial":
-          matchesStatus = derivedBookingStatus === "PARTIAL"
-          break
-        // Remove cases for statuses not derivable from the new API (e.g., APPROVED_NOT_PAID, CANCELLED, REJECTED)
-        default:
-          matchesStatus = true // Fallback for unmatched filters, though ideally options match derived statuses
-      }
+      matchesStatus = booking.bookingStatus.toLowerCase() === bookingStatusFilter.toLowerCase();
     }
 
-    // Also filter by payment status if provided (from individual payments within a booking)
+    // Also filter by payment status if provided (from paymentSummary.paymentStatus)
     let matchesPaymentStatus = true;
     if (paymentStatusFilter !== "all") {
-      // Check all payments within the booking for a match
-      matchesPaymentStatus = booking.payments.some(payment => 
-        (payment.paymentStatus || "").toLowerCase() === paymentStatusFilter.toLowerCase()
-      );
+      matchesPaymentStatus = (booking.paymentSummary?.paymentStatus || "").toLowerCase() === paymentStatusFilter.toLowerCase();
     }
 
     return matchesSearch && matchesStatus && matchesPaymentStatus;
-  })
+  });
 
-  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / ITEMS_PER_PAGE))
-  const paginated = filteredBookings.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE)
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / ITEMS_PER_PAGE));
+  const paginated = filteredBookings.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
-  // Status filter options - Simplified to match derivable statuses
+  // Status filter options - Now directly mapping to backend bookingStatus
   const statusFilterOptions = [
     { value: "all", label: "All Statuses" },
-    { value: "pending", label: "Pending" },
-    { value: "partial", label: "Partial" },
-    { value: "approved_paid", label: "Completed" },
-  ]
+    { value: "PENDING", label: "Pending" },
+    { value: "APPROVED_NOT_PAID", label: "Approved - Unpaid" },
+    { value: "APPROVED_PAID", label: "Approved - Paid" },
+    { value: "PARTIAL", label: "Partial" },
+    { value: "CANCELLED", label: "Cancelled" },
+    { value: "REJECTED", label: "Rejected" },
+  ];
 
   const handleCancelBooking = (bookingId: string) => {
     // TODO: Implement cancel logic or open a dialog
-    alert(`Cancel booking ${bookingId}`)
-  }
+    alert(`Cancel booking ${bookingId}`);
+  };
 
   return (
     <>
@@ -317,9 +323,9 @@ export default function BookingRequestsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Payment Statuses</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="partial">Partial</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="PAID">Paid</SelectItem>
+                    <SelectItem value="PARTIAL">Partial</SelectItem>
+                    <SelectItem value="FAILED">Failed</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -370,7 +376,7 @@ export default function BookingRequestsPage() {
                       Venue
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date & Time
+                      Date
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Amount Remained
@@ -394,17 +400,7 @@ export default function BookingRequestsPage() {
                     </tr>
                   ) : (
                     paginated.map((booking, idx) => {
-                      // Derive status for display based on new API data
-                      let displayStatus: "PENDING" | "PARTIAL" | "COMPLETED" | "UNKNOWN" = "UNKNOWN";
-                      if (booking.isFullyPaid) {
-                        displayStatus = "COMPLETED";
-                      } else if (booking.remainingAmount > 0) {
-                        displayStatus = "PARTIAL";
-                      } else if (booking.totalAmountPaid === 0) {
-                        displayStatus = "PENDING";
-                      }
-                      const statusInfo = getStatusInfo(displayStatus);
-
+                      const statusInfo = getStatusInfo(booking.bookingStatus || "UNKNOWN");
                       return (
                         <tr key={booking.bookingId || idx}>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
@@ -412,23 +408,21 @@ export default function BookingRequestsPage() {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap max-w-[200px] truncate">
                             <div className="text-sm font-medium text-gray-900">
-                              {/* Using bookingReason as the event/venue name based on the provided API structure */}
-                              {booking.bookingReason || '-'}
+                              {booking.eventDetails?.eventName || '-'}
                             </div>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap max-w-[160px] truncate">
                             <div className="text-sm text-gray-900">
-                              {/* Venue name is not directly in BookingPaymentInfo. Using bookingReason as a placeholder. */}
-                              {booking.bookingReason || '-'}
+                              {booking.venue?.venueName || '-'}
                             </div>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap max-w-[120px] truncate">
                             <div className="text-sm text-gray-900">
-                              {booking.bookingDate || '-'}
+                              {booking.bookingDates?.[0]?.date || '-'}
                             </div>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                            {formatCurrency(booking.remainingAmount)}
+                            {formatCurrency(booking.paymentSummary?.remainingAmount || 0)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             <Badge variant={statusInfo.variant as any} className={statusInfo.className}>
@@ -462,7 +456,7 @@ export default function BookingRequestsPage() {
                             </Button>
                           </td>
                         </tr>
-                      )
+                      );
                     })
                   )}
                 </tbody>
@@ -501,6 +495,6 @@ export default function BookingRequestsPage() {
         </main>
       </div>
     </>
-  )
+  );
 }
 

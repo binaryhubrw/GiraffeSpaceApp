@@ -339,7 +339,7 @@ export default function UserOrganizationsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => router.push(`/user-dashboard/organization/${organization.organizationId}`)}
+                          onClick={() => router.push(`/organizations/${organization.organizationId}`)}
                           className="gap-2"
                         >
                           <Eye className="h-4 w-4" />

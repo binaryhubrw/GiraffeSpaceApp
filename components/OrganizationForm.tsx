@@ -739,12 +739,12 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
                   {isLoading ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                      Updating Organization...
+                      {initialData?.organizationId || initialData?._id ? "Updating Organization..." : "Creating Organization..."}
                     </>
                   ) : (
                     <>
                       <Building2 className="h-5 w-5" />
-                      Update Organization
+                      {initialData?.organizationId || initialData?._id ? "Update Organization" : "Create Organization"}
                     </>
                   )}
                 </button>

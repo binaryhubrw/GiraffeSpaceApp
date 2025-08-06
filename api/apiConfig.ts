@@ -28,6 +28,8 @@ class ApiService {
   /***** base url** */
   static BASE_URL: string = "https://giraffespacev2.onrender.com/api/v1";
 
+  static cache: Record<string, any> = {}; // Ensure this line is present
+  static lastFetch: Record<string, number> = {};
 
   static getHeader(data?: any): Record<string, string> {
     const token = localStorage.getItem("token");
@@ -215,6 +217,19 @@ class ApiService {
 
   // **** NEW: Fetch formatted payments for a manager ****
   static async getFormattedManagerPayments(managerId: string): Promise<any> {
+    console.log(`getFormattedManagerPayments called for managerId: ${managerId}`);
+    const cacheDuration = 10000; // 10 seconds
+    const now = Date.now();
+
+    if (
+      this.cache[managerId] &&
+      this.lastFetch[managerId] &&
+      now - this.lastFetch[managerId] < cacheDuration
+    ) {
+      console.log(`Returning cached data for manager ${managerId}`);
+      return this.cache[managerId];
+    }
+
     try {
       const token = localStorage.getItem("token");
       if (!token) {
@@ -230,6 +245,8 @@ class ApiService {
           withCredentials: true,
         }
       );
+      this.cache[managerId] = response.data;
+      this.lastFetch[managerId] = now;
       return response.data;
     } catch (error) {
       console.error(`Error fetching formatted manager payments for ID ${managerId}:`, error);
