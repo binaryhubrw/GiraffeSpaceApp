@@ -49,6 +49,8 @@ interface Address {
 
 interface AttendeeData {
   fullName?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   phoneNumber: string;
   nationalId: string;
@@ -85,6 +87,8 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
   const [attendees, setAttendees] = useState<AttendeeData[]>([
     {
       fullName: "",
+      firstName: "",
+      lastName: "",
       email: "",
       phoneNumber: "",
       nationalId: "",
@@ -138,7 +142,9 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
     if (registeringForSelf && fullUser) {
       setAttendees([
         {
-          fullName: fullUser.firstName || "",
+          fullName: `${fullUser.firstName || ""} ${fullUser.lastName || ""}`.trim(),
+          firstName: fullUser.firstName || "",
+          lastName: fullUser.lastName || "",
           email: fullUser.email || "",
           phoneNumber: fullUser.phoneNumber || "",
           nationalId: "",
@@ -156,6 +162,8 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
       setAttendees([
         {
           fullName: "",
+          firstName: "",
+          lastName: "",
           email: "",
           phoneNumber: "",
           nationalId: "",
@@ -186,7 +194,15 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
         [field]: value,
       };
     } else {
-      (newAttendees[index] as any)[field] = value;
+      // Type-safe assignment for AttendeeData fields
+      const attendee = newAttendees[index];
+      if (field === "fullName") attendee.fullName = value;
+      else if (field === "firstName") attendee.firstName = value;
+      else if (field === "lastName") attendee.lastName = value;
+      else if (field === "email") attendee.email = value;
+      else if (field === "phoneNumber") attendee.phoneNumber = value;
+      else if (field === "nationalId") attendee.nationalId = value;
+      else if (field === "gender") attendee.gender = value;
     }
     setAttendees(newAttendees)
 
@@ -202,6 +218,8 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
       ...attendees,
       {
         fullName: "",
+        firstName: "",
+        lastName: "",
         email: "",
         phoneNumber: "",
         nationalId: "",

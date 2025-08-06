@@ -87,6 +87,7 @@ interface EventData {
   bookingDates: Array<{ date: string }>
   maxAttendees: number
   eventStatus: string
+  isEntryPaid: boolean
   venues: Array<{
     venueName: string
     venueLocation: string
@@ -210,6 +211,7 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
             bookingDates: event.bookingDates || [],
             maxAttendees: event.maxAttendees || 0,
             eventStatus: event.eventStatus,
+            isEntryPaid: event.isEntryPaid || false,
             venues: event.venueBookings?.map((booking: any) => ({
               venueName: booking.venue?.venueName || "Unknown Venue",
               venueLocation: booking.venue?.venueLocation || "Unknown Location",
@@ -224,8 +226,8 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
           })
         }
 
-        if (ticketsResponse.success && ticketsResponse.data) {
-          setTicketTypes(ticketsResponse.data)
+        if (ticketsResponse.success) {
+          setTicketTypes(ticketsResponse.data || [])
         } else {
           console.error("Failed to fetch tickets:", ticketsResponse)
           setError("Failed to load ticket data")
@@ -387,12 +389,14 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
                   Scan Tickets
                 </Link>
               </Button>
-              <Button asChild className="w-full sm:w-auto">
-                <Link href={`/events/${eventId}/tickets/create`}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Ticket
-                </Link>
-              </Button>
+              {eventData?.isEntryPaid && (
+                <Button asChild className="w-full sm:w-auto">
+                  <Link href={`/user-dashboard/events/${eventId}/eventTicket/create`}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Ticket
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -669,21 +673,57 @@ export default function EventTicketsManagement({ eventId }: EventTicketsManageme
         {filteredTickets.length === 0 && (
           <Card>
             <CardContent className="p-8 md:p-12 text-center">
-              <Ticket className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No tickets found</h3>
-              <p className="text-gray-600 mb-4 text-sm md:text-base">
-                {ticketTypes.length === 0
-                  ? "You haven't created any tickets yet."
-                  : "No tickets match your current filters."}
-              </p>
-              {ticketTypes.length === 0 && (
-                <Button asChild>
-                  <Link href={`/events/${eventId}/tickets/create`}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Your First Ticket
-                  </Link>
-                </Button>
-              )}
+              <div className="max-w-md mx-auto">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Ticket className="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {ticketTypes.length === 0 ? "No Tickets Created Yet" : "No Tickets Found"}
+                </h3>
+                <p className="text-gray-600 mb-6 text-sm md:text-base">
+                  {ticketTypes.length === 0 
+                    ? eventData?.isEntryPaid 
+                      ? "Start selling tickets for your event by creating your first ticket type. You can set different pricing, quantities, and special offers."
+                      : "This is a free event. No tickets are needed for registration."
+                    : "No tickets match your current search or filter criteria. Try adjusting your filters or search terms."}
+                </p>
+                
+                {ticketTypes.length === 0 && (
+                  <div className="space-y-3">
+                    {eventData?.isEntryPaid && (
+                      <Button asChild className="w-full sm:w-auto">
+                        <Link href={`/user-dashboard/events/${eventId}/eventTicket/create`}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Your First Ticket
+                        </Link>
+                      </Button>
+                    )}
+                    {eventData?.isEntryPaid && (
+                      <div className="text-xs text-gray-500 space-y-1">
+                        <p>💡 <strong>Tip:</strong> Create multiple ticket types for different pricing tiers</p>
+                        <p>🎯 <strong>Tip:</strong> Set early bird discounts to boost early sales</p>
+                        <p>📊 <strong>Tip:</strong> Monitor sales performance with our analytics</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {ticketTypes.length > 0 && (
+                  <div className="space-y-3">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setSearchTerm("")
+                        setStatusFilter("all")
+                        setCategoryFilter("all")
+                      }}
+                      className="w-full sm:w-auto"
+                    >
+                      Clear All Filters
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}

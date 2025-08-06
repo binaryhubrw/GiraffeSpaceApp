@@ -1610,7 +1610,15 @@ class ApiService {
         withCredentials: true,
       });
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      // Handle 404 error gracefully - it means no tickets exist yet
+      if (error.response?.status === 404) {
+        return {
+          success: true,
+          data: [],
+          message: "No tickets found for this event"
+        };
+      }
       console.error(`Error fetching tickets for event with ID ${eventId}:`, error);
       throw error;
     }
@@ -1675,6 +1683,34 @@ class ApiService {
     }
   }
 
+  /**** check and scann invitation with qrcode**** */
+  static async checkAndScanQrcodeInvitation(invitationData: any): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/event/free-check-in`, invitationData, {
+        headers: this.getHeader(invitationData),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error checking and scanning invitation:", error);
+      throw error;
+    }
+  }
+
+
+/******* checkInvitation with invitationId*************** */
+  static async checkInvitationWithInvitationID(invitationData: any): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/event/free-check-in`, invitationData, {
+        headers: this.getHeader(invitationData),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error checking invitation with ID`, error);
+      throw error;
+    }
+  }
 
   // Fetch organizations for a specific user
   static async getOrganizationsByUserId(userId: string): Promise<any[]> {
