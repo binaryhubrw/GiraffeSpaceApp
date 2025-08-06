@@ -1296,11 +1296,11 @@ class ApiService {
   /** Update event by ID */
   static async updateEventById(eventId: string, data: any): Promise<any> {
     try {
-      const response = await axios.put(
-        `${this.BASE_URL}/event/${eventId}`,
+      const response = await axios.patch(
+        `${this.BASE_URL}/event/${eventId}/private`,
         data,
         {
-          headers: this.getHeader(),
+          headers: this.getHeader(data),
           withCredentials: true,
         }
       );
@@ -1626,6 +1626,20 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error("Error purchasing event ticket:", error);
+      throw error;
+    }
+  }
+
+  /***** register on free event***** */
+  static async registerOnFreeEvent(eventId: string, registrationData: any): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/event/${eventId}/register/free`, registrationData, {
+        headers: this.getHeader(registrationData),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error registering on free event with ID ${eventId}:`, error);
       throw error;
     }
   }

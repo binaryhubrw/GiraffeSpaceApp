@@ -517,12 +517,12 @@ export default function UserBookingsPage() {
                              <Eye className="h-4 w-4 mr-2" />
                              View Details
                            </DropdownMenuItem>
-                           <DropdownMenuItem>
-                             <Download className="h-4 w-4 mr-2" />
-                             Download Receipt
-                           </DropdownMenuItem>
+                          
                            {(booking.bookingStatus === "PARTIAL" || booking.bookingStatus === "PENDING") && (
-                             <DropdownMenuItem className="text-green-600 font-medium">
+                             <DropdownMenuItem 
+                               className="text-green-600 font-medium"
+                               onClick={() => router.push(`/venues/book/payment/${booking.bookingId}`)}
+                             >
                                <DollarSign className="h-4 w-4 mr-2" />
                                Pay Now
                              </DropdownMenuItem>

@@ -1,6 +1,8 @@
+"use client";
 import Image from "next/image"
 import Link from "next/link"
-import { CalendarDays, Users, MapPin } from "lucide-react"
+import { CalendarDays, Users, MapPin, Ticket } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 export interface EventCardProps {
   id: string
@@ -16,6 +18,7 @@ export interface EventCardProps {
   gradientFrom?: string
   gradientTo?: string
   specialText?: string
+  isEntryPaid: boolean
 }
 
 export function EventCard({
@@ -32,7 +35,11 @@ export function EventCard({
   gradientFrom = "from-blue-500",
   gradientTo = "to-cyan-500",
   specialText,
+  isEntryPaid,
 }: EventCardProps) {
+  const { isLoggedIn } = useAuth();
+  // Debug log to ensure component is rendering
+  console.log('EventCard rendering:', { id, title, type, isEntryPaid });
   // Determine background color class based on type
   let bgColorClass = "bg-blue-50"
   let textColorClass = "text-blue-600"
@@ -92,9 +99,27 @@ export function EventCard({
           </div>
         </div>
 
-        <Link href={`/events/${id}`} className="text-sm font-medium text-blue-600 hover:text-blue-800">
-          View Details
-        </Link>
+        <div className="flex gap-3 mt-4">
+          <Link 
+            href={`/events/${id}`} 
+            className="flex-1 text-center text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-300 rounded-md py-2 px-3 transition-colors"
+          >
+            View Details
+          </Link>
+          <Link
+            href={
+              !isLoggedIn
+                ? "/login"
+                : isEntryPaid
+                  ? `/events/${id}/buy-tickets`
+                  : `/events/${id}/register`
+            }
+            className="flex-1 text-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-800 border border-blue-200 hover:border-blue-300 rounded-md py-2 px-3 transition-colors flex items-center justify-center"
+          >
+            <Ticket className="h-4 w-4 mr-2" />
+            {isEntryPaid ? "Buy Ticket" : "Free Register"}
+          </Link>
+        </div>
       </div>
     </div>
   )
