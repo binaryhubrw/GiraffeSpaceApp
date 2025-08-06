@@ -768,11 +768,11 @@ export default function VenueDetailsPage() {
       <div className="mb-6">
         <button
           type="button"
-          onClick={handleBookNow}
+          onClick={() => router.push(`/manage/venues/${venue?.venueId}/availability`)}
           disabled={!mounted}
           className="bg-blue-600 text-white px-6 py-2 rounded-md font-semibold text-base hover:bg-blue-700 transition-all disabled:bg-gray-300 disabled:text-gray-500"
         >
-          Book Now
+          Availability
         </button>
                   </div>
 
@@ -781,10 +781,10 @@ export default function VenueDetailsPage() {
           <CardTitle className="flex justify-between items-center">
             <span>Venue Details</span>
             <div className="flex gap-2">
-              <Link href={`/manage/venues/${venue.venueId}/book`}>
+              <Link href={`/manage/venues/${venue.venueId}/availability`}>
                 <Button variant="default" className="flex items-center gap-2">
                   <CalendarPlus className="w-4 h-4" />
-                  Book Venue
+                  Availability
                 </Button>
               </Link>
               <Link href={`/manage/venues/${venue.venueId}/edit`}>

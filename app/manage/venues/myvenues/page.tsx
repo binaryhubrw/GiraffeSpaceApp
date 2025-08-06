@@ -51,6 +51,16 @@ type Venue = VenueBase & {
   // Add any other API-only fields here
 };
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreVertical } from "lucide-react";
+
 export default function ManageVenuesPage() {
   const { isLoggedIn, user } = useAuth(); // Get user from auth context
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -138,13 +148,11 @@ export default function ManageVenuesPage() {
   ];
 
   const handleEdit = (venueId: string) => {
-    console.log("Edit venue:", venueId)
-    // TODO: Navigate to edit page
+    router.push(`/manage/venues/${venueId}/edit`);
   }
 
   const handleView = (venueId: string) => {
-    console.log("View venue:", venueId)
-    // TODO: Navigate to view page
+    router.push(`/manage/venues/${venueId}`);
   }
 
   const handleDelete = (venueId: string) => {
@@ -321,7 +329,7 @@ export default function ManageVenuesPage() {
               {paginatedVenues.map((venue) => {
                 const statusInfo = getVenueStatusInfo(venue);
                 return (
-                  <TableRow key={venue.venueId}>
+                  <TableRow key={venue.venueId} className="group">
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <img
@@ -345,76 +353,35 @@ export default function ManageVenuesPage() {
                         {statusInfo.label}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <div className="group relative">
+                    <TableCell className="text-right flex items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-3"
+                        onClick={() => router.push(`/manage/venues/${venue.venueId}/availability`)}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" /> Availability
+                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
-                            size="sm"
                             className="h-8 w-8 p-0"
                           >
-                            <Link href={`/manage/venues/${venue.venueId}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
+                            <span className="sr-only">Open menu</span>
+                            <MoreVertical className="h-4 w-4" />
                           </Button>
-                          <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">View</span>
-                        </div>
-                        <div className="group relative">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                          >
-                            <Link href={`/manage/venues/${venue.venueId}/edit`}>
-                              <Edit className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">Edit</span>
-                        </div>
-                        <div className="group relative">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                          >
-                            <Link href={`/manage/venues/${venue.venueId}/availability`}>
-                              <Calendar className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">Availability</span>
-                        </div>
-                        <div className="group relative">
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Venue</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete "{venue.venueName}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDelete(venue.venueId)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                          <span className="absolute left-1/2 -translate-x-1/2 mt-1 w-max px-2 py-1 text-xs bg-gray-800 text-white rounded opacity-0 group-hover:opacity-100 pointer-events-none z-10">Delete</span>
-                        </div>
-                      </div>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => handleView(venue.venueId)}>
+                            <Eye className="mr-2 h-4 w-4" /> View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEdit(venue.venueId)}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );
