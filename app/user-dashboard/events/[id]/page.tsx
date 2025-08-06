@@ -24,6 +24,7 @@ import {
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import {
   Pagination,
   PaginationContent,
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/pagination"
 import ApiService from "@/api/apiConfig"
 import EventTicketsManagement from "./event-tickets-management"
+import AttendancePage from "./event-attendance"
 
 
 
@@ -609,9 +611,9 @@ export default function EventDetails({ params }: { params: { id: string } }) {
             )}
             
             {activeTab === "attendees" && (
-              <div className="text-center text-gray-500 py-8">
-                <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-sm md:text-base">No attendees data available.</p>
+              <div className="space-y-6">
+                {/* Import and render the full attendance component */}
+                <AttendancePage />
               </div>
             )}
 

@@ -434,7 +434,7 @@ export default function CreateEventForm() {
           <div className="space-y-8">
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold text-gray-900">Where and when?</h2>
-              <p className="text-gray-600">Choose your venue and set the dates</p>
+              <p className="text-gray-600"> Selected venue and date/hour</p>
             </div>
             <div className="space-y-6">
               <div>
