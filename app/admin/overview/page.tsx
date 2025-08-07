@@ -207,15 +207,15 @@ export default function AdminOverview() {
     (venue) => venue.status?.toUpperCase?.() === "PENDING"
   );
 
-  // Get recent organizations (last 5 created)
-  const recentOrganizations = organizations
-    .filter(org => org.createdAt) // Only include organizations with creation date
+  // Get pending organizations (organizations waiting for approval)
+  const pendingOrganizations = organizations
+    .filter(org => org.status && org.status.toLowerCase() === 'pending') // Only include pending organizations
     .sort((a, b) => {
       const dateA = new Date(a.createdAt || '');
       const dateB = new Date(b.createdAt || '');
       return dateB.getTime() - dateA.getTime(); // Sort by newest first
     })
-    .slice(0, 5); // Get only the 5 most recent
+    .slice(0, 5); // Get only the 5 most recent pending
 
   // Date filtering functions
   const isWithinDateRange = (dateString: string, filterType: string) => {
@@ -681,20 +681,20 @@ export default function AdminOverview() {
         </Card>
       </div>
 
-      {/* Recent Organizations Section */}
+      {/* Pending Organizations Section */}
       <div className="mb-8">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
               <Building2 className="h-5 w-5 mr-2" />
-              Recent Organizations
+              Pending Organizations
             </CardTitle>
-            <CardDescription>Recently created organizations</CardDescription>
+            <CardDescription>Organizations waiting for approval</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-              {recentOrganizations.length > 0 ? (
-                recentOrganizations.map((org) => (
+              {pendingOrganizations.length > 0 ? (
+                pendingOrganizations.map((org) => (
                   <div
                     key={org.id || org.organizationId}
                     className="flex items-center justify-between p-3 border rounded-lg bg-white"
@@ -745,11 +745,11 @@ export default function AdminOverview() {
                 ))
               ) : (
                 <p className="text-gray-500 text-center py-4">
-                  No recent organizations found
+                  No pending organizations found
                 </p>
               )}
             </div>
-            {recentOrganizations.length > 0 && (
+            {pendingOrganizations.length > 0 && (
               <div className="mt-4 text-center">
                 <Link href="/admin/organization">
                   <Button variant="outline" size="sm">
