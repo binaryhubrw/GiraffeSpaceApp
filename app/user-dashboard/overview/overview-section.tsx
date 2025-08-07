@@ -59,8 +59,8 @@ export default function OverviewSection({ user, organizations, userEvents }: Ove
 
   const categoryChartData = Object.entries(categoryData).map(([category, count]) => ({
     name: category,
-    value: count,
-    percentage: ((count / userEvents.length) * 100).toFixed(1)
+    value: count as number,
+    percentage: ((count as number / userEvents.length) * 100).toFixed(1)
   }))
 
   // Prepare data for revenue bar chart (paid events only)

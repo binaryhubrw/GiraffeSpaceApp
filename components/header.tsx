@@ -32,7 +32,7 @@ export function Header({ activePage }: HeaderProps) {
   const router = useRouter()
   
   // Get user organizations
-  const { organizations, loading: orgLoading } = useUserOrganizations(user?.userId)
+  const { organizations, loading: orgLoading } = useUserOrganizations()
 
   // Set mounted state after component mounts
   useEffect(() => {
@@ -70,6 +70,11 @@ export function Header({ activePage }: HeaderProps) {
   const handleManageVenuesClick = (e: React.MouseEvent) => {
     e.preventDefault()
     setIsManageMenuOpen(false)
+
+    // Simple console log to confirm the function is being called
+    console.log("🎯 Manage Venues button clicked!")
+    console.log("User organizations:", organizations)
+    console.log("Number of organizations:", organizations.length)
     
     // Check if user has organizations
     if (organizations.length === 0) {

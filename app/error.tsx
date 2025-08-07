@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Wifi, WifiOff, RefreshCw, AlertTriangle, Home, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import ApiService from "@/api/apiConfig"
 
 interface ErrorPageProps {
   error?: Error & { digest?: string }
@@ -54,7 +55,7 @@ export default function ErrorPage({ error, reset, isServerError = false }: Error
 
       for (const endpoint of endpoints) {
         try {
-          const response = await fetch(`https://giraffespacev2.onrender.com/api/v1${endpoint}`, {
+          const response = await fetch(`${ApiService.BASE_URL}${endpoint}`, {
             method: 'GET',
             headers: {
               'Content-Type': 'application/json',
@@ -166,7 +167,7 @@ export default function ErrorPage({ error, reset, isServerError = false }: Error
                 <Alert className="mb-4">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    Server: https://giraffespacev2.onrender.com/api/v1
+                    Our servers are currently experiencing connectivity issues. Please try again in a few minutes.
                   </AlertDescription>
                 </Alert>
               )}
