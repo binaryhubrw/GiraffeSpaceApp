@@ -1713,7 +1713,7 @@ class ApiService {
   }
 
   // Fetch organizations for a specific user
-  static async getOrganizationsByUserId(userId: string): Promise<any[]> {
+  static async getOrganizationsByUserId(userId: string): Promise<any> {
     try {
       const token = localStorage.getItem("token");
       const response = await axios.get(`${this.BASE_URL}/organizations/user/${userId}`, {
@@ -1721,10 +1721,11 @@ class ApiService {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
-      return Array.isArray(response.data?.data) ? response.data.data : [];
+      // Return the full response data to handle the success/data structure
+      return response.data;
     } catch (error) {
       console.error("Error fetching organizations by userId:", error);
-      return [];
+      return { success: false, data: null };
     }
   }
 

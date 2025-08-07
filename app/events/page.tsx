@@ -23,7 +23,13 @@ export default function EventsPage() {
     setLoading(true);
     ApiService.getPubulishedEvents()
       .then((res) => {
+        console.log('Events Page - Full Response:', res)
         if (res.success && Array.isArray(res.data)) {
+          console.log('Events Page - All Events:', res.data)
+          res.data.forEach((event: { eventPhoto: any }, index: number) => {
+            console.log(`Events Page - Event ${index + 1} Photo:`, event.eventPhoto)
+            console.log(`Events Page - Event ${index + 1} Photo Type:`, typeof event.eventPhoto)
+          })
           setEvents(res.data)
         } else {
           setEvents([])
@@ -203,7 +209,7 @@ export default function EventsPage() {
               </div>
 
               
-               <Button href="/venues" > Available venue </Button>
+               
             </div>
           </div>
         </div>
@@ -224,10 +230,10 @@ export default function EventsPage() {
                 else if (event.eventType === "FESTIVAL") typeColor = "yellow"
                 else if (event.eventType === "CONFERENCE") typeColor = "red"
 
-                // Use first venue if available
-                const venue = event.eventVenues && event.eventVenues[0] && event.eventVenues[0].venue
-                const location = venue ? venue.venueName + (venue.venueLocation ? ", " + venue.venueLocation : "") : ""
-                const imageSrc = event.eventPhoto || (venue && venue.mainPhotoUrl) || undefined
+                                 // Use first venue if available
+                 const venue = event.eventVenues && event.eventVenues[0] && event.eventVenues[0].venue
+                 const location = venue ? venue.venueName + (venue.venueLocation ? ", " + venue.venueLocation : "") : ""
+                 const imageSrc = event.eventPhoto || "/placeholder.svg"
                 const date = event.bookingDates && event.bookingDates[0] ? event.bookingDates[0].date : ""
 
                 return (

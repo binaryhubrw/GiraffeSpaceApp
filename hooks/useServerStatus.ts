@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import ApiService from '@/api/apiConfig'
 
 interface ServerStatus {
   isOnline: boolean
@@ -7,7 +8,7 @@ interface ServerStatus {
   error: string | null
 }
 
-const SERVER_URL = 'https://giraffespacev2.onrender.com/api/v1'
+const SERVER_URL = ApiService.BASE_URL
 
 export const useServerStatus = () => {
   const [status, setStatus] = useState<ServerStatus>({
@@ -73,8 +74,14 @@ export const useServerStatus = () => {
       let errorMessage = 'Server is not responding'
       if (error.name === 'AbortError') {
         errorMessage = 'Server request timed out'
-      } else if (error.message) {
-        errorMessage = error.message
+      } else if (error.message && error.message.includes('fetch')) {
+        errorMessage = 'Network connection failed'
+      } else if (error.message && error.message.includes('Failed to fetch')) {
+        errorMessage = 'Unable to connect to server'
+      } else if (error.message && error.message.includes('NetworkError')) {
+        errorMessage = 'Network error occurred'
+      } else {
+        errorMessage = 'Server is not responding'
       }
 
       setStatus({
@@ -111,7 +118,6 @@ export const useServerStatus = () => {
 
   return {
     ...status,
-    checkServerStatus,
-    SERVER_URL
+    checkServerStatus
   }
 } 

@@ -39,23 +39,17 @@ interface EventData {
   }>
 }
 
-interface Address {
-  street: string;
-  province: string;
-  district: string;
-  sector: string;
-  country: string;
-}
-
 interface AttendeeData {
   fullName?: string;
   firstName?: string;
   lastName?: string;
   email: string;
+  receiverEmail: string;
   phoneNumber: string;
   nationalId: string;
+  passportId: string;
   gender: string;
-  address: Address;
+  address: string;
 }
 
 interface LoggedInUser {
@@ -90,19 +84,26 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
       firstName: "",
       lastName: "",
       email: "",
+      receiverEmail: "",
       phoneNumber: "",
       nationalId: "",
+      passportId: "",
       gender: "",
-      address: {
-        street: "",
-        province: "",
-        district: "",
-        sector: "",
-        country: "RWANDA",
-      },
+      address: "",
     },
   ])
+  const [sharedReceiverEmail, setSharedReceiverEmail] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Update all attendees' receiver email when shared email changes
+  useEffect(() => {
+    if (sharedReceiverEmail) {
+      setAttendees(prev => prev.map(attendee => ({
+        ...attendee,
+        receiverEmail: sharedReceiverEmail
+      })))
+    }
+  }, [sharedReceiverEmail])
 
   // Fetch full user profile
   useEffect(() => {
@@ -146,18 +147,15 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
           firstName: fullUser.firstName || "",
           lastName: fullUser.lastName || "",
           email: fullUser.email || "",
+          receiverEmail: fullUser.email || "",
           phoneNumber: fullUser.phoneNumber || "",
           nationalId: "",
+          passportId: "",
           gender: "",
-          address: {
-            street: "",
-            province: "",
-            district: "",
-            sector: "",
-            country: "RWANDA",
-          },
+          address: "",
         },
       ])
+      setSharedReceiverEmail(fullUser.email || "")
     } else if (!registeringForSelf) {
       setAttendees([
         {
@@ -165,45 +163,34 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
           firstName: "",
           lastName: "",
           email: "",
+          receiverEmail: "",
           phoneNumber: "",
           nationalId: "",
+          passportId: "",
           gender: "",
-          address: {
-            street: "",
-            province: "",
-            district: "",
-            sector: "",
-            country: "RWANDA",
-          },
+          address: "",
         },
       ])
+      setSharedReceiverEmail("")
     }
   }, [registeringForSelf, fullUser?.firstName, fullUser?.lastName, fullUser?.email, fullUser?.phoneNumber])
 
-  const handleAttendeeChange = (index: number, field: keyof AttendeeData | keyof Address, value: string) => {
+  const handleAttendeeChange = (index: number, field: keyof AttendeeData, value: string) => {
     const newAttendees = [...attendees]
-    if (
-      field === "street" ||
-      field === "province" ||
-      field === "district" ||
-      field === "sector" ||
-      field === "country"
-    ) {
-      newAttendees[index].address = {
-        ...newAttendees[index].address,
-        [field]: value,
-      };
-    } else {
-      // Type-safe assignment for AttendeeData fields
-      const attendee = newAttendees[index];
-      if (field === "fullName") attendee.fullName = value;
-      else if (field === "firstName") attendee.firstName = value;
-      else if (field === "lastName") attendee.lastName = value;
-      else if (field === "email") attendee.email = value;
-      else if (field === "phoneNumber") attendee.phoneNumber = value;
-      else if (field === "nationalId") attendee.nationalId = value;
-      else if (field === "gender") attendee.gender = value;
-    }
+    const attendee = newAttendees[index];
+    
+    // Type-safe assignment for AttendeeData fields
+    if (field === "fullName") attendee.fullName = value;
+    else if (field === "firstName") attendee.firstName = value;
+    else if (field === "lastName") attendee.lastName = value;
+    else if (field === "email") attendee.email = value;
+    else if (field === "receiverEmail") attendee.receiverEmail = value;
+    else if (field === "phoneNumber") attendee.phoneNumber = value;
+    else if (field === "nationalId") attendee.nationalId = value;
+    else if (field === "passportId") attendee.passportId = value;
+    else if (field === "gender") attendee.gender = value;
+    else if (field === "address") attendee.address = value;
+    
     setAttendees(newAttendees)
 
     // Clear error for this field
@@ -221,16 +208,12 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
         firstName: "",
         lastName: "",
         email: "",
+        receiverEmail: "",
         phoneNumber: "",
         nationalId: "",
+        passportId: "",
         gender: "",
-        address: {
-          street: "",
-          province: "",
-          district: "",
-          sector: "",
-          country: "RWANDA",
-        },
+        address: "",
       },
     ])
   }
@@ -244,6 +227,13 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
+
+    // Validate shared receiver email
+    if (!sharedReceiverEmail.trim()) {
+      newErrors['sharedReceiverEmail'] = "Receiver email is required"
+    } else if (!/\S+@\S+\.\S+/.test(sharedReceiverEmail)) {
+      newErrors['sharedReceiverEmail'] = "Please enter a valid receiver email"
+    }
 
     attendees.forEach((attendee, index) => {
       console.log(`Validating attendee ${index}:`, attendee); // Debug log
@@ -264,23 +254,14 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
       } else if (!/^\d{16}$/.test(attendee.nationalId.trim())) {
         newErrors[`attendee-${index}-nationalId`] = "National ID must be exactly 16 numbers";
       }
+      if (!attendee.passportId.trim()) {
+        newErrors[`attendee-${index}-passportId`] = "Passport ID is required";
+      }
       if (!attendee.gender.trim()) {
         newErrors[`attendee-${index}-gender`] = "Gender is required";
       }
-      if (!attendee.address.street.trim()) {
-        newErrors[`attendee-${index}-street`] = "Street is required";
-      }
-      if (!attendee.address.province.trim()) {
-        newErrors[`attendee-${index}-province`] = "Province is required";
-      }
-      if (!attendee.address.district.trim()) {
-        newErrors[`attendee-${index}-district`] = "District is required";
-      }
-      if (!attendee.address.sector.trim()) {
-        newErrors[`attendee-${index}-sector`] = "Sector is required";
-      }
-      if (!attendee.address.country.trim()) {
-        newErrors[`attendee-${index}-country`] = "Country is required";
+      if (!attendee.address.trim()) {
+        newErrors[`attendee-${index}-address`] = "Address is required";
       }
     })
 
@@ -302,18 +283,12 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
           ? attendee.fullName
           : `${attendee.firstName || ""} ${attendee.lastName || ""}`.trim(),
         email: attendee.email,
+        receiverEmail: sharedReceiverEmail,
         phoneNumber: attendee.phoneNumber,
         nationalId: attendee.nationalId,
+        passportId: attendee.passportId,
         gender: attendee.gender,
-        address: [
-          {
-            street: attendee.address.street,
-            province: attendee.address.province,
-            district: attendee.address.district,
-            sector: attendee.address.sector,
-            country: attendee.address.country,
-          },
-        ],
+        address: attendee.address,
       }));
 
       await ApiService.registerOnFreeEvent(eventId, registrationData);
@@ -482,16 +457,39 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                     </div>
                   )}
 
-                  {/* Attendees Forms */}
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold">
-                        {registeringForSelf ? "Your Information" : "Attendee Information"}
-                      </h3>
-                      <Badge variant="outline">
-                        {attendees.length} Attendee{attendees.length > 1 ? "s" : ""}
-                      </Badge>
-                    </div>
+                                     {/* Shared Receiver Email */}
+                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                     <div className="space-y-2">
+                       <Label htmlFor="sharedReceiverEmail" className="text-base font-medium text-blue-900">
+                         Receiver Email (for all attendees) *
+                       </Label>
+                       <Input
+                         id="sharedReceiverEmail"
+                         type="email"
+                         value={sharedReceiverEmail}
+                         onChange={(e) => setSharedReceiverEmail(e.target.value)}
+                         placeholder="Enter receiver email address for all attendees"
+                         className={`mt-1 ${errors['sharedReceiverEmail'] ? "border-red-500" : ""}`}
+                       />
+                       {errors['sharedReceiverEmail'] && (
+                         <p className="text-sm text-red-500 mt-1">{errors['sharedReceiverEmail']}</p>
+                       )}
+                       <p className="text-sm text-blue-700">
+                         This email will be used to receive confirmation and updates for all registered attendees.
+                       </p>
+                     </div>
+                   </div>
+
+                   {/* Attendees Forms */}
+                   <div className="space-y-6">
+                     <div className="flex items-center justify-between">
+                       <h3 className="text-lg font-semibold">
+                         {registeringForSelf ? "Your Information" : "Attendee Information"}
+                       </h3>
+                       <Badge variant="outline">
+                         {attendees.length} Attendee{attendees.length > 1 ? "s" : ""}
+                       </Badge>
+                     </div>
 
                     {attendees.map((attendee, index) => (
                       <Card key={index} className="border-2 border-dashed border-gray-200">
@@ -552,22 +550,24 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor={`phoneNumber-${index}`}>Phone Number *</Label>
-                              <Input
-                                id={`phoneNumber-${index}`}
-                                value={attendee.phoneNumber}
-                                onChange={(e) => handleAttendeeChange(index, "phoneNumber", e.target.value)}
-                                placeholder="Enter phone number"
-                                className={`mt-1 ${errors[`attendee-${index}-phoneNumber`] ? "border-red-500" : ""}`}
-                                disabled={registeringForSelf && index === 0}
-                              />
-                              {errors[`attendee-${index}-phoneNumber`] && (
-                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-phoneNumber`]}</p>
-                              )}
-                            </div>
+                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div>
+                               <Label htmlFor={`phoneNumber-${index}`}>Phone Number *</Label>
+                               <Input
+                                 id={`phoneNumber-${index}`}
+                                 value={attendee.phoneNumber}
+                                 onChange={(e) => handleAttendeeChange(index, "phoneNumber", e.target.value)}
+                                 placeholder="Enter phone number"
+                                 className={`mt-1 ${errors[`attendee-${index}-phoneNumber`] ? "border-red-500" : ""}`}
+                                 disabled={registeringForSelf && index === 0}
+                               />
+                               {errors[`attendee-${index}-phoneNumber`] && (
+                                 <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-phoneNumber`]}</p>
+                               )}
+                             </div>
+                           </div>
 
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <Label htmlFor={`nationalId-${index}`}>National ID *</Label>
                               <Input
@@ -579,6 +579,20 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                               />
                               {errors[`attendee-${index}-nationalId`] && (
                                 <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-nationalId`]}</p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor={`passportId-${index}`}>Passport ID *</Label>
+                              <Input
+                                id={`passportId-${index}`}
+                                value={attendee.passportId}
+                                onChange={(e) => handleAttendeeChange(index, "passportId", e.target.value)}
+                                placeholder="Enter passport ID"
+                                className={`mt-1 ${errors[`attendee-${index}-passportId`] ? "border-red-500" : ""}`}
+                              />
+                              {errors[`attendee-${index}-passportId`] && (
+                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-passportId`]}</p>
                               )}
                             </div>
                           </div>
@@ -601,80 +615,21 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                                 <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-gender`]}</p>
                               )}
                             </div>
-
-                            <div>
-                              <Label htmlFor={`street-${index}`}>Street *</Label>
-                              <Input
-                                id={`street-${index}`}
-                                value={attendee.address.street}
-                                onChange={(e) => handleAttendeeChange(index, "street", e.target.value)}
-                                placeholder="Enter street"
-                                className={`mt-1 ${errors[`attendee-${index}-street`] ? "border-red-500" : ""}`}
-                              />
-                              {errors[`attendee-${index}-street`] && (
-                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-street`]}</p>
-                              )}
-                            </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor={`province-${index}`}>Province *</Label>
-                              <Input
-                                id={`province-${index}`}
-                                value={attendee.address.province}
-                                onChange={(e) => handleAttendeeChange(index, "province", e.target.value)}
-                                placeholder="Enter province"
-                                className={`mt-1 ${errors[`attendee-${index}-province`] ? "border-red-500" : ""}`}
-                              />
-                              {errors[`attendee-${index}-province`] && (
-                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-province`]}</p>
-                              )}
-                            </div>
-
-                            <div>
-                              <Label htmlFor={`district-${index}`}>District *</Label>
-                              <Input
-                                id={`district-${index}`}
-                                value={attendee.address.district}
-                                onChange={(e) => handleAttendeeChange(index, "district", e.target.value)}
-                                placeholder="Enter district"
-                                className={`mt-1 ${errors[`attendee-${index}-district`] ? "border-red-500" : ""}`}
-                              />
-                              {errors[`attendee-${index}-district`] && (
-                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-district`]}</p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor={`sector-${index}`}>Sector *</Label>
-                              <Input
-                                id={`sector-${index}`}
-                                value={attendee.address.sector}
-                                onChange={(e) => handleAttendeeChange(index, "sector", e.target.value)}
-                                placeholder="Enter sector"
-                                className={`mt-1 ${errors[`attendee-${index}-sector`] ? "border-red-500" : ""}`}
-                              />
-                              {errors[`attendee-${index}-sector`] && (
-                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-sector`]}</p>
-                              )}
-                            </div>
-
-                            <div>
-                              <Label htmlFor={`country-${index}`}>Country *</Label>
-                              <Input
-                                id={`country-${index}`}
-                                value={attendee.address.country}
-                                onChange={(e) => handleAttendeeChange(index, "country", e.target.value)}
-                                placeholder="Enter country"
-                                className={`mt-1 ${errors[`attendee-${index}-country`] ? "border-red-500" : ""}`}
-                              />
-                              {errors[`attendee-${index}-country`] && (
-                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-country`]}</p>
-                              )}
-                            </div>
+                          <div>
+                            <Label htmlFor={`address-${index}`}>Address *</Label>
+                            <Textarea
+                              id={`address-${index}`}
+                              value={attendee.address}
+                              onChange={(e) => handleAttendeeChange(index, "address", e.target.value)}
+                              placeholder="Enter complete address (street, province, district, sector, country)"
+                              className={`mt-1 ${errors[`attendee-${index}-address`] ? "border-red-500" : ""}`}
+                              rows={3}
+                            />
+                            {errors[`attendee-${index}-address`] && (
+                              <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-address`]}</p>
+                            )}
                           </div>
                         </CardContent>
                       </Card>

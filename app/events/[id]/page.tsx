@@ -46,6 +46,8 @@ export default function EventDetails() {
 
         const response = await ApiService.getPubulishedEventById(params.id as string)
         console.log("Event Data:", response.data)
+        console.log("Event Photo:", response.data?.eventPhoto)
+        console.log("Event Photo Type:", typeof response.data?.eventPhoto)
         if (response.success) {
           setEventData(response.data)
         } else {
@@ -163,7 +165,7 @@ export default function EventDetails() {
                 <CardContent className="p-6">
                   <div className="flex flex-wrap gap-3">
                     <Button asChild size="lg" className="flex-1 min-w-[200px]">
-                      <Link href={isLoggedIn ? (event.isEntryPaid ? `/events/${params.id}/buy-tickets` : `/events/${params.id}/registration`) : "/login"}>
+                      <Link href={isLoggedIn ? (event.isEntryPaid ? `/events/${params.id}/buy-tickets` : `/events/${params.id}/register`) : "/login"}>
                         <Ticket className="h-4 w-4 mr-2" />
                         {event.isEntryPaid ? "Buy Tickets" : "Register Now"}
                       </Link>

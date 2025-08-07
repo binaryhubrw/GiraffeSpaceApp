@@ -4,7 +4,6 @@ export interface ErrorInfo {
   message: string
   type: 'network' | 'server' | 'client' | 'unknown'
   status?: number
-  url?: string
 }
 
 export const isServerError = (error: any): boolean => {
@@ -56,8 +55,7 @@ export const handleApiError = (error: any, context?: string): ErrorInfo => {
   if (isServerError(error)) {
     errorInfo = {
       message: 'Server is not responding. Please try again later.',
-      type: 'server',
-      url: error.config?.url || error.url
+      type: 'server'
     }
 
     // Show toast notification
@@ -76,8 +74,7 @@ export const handleApiError = (error: any, context?: string): ErrorInfo => {
     errorInfo = {
       message: error.response?.data?.message || 'Invalid request',
       type: 'client',
-      status: error.response.status,
-      url: error.config?.url
+      status: error.response.status
     }
 
     toast.error(errorInfo.message)
@@ -86,8 +83,7 @@ export const handleApiError = (error: any, context?: string): ErrorInfo => {
   else {
     errorInfo = {
       message: error.message || 'An unexpected error occurred',
-      type: 'unknown',
-      url: error.config?.url
+      type: 'unknown'
     }
 
     toast.error(errorInfo.message)

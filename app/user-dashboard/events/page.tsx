@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Calendar, Plus, Filter, ChevronDown, Users, MapPin, Clock, Send } from "lucide-react"
+import { Calendar, Plus, Filter, ChevronDown, Users, MapPin, Clock, Send, MoreHorizontal } from "lucide-react"
 import Link from "next/link"
 import {
   Table,
@@ -32,6 +32,12 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Pencil, Eye, Trash2, XCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
@@ -532,7 +538,7 @@ export default function EventSection() {
                     <TableHead>Date</TableHead>
                     <TableHead>Venue</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>Registrations</TableHead>
+                    <TableHead>Expected Daily Count</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -602,30 +608,54 @@ export default function EventSection() {
                              event.eventStatus}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right space-x-2">
-                          <Link href={`/user-dashboard/events/${event.eventId}`} className="inline-block text-blue-600 hover:text-blue-800">
-                            <Eye className="h-5 w-5" aria-label="View" />
-                          </Link>
-                          <Link href={`/user-dashboard/events/${event.eventId}/edit`} className="inline-block text-gray-600 hover:text-gray-900">
-                            <Pencil className="h-5 w-5" aria-label="Edit" />
-                          </Link>
-                          {canRequestPublication(event.eventStatus) && event.eventStatus !== "APPROVED" && (
-                            <button
-                              onClick={() => setShowPublishRequestId(event.eventId)}
-                              className="inline-block text-green-600 hover:text-green-800 transition-colors"
-                              title="Request Publication - Submit event for admin review"
-                            >
-                              <Send className="h-5 w-5" aria-label="Request Publication" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setShowCancelId(event.eventId)}
-                            className="inline-block text-yellow-600 hover:text-yellow-800"
-                            title="Cancel Event"
-                            disabled={event.eventStatus === "CANCELLED"}
-                          >
-                            <XCircle className="h-5 w-5" aria-label="Cancel Event" />
-                          </button>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/user-dashboard/events/${event.eventId}`} className="flex items-center gap-2 cursor-pointer">
+                                  <Eye className="h-4 w-4" />
+                                  View Event
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/user-dashboard/events/${event.eventId}/edit`} className="flex items-center gap-2 cursor-pointer">
+                                  <Pencil className="h-4 w-4" />
+                                  Edit Event
+                                </Link>
+                              </DropdownMenuItem>
+                              {canRequestPublication(event.eventStatus) && event.eventStatus !== "APPROVED" && event.eventStatus !== "PENDING_PUBLICATION" && (
+                                <DropdownMenuItem 
+                                  onClick={() => setShowPublishRequestId(event.eventId)}
+                                  className="flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Send className="h-4 w-4" />
+                                  Request Publication
+                                </DropdownMenuItem>
+                              )}
+                              {event.eventStatus === "PENDING_PUBLICATION" && (
+                                <DropdownMenuItem 
+                                  disabled
+                                  className="flex items-center gap-2 cursor-not-allowed opacity-50"
+                                >
+                                  <Send className="h-4 w-4" />
+                                  Publication Pending
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem 
+                                onClick={() => setShowCancelId(event.eventId)}
+                                className="flex items-center gap-2 cursor-pointer"
+                                disabled={event.eventStatus === "CANCELLED"}
+                              >
+                                <XCircle className="h-4 w-4" />
+                                Cancel Event
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))
@@ -714,36 +744,54 @@ export default function EventSection() {
                       </div>
                     </div>
                     
-                    <div className="flex justify-end gap-2 mt-4 pt-3 border-t">
-                      <Link 
-                        href={`/user-dashboard/events/${event.eventId}`} 
-                        className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Link>
-                      <Link 
-                        href={`/user-dashboard/events/${event.eventId}/edit`} 
-                        className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Link>
-                      {canRequestPublication(event.eventStatus) && event.eventStatus !== "APPROVED" && (
-                        <button
-                          onClick={() => setShowPublishRequestId(event.eventId)}
-                          className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition-colors"
-                          title="Request Publication"
-                        >
-                          <Send className="h-4 w-4" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setShowCancelId(event.eventId)}
-                        className="p-2 text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 rounded"
-                        title="Cancel Event"
-                        disabled={event.eventStatus === "CANCELLED"}
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </button>
+                    <div className="flex justify-end mt-4 pt-3 border-t">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="inline-flex items-center justify-center w-8 h-8 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/user-dashboard/events/${event.eventId}`} className="flex items-center gap-2 cursor-pointer">
+                              <Eye className="h-4 w-4" />
+                              View Event
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <Link href={`/user-dashboard/events/${event.eventId}/edit`} className="flex items-center gap-2 cursor-pointer">
+                              <Pencil className="h-4 w-4" />
+                              Edit Event
+                            </Link>
+                          </DropdownMenuItem>
+                          {canRequestPublication(event.eventStatus) && event.eventStatus !== "APPROVED" && event.eventStatus !== "PENDING_PUBLICATION" && (
+                            <DropdownMenuItem 
+                              onClick={() => setShowPublishRequestId(event.eventId)}
+                              className="flex items-center gap-2 cursor-pointer"
+                            >
+                              <Send className="h-4 w-4" />
+                              Request Publication
+                            </DropdownMenuItem>
+                          )}
+                          {event.eventStatus === "PENDING_PUBLICATION" && (
+                            <DropdownMenuItem 
+                              disabled
+                              className="flex items-center gap-2 cursor-not-allowed opacity-50"
+                            >
+                              <Send className="h-4 w-4" />
+                              Publication Pending
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem 
+                            onClick={() => setShowCancelId(event.eventId)}
+                            className="flex items-center gap-2 cursor-pointer"
+                            disabled={event.eventStatus === "CANCELLED"}
+                          >
+                            <XCircle className="h-4 w-4" />
+                            Cancel Event
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 ))

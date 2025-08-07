@@ -7,7 +7,7 @@ import Footer from "@/components/footer"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { ArrowLeft, Upload } from "lucide-react"
+import { ArrowLeft, Upload, ChevronLeft, ChevronRight, Check } from "lucide-react"
 import Link from "next/link"
 import ApiService from "@/api/apiConfig";
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
@@ -20,6 +20,7 @@ interface BookingCondition {
   transitionTime: string;
   depositRequiredPercent: string;
   paymentComplementTimeBeforeEvent: string;
+  bookingPaymentTimeoutMinutes: string;
 }
 
 interface VenueAmenity {
@@ -52,10 +53,18 @@ interface VenueFormData {
   bookingType: string;
 }
 
+const STEPS = [
+  { id: 1, title: "Basic Info", description: "Venue name and organization" },
+  { id: 2, title: "Booking Details", description: "Capacity, pricing, and conditions" },
+  { id: 3, title: "Media & Amenities", description: "Photos, videos, and amenities" },
+  { id: 4, title: "Location", description: "Venue location on map" }
+];
+
 export default function CreateVenuePage() {
   const { isLoggedIn, user } = useAuth()
   const router = useRouter()
   const [saving, setSaving] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1)
 
   const [formData, setFormData] = useState<VenueFormData>({
     venueName: "",
@@ -68,7 +77,14 @@ export default function CreateVenuePage() {
     mainPhoto: null,
     photoGallery: [],
     virtualTour: [],
-    bookingConditions: [],
+    bookingConditions: [{
+      descriptionCondition: "",
+      notaBene: "",
+      transitionTime: "",
+      depositRequiredPercent: "",
+      paymentComplementTimeBeforeEvent: "",
+      bookingPaymentTimeoutMinutes: ""
+    }],
     venueVariable: {
       venueAmount: "",
       venueManagerId: user?.userId || "",
@@ -77,7 +93,7 @@ export default function CreateVenuePage() {
     venueAmenities: [],
     bookingType: "",
   })
-  const { organizations, loading: orgLoading, error: orgError } = useUserOrganizations(user?.userId);
+  const { organizations, loading: orgLoading, error: orgError } = useUserOrganizations();
   // 1. Remove resources from formData and all related logic/UI
   // 2. In handleSubmit, use FormData to send mainPhoto and photoGallery as files, and all other fields as needed
   const [resourceForm, setResourceForm] = useState({
@@ -94,6 +110,17 @@ export default function CreateVenuePage() {
       router.push("/login")
     }
   }, [isLoggedIn, router])
+
+  // Auto-set organization when organizations are loaded
+  useEffect(() => {
+    if (organizations.length > 0 && !formData.organizationId) {
+      // Set the first available organization automatically
+      setFormData(prev => ({
+        ...prev,
+        organizationId: organizations[0].organizationId
+      }));
+    }
+  }, [organizations, formData.organizationId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -148,18 +175,7 @@ export default function CreateVenuePage() {
     }
   };
 
-  const handleAddBookingCondition = () => {
-    setFormData(prev => ({
-      ...prev,
-      bookingConditions: [
-        ...prev.bookingConditions,
-        { descriptionCondition: '', notaBene: '', transitionTime: '', depositRequiredPercent: '', paymentComplementTimeBeforeEvent: '' }
-      ]
-    }));
-  };
-  const handleRemoveBookingCondition = (idx: number) => {
-    setFormData((prev) => ({ ...prev, bookingConditions: prev.bookingConditions.filter((_, i) => i !== idx) }))
-  }
+
   const handleBookingConditionChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
     const { value } = e.target;
     setFormData(prev => ({
@@ -204,6 +220,16 @@ export default function CreateVenuePage() {
       ...prev,
       bookingConditions: prev.bookingConditions.map((cond, i) =>
         i === idx ? { ...cond, paymentComplementTimeBeforeEvent: value } : cond
+      )
+    }));
+  }
+
+  const handleBookingConditionPaymentTimeoutChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+    const { value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      bookingConditions: prev.bookingConditions.map((cond, i) =>
+        i === idx ? { ...cond, bookingPaymentTimeoutMinutes: value } : cond
       )
     }));
   }
@@ -264,13 +290,83 @@ export default function CreateVenuePage() {
     setFormData((prev) => ({ ...prev, venueAmenities: prev.venueAmenities.filter((_, i) => i !== idx) }));
   };
 
+  // Step navigation
+  const nextStep = () => {
+    if (currentStep < STEPS.length) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const goToStep = (step: number) => {
+    setCurrentStep(step);
+  };
+
+  // Validation for each step
+  const isStepValid = (step: number) => {
+    switch (step) {
+      case 1:
+        return formData.venueName && formData.organizationId;
+      case 2:
+        return formData.capacity && formData.bookingType;
+      case 3:
+        return true; // Media and amenities are optional
+      case 4:
+        return formData.latitude && formData.longitude && formData.location;
+      default:
+        return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Comprehensive validation with toast notifications
+    if (!formData.venueName.trim()) {
+      toast({
+        title: "Venue Name Required",
+        description: "Please enter a venue name.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     if (!formData.organizationId) {
       toast({
         title: "Organization Required",
         description: "Please select an organization for this venue.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.capacity || parseInt(formData.capacity) <= 0) {
+      toast({
+        title: "Valid Capacity Required",
+        description: "Please enter a valid capacity (greater than 0).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.bookingType) {
+      toast({
+        title: "Booking Type Required",
+        description: "Please select a booking type (Daily or Hourly).",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.venueVariable.isFree && (!formData.venueVariable.venueAmount || parseFloat(formData.venueVariable.venueAmount) <= 0)) {
+      toast({
+        title: "Venue Amount Required",
+        description: "Please enter a valid venue amount for paid venues.",
         variant: "destructive"
       });
       return;
@@ -286,6 +382,14 @@ export default function CreateVenuePage() {
     }
 
     setSaving(true)
+    
+    // Show loading toast
+    toast({
+      title: "Creating Venue...",
+      description: "Please wait while we create your venue.",
+      variant: "default",
+    });
+    
     try {
       const formDataToSend = new FormData();
 
@@ -307,7 +411,8 @@ export default function CreateVenuePage() {
           ...condition,
           transitionTime: Number(condition.transitionTime),
           depositRequiredPercent: Number(condition.depositRequiredPercent),
-          paymentComplementTimeBeforeEvent: Number(condition.paymentComplementTimeBeforeEvent)
+          paymentComplementTimeBeforeEvent: Number(condition.paymentComplementTimeBeforeEvent),
+          bookingPaymentTimeoutMinutes: Number(condition.bookingPaymentTimeoutMinutes)
         }))
       ));
       formDataToSend.append("venueAmenities", JSON.stringify(
@@ -369,235 +474,262 @@ export default function CreateVenuePage() {
     }
   };
 
-  return (
-    <div className=" min-h-screen flex flex-col">
-      <main className="flex-1 bg-white m-5">
-        <div className="container mx-auto px-4 md:px-16 max-w-7xl py-8">
-          <div className="flex items-center mb-6">
-            <Link href="/manage/venues/myvenues" className="flex items-center text-gray-600 hover:text-gray-900">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              <span>Back</span>
-            </Link>
-          </div>
-
-          <h1 className="text-3xl font-bold mb-8">Add New Venue</h1>
-
-          <form onSubmit={handleSubmit} className="space-y-10">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              {/* Left Column - Venue Details */}
-              <div>
-                <h2 className="text-xl font-semibold mb-6">Venue Details</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label htmlFor="venueName" className="block text-sm font-medium text-gray-700 mb-1">
-                      Venue Name
-                    </label>
-                    <input
-                      type="text"
-                      id="venueName"
-                      name="venueName"
-                      value={formData.venueName}
-                      onChange={handleInputChange}
-                      placeholder="Enter venue name"
+  // Render step content
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="space-y-6">
+            <div>
+              <label htmlFor="venueName" className="block text-sm font-medium text-gray-700 mb-1">
+                Venue Name
+              </label>
+              <input
+                type="text"
+                id="venueName"
+                name="venueName"
+                value={formData.venueName}
+                onChange={handleInputChange}
+                placeholder="Enter venue name"
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="organizationId" className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+              {orgLoading ? (
+                <div className="text-gray-500 text-sm">Loading organizations...</div>
+              ) : orgError ? (
+                <div className="text-red-500 text-sm">{orgError}</div>
+              ) : organizations.length === 0 ? (
+                <div className="text-red-500 text-sm">No organizations found. Please create an organization first.</div>
+              ) : (
+                <div className="space-y-2">
+                  {organizations.length === 1 ? (
+                    // If only one organization, show it as read-only
+                    <div className="px-3 py-2 bg-gray-50 border rounded-md text-gray-700">
+                      {organizations[0].organizationName}
+                    </div>
+                  ) : (
+                    // If multiple organizations, allow selection
+                    <select
+                      id="organizationId"
+                      name="organizationId"
+                      value={formData.organizationId}
+                      onChange={handleOrgChange}
                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
-                    />
-                  </div>
-                  {/* Remove manual latitude, longitude, googleMapsLink fields */}
-                  <div>
-                    <label htmlFor="organizationId" className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
-                    {orgLoading ? (
-                      <div className="text-gray-500 text-sm">Loading organizations...</div>
-                    ) : orgError ? (
-                      <div className="text-red-500 text-sm">{orgError}</div>
-                    ) : (
-                      <select
-                        id="organizationId"
-                        name="organizationId"
-                        value={formData.organizationId}
-                        onChange={handleOrgChange}
-                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      >
-                        <option value="">Select organization</option>
-                        {organizations.map((org) => (
-                          <option key={org.organizationId} value={org.organizationId}>
-                            {org.organizationName}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    >
+                      <option value="">Select organization</option>
+                      {organizations.map((org) => (
+                        <option key={org.organizationId} value={org.organizationId}>
+                          {org.organizationName}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {organizations.length === 1 && (
+                    <p className="text-xs text-gray-500">
+                      Organization automatically selected: {organizations[0].organizationName}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
+                  Capacity
+                </label>
+                <input
+                  type="number"
+                  id="capacity"
+                  name="capacity"
+                  value={formData.capacity}
+                  onChange={handleInputChange}
+                  placeholder="Max number of people"
+                  min="1"
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="bookingType" className="block text-sm font-medium text-gray-700 mb-1">
+                  Booking Type
+                </label>
+                <select
+                  id="bookingType"
+                  name="bookingType"
+                  value={formData.bookingType}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select booking type</option>
+                  <option value="DAILY">Daily</option>
+                  <option value="HOURLY">Hourly</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Booking Conditions */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Booking Conditions</label>
+              {formData.bookingConditions.map((cond, idx) => (
+                <div key={idx} className="flex flex-col gap-3 mb-4 border p-4 rounded-lg bg-gray-50">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
-                      <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
-                        Capacity
-                      </label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Description Condition</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. No outside food allowed"
+                        value={cond.descriptionCondition}
+                        onChange={e => handleBookingConditionChange(e, idx)}
+                        className="w-full px-3 py-2 border rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Nota Bene</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Please respect the property"
+                        value={cond.notaBene}
+                        onChange={e => handleBookingConditionDescriptionChange(e, idx)}
+                        className="w-full px-3 py-2 border rounded text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Transition Time (hours/days)</label>
                       <input
                         type="number"
-                        id="capacity"
-                        name="capacity"
-                        value={formData.capacity}
-                        onChange={handleInputChange}
-                        placeholder="Max number of people"
-                        min="1"
-                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
+                        placeholder="e.g. 2"
+                        value={cond.transitionTime}
+                        onChange={e => handleBookingConditionTransitionTimeChange(e, idx)}
+                        className="w-full px-3 py-2 border rounded text-sm"
                       />
                     </div>
                     <div>
-                      <label htmlFor="bookingType" className="block text-sm font-medium text-gray-700 mb-1">
-                        Booking Type
-                      </label>
-                      <select
-                        id="bookingType"
-                        name="bookingType"
-                        value={formData.bookingType}
-                        onChange={handleInputChange}
-                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      >
-                        <option value="">Select booking type</option>
-                        <option value="DAILY">Daily</option>
-                        <option value="HOURLY">Hourly</option>
-                      </select>
-                    </div>
-                  </div>
-                  {/* New: Booking Conditions */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Booking Conditions</label>
-                    {formData.bookingConditions.map((cond, idx) => (
-                      <div key={idx} className="flex flex-col gap-3 mb-4 border p-4 rounded-lg bg-gray-50">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Description Condition</label>
-                            <input
-                              type="text"
-                              placeholder="e.g. No outside food allowed"
-                              value={cond.descriptionCondition}
-                              onChange={e => handleBookingConditionChange(e, idx)}
-                              className="w-full px-3 py-2 border rounded text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Nota Bene</label>
-                            <input
-                              type="text"
-                              placeholder="e.g. Please respect the property"
-                              value={cond.notaBene}
-                              onChange={e => handleBookingConditionDescriptionChange(e, idx)}
-                              className="w-full px-3 py-2 border rounded text-sm"
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Transition Time (hours/days)</label>
-                            <input
-                              type="number"
-                              placeholder="e.g. 2"
-                              value={cond.transitionTime}
-                              onChange={e => handleBookingConditionTransitionTimeChange(e, idx)}
-                              className="w-full px-3 py-2 border rounded text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Deposit Required (%)</label>
-                            <input
-                              type="number"
-                              placeholder="e.g. 20"
-                              value={cond.depositRequiredPercent}
-                              onChange={e => handleBookingConditionDepositChange(e, idx)}
-                              className="w-full px-3 py-2 border rounded text-sm"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Payment Time Before Event (hours/days)</label>
-                            <input
-                              type="number"
-                              placeholder="e.g. 3"
-                              value={cond.paymentComplementTimeBeforeEvent}
-                              onChange={e => handleBookingConditionPaymentTimeChange(e, idx)}
-                              className="w-full px-3 py-2 border rounded text-sm"
-                            />
-                          </div>
-                        </div>
-                        <button type="button" onClick={() => handleRemoveBookingCondition(idx)} className="text-red-500 text-xs self-end hover:text-red-700">Remove Condition</button>
-                      </div>
-                    ))}
-                    <button type="button" onClick={handleAddBookingCondition} className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800 text-sm mt-2 transition-colors">Add Booking Condition</button>
-                  </div>
-                  {/* New: Venue Variable */}
-                  <div className="space-y-4">
-                    <div className="flex items-center">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Deposit Required (%)</label>
                       <input
-                        type="checkbox"
-                        id="isFree"
-                        name="isFree"
-                        checked={formData.venueVariable.isFree}
-                        onChange={handleVenueVariableIsFreeChange}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        type="number"
+                        placeholder="e.g. 20"
+                        value={cond.depositRequiredPercent}
+                        onChange={e => handleBookingConditionDepositChange(e, idx)}
+                        className="w-full px-3 py-2 border rounded text-sm"
                       />
-                      <label htmlFor="isFree" className="ml-2 block text-sm font-medium text-gray-700">
-                        Is Free Venue
-                      </label>
                     </div>
-                    
-                    {!formData.venueVariable.isFree && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Venue Amount</label>
-                        <input
-                          type="number"
-                          name="venueAmount"
-                          value={formData.venueVariable.venueAmount}
-                          onChange={handleVenueVariableChange}
-                          placeholder="Enter venue amount"
-                          className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          required={!formData.venueVariable.isFree}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  {/* New: Venue Amenities */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Venue Amenities</label>
-                    {formData.venueAmenities.map((amenity, index) => (
-                      <div key={index} className="flex flex-col gap-2 mb-2 border p-2 rounded">
-                        <input type="text" placeholder="Resource Name (e.g. Projector)" name="resourceName" value={amenity.resourceName} onChange={e => handleVenueAmenityChange(e)} className="px-3 py-2 border rounded text-sm" />
-                        <input type="number" placeholder="Quantity (e.g. 2)" name="quantity" value={amenity.quantity} onChange={e => handleVenueAmenityQuantityChange(e)} className="px-3 py-2 border rounded text-sm" />
-                        <input type="text" placeholder="Amenities Description (e.g. HD projectors available)" name="amenitiesDescription" value={amenity.amenitiesDescription} onChange={e => handleVenueAmenityDescriptionChange(e)} className="px-3 py-2 border rounded text-sm" />
-                        <input type="number" placeholder="Cost Per Unit (e.g. 100)" name="costPerUnit" value={amenity.costPerUnit} onChange={e => handleVenueAmenityCostPerUnitChange(e)} className="px-3 py-2 border rounded text-sm" />
-                        <button type="button" onClick={() => handleRemoveVenueAmenity(index)} className="text-red-500 text-xs">Remove Amenity</button>
-                      </div>
-                    ))}
-                    <button type="button" onClick={handleAddVenueAmenity} className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800 text-sm mt-2 transition-colors">Add Amenity</button>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Payment Time Before Event (hours/days)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 3"
+                        value={cond.paymentComplementTimeBeforeEvent}
+                        onChange={e => handleBookingConditionPaymentTimeChange(e, idx)}
+                        className="w-full px-3 py-2 border rounded text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Payment Timeout (minutes)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 130"
+                        value={cond.bookingPaymentTimeoutMinutes}
+                        onChange={e => handleBookingConditionPaymentTimeoutChange(e, idx)}
+                        className="w-full px-3 py-2 border rounded text-sm"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
+            </div>
 
-              {/* Right Column - Media & Amenities */}
-              <div>
-                <h2 className="text-xl font-semibold mb-6">Venue Media & Amenities</h2>
-                {/* Main Photo */}
-                <div className="mb-4">
+            {/* Venue Variable */}
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isFree"
+                  name="isFree"
+                  checked={formData.venueVariable.isFree}
+                  onChange={handleVenueVariableIsFreeChange}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="isFree" className="ml-2 block text-sm font-medium text-gray-700">
+                  Is Free Venue
+                </label>
+              </div>
+              
+              {!formData.venueVariable.isFree && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Venue Amount</label>
+                  <input
+                    type="number"
+                    name="venueAmount"
+                    value={formData.venueVariable.venueAmount}
+                    onChange={handleVenueVariableChange}
+                    placeholder="Enter venue amount"
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required={!formData.venueVariable.isFree}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case 3:
+        return (
+          <div className="space-y-6">
+            {/* Media Upload */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Media Upload</h3>
+              <div className="space-y-4">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Main Photo</label>
                   <MediaUpload accept="image/*" multiple={false} onChange={handleMainPhotoChange} />
                 </div>
-                {/* Photo Gallery */}
-                <div className="mb-4">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Photo Gallery</label>
                   <MediaUpload accept="image/*" multiple={true} onChange={handlePhotoGalleryFilesChange} />
                 </div>
-                {/* Virtual Tour */}
-                <div className="mb-4">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Virtual Tour (Videos)</label>
                   <MediaUpload accept="video/*" multiple={true} onChange={handleVirtualTourFilesChange} />
                 </div>
               </div>
             </div>
 
-            {/* Move Map Picker here, below all other fields */}
-            <div className="col-span-1 md:col-span-2">
+            {/* Venue Amenities */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Venue Amenities</h3>
+              <div className="space-y-4">
+                {formData.venueAmenities.map((amenity, index) => (
+                  <div key={index} className="flex flex-col gap-2 mb-2 border p-2 rounded">
+                    <input type="text" placeholder="Resource Name (e.g. Projector)" name="resourceName" value={amenity.resourceName} onChange={e => handleVenueAmenityChange(e)} className="px-3 py-2 border rounded text-sm" />
+                    <input type="number" placeholder="Quantity (e.g. 2)" name="quantity" value={amenity.quantity} onChange={e => handleVenueAmenityQuantityChange(e)} className="px-3 py-2 border rounded text-sm" />
+                    <input type="text" placeholder="Amenities Description (e.g. HD projectors available)" name="amenitiesDescription" value={amenity.amenitiesDescription} onChange={e => handleVenueAmenityDescriptionChange(e)} className="px-3 py-2 border rounded text-sm" />
+                    <input type="number" placeholder="Cost Per Unit (e.g. 100)" name="costPerUnit" value={amenity.costPerUnit} onChange={e => handleVenueAmenityCostPerUnitChange(e)} className="px-3 py-2 border rounded text-sm" />
+                    <button type="button" onClick={() => handleRemoveVenueAmenity(index)} className="text-red-500 text-xs">Remove Amenity</button>
+                  </div>
+                ))}
+                <button type="button" onClick={handleAddVenueAmenity} className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800 text-sm mt-2 transition-colors">Add Amenity</button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 4:
+        return (
+          <div className="space-y-6">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Venue Location *</label>
               <p className="text-xs text-gray-500 mb-3">Click on the map or search for a location to set your venue address</p>
               <MapPicker
@@ -614,24 +746,114 @@ export default function CreateVenuePage() {
                 }}
               />
             </div>
+          </div>
+        );
 
-            <div className="mt-8 flex justify-end gap-4">
-              <Link
-                href="/manage/venues"
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700"
-              >
-                Cancel
-              </Link>
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <main className="flex-1 bg-white m-5">
+        <div className="container mx-auto px-4 md:px-16 max-w-7xl py-8">
+          <div className="flex items-center mb-6">
+            <Link href="/manage/venues/myvenues" className="flex items-center text-gray-600 hover:text-gray-900">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              <span>Back</span>
+            </Link>
+          </div>
+
+          <h1 className="text-3xl font-bold mb-8">Add New Venue</h1>
+
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              {STEPS.map((step, index) => (
+                <div key={step.id} className="flex items-center">
+                  <button
+                    onClick={() => goToStep(step.id)}
+                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${
+                      currentStep === step.id
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : currentStep > step.id
+                        ? 'bg-green-500 border-green-500 text-white'
+                        : 'bg-white border-gray-300 text-gray-500'
+                    }`}
+                  >
+                    {currentStep > step.id ? (
+                      <Check className="w-5 h-5" />
+                    ) : (
+                      <span className="text-sm font-medium">{step.id}</span>
+                    )}
+                  </button>
+                  <div className="ml-3">
+                    <p className={`text-sm font-medium ${
+                      currentStep === step.id ? 'text-blue-600' : 'text-gray-500'
+                    }`}>
+                      {step.title}
+                    </p>
+                    <p className="text-xs text-gray-400">{step.description}</p>
+                  </div>
+                  {index < STEPS.length - 1 && (
+                    <div className={`w-16 h-0.5 mx-4 ${
+                      currentStep > step.id ? 'bg-green-500' : 'bg-gray-300'
+                    }`} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Step Content */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+              <div className="mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Step {currentStep}: {STEPS[currentStep - 1].title}
+                </h2>
+                <p className="text-gray-600">{STEPS[currentStep - 1].description}</p>
+              </div>
+              {renderStepContent()}
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between">
               <button
-                type="submit"
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                type="button"
+                onClick={prevStep}
+                disabled={currentStep === 1}
+                className="flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving && (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent "></div>
-                )}
-                {saving ? "Creating..." : "Create Venue"}
+                <ChevronLeft className="w-4 h-4 mr-2" />
+                Previous
               </button>
+
+              <div className="flex gap-4">
+                {currentStep < STEPS.length ? (
+                  <button
+                    type="button"
+                    onClick={nextStep}
+                    disabled={!isStepValid(currentStep)}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4 ml-2" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={saving || !isStepValid(currentStep)}
+                    className="flex items-center px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {saving && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                    )}
+                    {saving ? "Creating..." : "Create Venue"}
+                  </button>
+                )}
+              </div>
             </div>
           </form>
         </div>
