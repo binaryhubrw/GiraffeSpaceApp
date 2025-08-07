@@ -161,6 +161,7 @@ export default function UserBookingsPage() {
 
       try {
         const response = await ApiService.getBookingByUserId(user.userId)
+        console.log("API Response:", response)
         
         if (response.success) {
           setBookings(response.data.bookings)
@@ -226,6 +227,9 @@ export default function UserBookingsPage() {
         return "bg-green-100 text-green-800 border-green-200"
       case "PENDING":
         return "bg-yellow-100 text-yellow-800 border-yellow-200"
+      case "HOLDING":
+        // Treat HOLDING same as PENDING for display color
+        return "bg-yellow-100 text-yellow-800 border-yellow-200"
       case "PARTIAL":
         return "bg-orange-100 text-orange-800 border-orange-200"
       case "CANCELLED":
@@ -233,6 +237,10 @@ export default function UserBookingsPage() {
       default:
         return "bg-gray-100 text-gray-800 border-gray-200"
     }
+  }
+
+  const getDisplayStatus = (status: string) => {
+    return status === "HOLDING" ? "PENDING" : status
   }
 
   const getPaymentStatusColor = (isPaid: boolean) => {
@@ -485,7 +493,7 @@ export default function UserBookingsPage() {
                          variant="outline" 
                          className={`text-xs ${getStatusColor(booking.bookingStatus)}`}
                        >
-                         {booking.bookingStatus}
+                         {getDisplayStatus(booking.bookingStatus)}
                        </Badge>
                      </TableCell>
                      
@@ -513,12 +521,12 @@ export default function UserBookingsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                                                  <DropdownMenuContent align="end">
-                           <DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => router.push(`/user-dashboard/booking/${booking.bookingId}`)}>
                              <Eye className="h-4 w-4 mr-2" />
                              View Details
                            </DropdownMenuItem>
                           
-                           {(booking.bookingStatus === "PARTIAL" || booking.bookingStatus === "PENDING") && (
+                           {(booking.bookingStatus === "PARTIAL" || booking.bookingStatus === "PENDING" || booking.bookingStatus === "HOLDING") && (
                              <DropdownMenuItem 
                                className="text-green-600 font-medium"
                                onClick={() => router.push(`/venues/book/payment/${booking.bookingId}`)}

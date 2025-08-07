@@ -439,7 +439,7 @@ export default function PayVenueBooking() {
       console.log("Processing venue booking payment:", paymentData);
 
       // Call the API to process the payment
-      const response = await ApiService.payVenueBooking(bookingId, paymentData)
+      const response = await ApiService.PayVenuBooking(bookingId, paymentData)
 
       if (response.success) {
         toast.success("Payment processed successfully!");
@@ -1217,7 +1217,8 @@ export default function PayVenueBooking() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {bookingData?.venue.paymentCompletionRequired?.bookingTimeout && (
+                  {bookingData?.venue.paymentCompletionRequired?.bookingTimeout &&
+                   !["APPROVED_PAID", "PARTIAL"].includes(bookingData?.bookingStatus || "") && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
                       <div className="flex items-center gap-2 text-red-700">
                         <Clock className="h-4 w-4" />

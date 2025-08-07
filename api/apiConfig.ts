@@ -1732,29 +1732,7 @@ class ApiService {
     }
   }
 
-    static async payVenueBooking(bookingId: string, paymentData: any): Promise<any> {
-        try {
-            const token = localStorage.getItem("token");
-            if (!token) {
-                throw new Error("No authentication token found.");
-            }
-            const response = await axios.post(
-                `${this.BASE_URL}/venue-bookings/payments/${bookingId}/pay`,
-                paymentData,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                    withCredentials: true,
-                }
-            );
-            return response.data;
-        } catch (error) {
-            console.error(`Error processing payment for booking ID ${bookingId}:`, error);
-            throw error;
-        }
-    }
+   
 
     static async refundVenueBooking(bookingId: string, refundData: any): Promise<any> {
         try {
