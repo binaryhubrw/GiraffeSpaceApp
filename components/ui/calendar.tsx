@@ -38,9 +38,9 @@ function Calendar({
         return isInternallyBookedOrFullyBooked;
       }}
       modifiersClassNames={{
-        fullyBooked: "bg-green-400 text-white", // Fully booked style (green)
-        partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50 rounded-md",
-        booked: "bg-green-600 text-white rounded-md",
+        fullyBooked: "relative cursor-not-allowed after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:left-1 after:right-1 after:h-0.5 after:bg-red-400 after:rounded",
+        partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50/50 rounded-md",
+        booked: "relative cursor-not-allowed after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:left-1 after:right-1 after:h-0.5 after:bg-red-400 after:rounded",
         ...props.modifiersClassNames
       }}
       classNames={{
