@@ -731,7 +731,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     {/* Calendars */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <Card className="rounded-lg shadow-sm">
-                        <CardContent className="p-0">
+                        <CardContent className="p-4"> {/* Changed from p-0 to p-4 */}
                           <Calendar
                             mode="multiple"
                             selected={selectedDates}
@@ -767,7 +767,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                               ...(venue?.bookingType === "HOURLY" && { partiallyBooked: partiallyBookedDates }),
                             }}
                             modifiersClassNames={{
-                              fullyBooked: "bg-gray-600 text-white opacity-70 cursor-not-allowed", // Fully booked style (green)
+                              fullyBooked: "bg-green-600 text-white", // Fully booked style (green)
                               partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50/50", // Partially booked style
                             }}
                             className="rounded-lg"
@@ -775,7 +775,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                         </CardContent>
                       </Card>
                       <Card className="rounded-lg shadow-sm">
-                        <CardContent className="p-0">
+                        <CardContent className="p-4"> {/* Changed from p-0 to p-4 */}
                           <Calendar
                             mode="multiple"
                             selected={selectedDates}
@@ -815,7 +815,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                               ...(venue?.bookingType === "HOURLY" && { partiallyBooked: partiallyBookedDates }),
                             }}
                             modifiersClassNames={{
-                              fullyBooked: "bg-green-600 text-white opacity-70 cursor-not-allowed", // Fully booked style (green)
+                              fullyBooked: "bg-green-600 text-white", // Fully booked style (green)
                               partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50/50", // Partially booked style
                             }}
                             className="rounded-lg"
@@ -828,7 +828,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                       <h4 className="font-semibold mb-2">Date Status Legend:</h4>
                       <div className="flex items-center gap-4 flex-wrap">
                         <div className="flex items-center gap-1">
-                          <span className="w-4 h-4 rounded-full bg-green-600"></span>
+                          <span className="w-4 h-4 rounded-full bg-green-400"></span>
                           <span>Fully Booked</span>
                         </div>
                         {venue?.bookingType === "HOURLY" && (
@@ -838,11 +838,11 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                           </div>
                         )}
                         <div className="flex items-center gap-1">
-                          <span className="w-4 h-4 rounded-full bg-white border border-gray-300"></span>
+                          <span className="w-4 h-4 rounded-full bg-white border border-gray-300 rounded-md"></span>
                           <span>Available</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="w-4 h-4 rounded-full bg-blue-600"></span>
+                          <span className="w-4 h-4 rounded-full bg-blue-600 rounded-md"></span>
                           <span>Selected</span>
                         </div>
                       </div>
