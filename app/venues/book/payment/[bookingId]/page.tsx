@@ -416,6 +416,7 @@ export default function PayVenueBooking() {
     toast.info("Processing your payment...");
 
     try {
+      // Simplify payment data to match the required format
       const paymentData = {
         amountPaid:
           paymentMethod === "mobile"
@@ -425,13 +426,11 @@ export default function PayVenueBooking() {
         paymentMethod:
           paymentMethod === "mobile"
             ? "MOBILE_MONEY"
-            : paymentMethod.toUpperCase(),
-        paymentDetails: paymentMethod === "card" ? cardDetails : {},
-        installmentPlan:
-          paymentMethod === "installment" ? installmentPlan : null,
-        specialInstructions,
-        totalAmount: bookingData?.pricing.totalAmount,
-        paymentType: "VENUE_BOOKING",
+            : paymentMethod === "card"
+            ? "CARD"
+            : paymentMethod === "installment"
+            ? "INSTALLMENT"
+            : "MOBILE_MONEY",
         notes:
           specialInstructions ||
           "Payment processed through venue booking system",
@@ -439,8 +438,9 @@ export default function PayVenueBooking() {
 
       console.log("Processing venue booking payment:", paymentData);
 
-      // Call the API to process the payment
-      const response = await ApiService.payEventBooking(bookingId, paymentData);
+      // Call the correct API method for venue bookings
+      const response = await ApiService.PayVenuBooking(bookingId, paymentData);
+      
 
       if (response.success) {
         toast.success("Payment processed successfully!");
