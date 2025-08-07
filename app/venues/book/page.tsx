@@ -76,7 +76,7 @@ export default function CreateEventForm() {
   const router = useRouter()
   const { user } = useAuth()
   const { setBookingData } = useBooking()
-  const { organizations, loading: orgLoading } = useUserOrganizations(user?.userId)
+  const { organizations, loading: orgLoading } = useUserOrganizations()
   const searchParams = useSearchParams()
   const [selectedOrgId, setSelectedOrgId] = useState<string>("")
   const [currentStep, setCurrentStep] = useState(1)
@@ -310,7 +310,7 @@ export default function CreateEventForm() {
       formDataToSend.append("guests", JSON.stringify(guestsData.filter((guest) => guest.guestName.trim())));
       
       const response = await ApiService.createEvent(formDataToSend)
-      toast.success("Event created successfully!")
+      toast.success("Venue booking created successfully!")
       
       // Extract booking ID from the response
       const bookingId = response.data?.venueBookings?.[0]?.bookingId
@@ -433,8 +433,8 @@ export default function CreateEventForm() {
         return (
           <div className="space-y-8">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">Where and when?</h2>
-              <p className="text-gray-600"> Selected venue and date/hour</p>
+              <h2 className="text-2xl font-bold text-gray-900">Selected venue and booked date/hour</h2>
+              <p className="text-gray-600"> If you confirm click next</p>
             </div>
             <div className="space-y-6">
               <div>
@@ -643,7 +643,7 @@ export default function CreateEventForm() {
         {/* Header */}
         <div className="text-center mb-8">
           {/* Update page title and subtitle */}
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Booking</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Venue Booking</h1>
           <p className="text-gray-600">Follow the steps below to create your booking</p>
         </div>
 

@@ -557,10 +557,10 @@ export function Header({ activePage }: HeaderProps) {
            <DialogHeader>
                            <DialogTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-blue-600" />
-                No Bookings Found
+                No Event Found
               </DialogTitle>
                              <DialogDescription>
-                 You have to create booking before you manage event.
+                To manage your event effectively, Firstly start by booking a venue where it will take place.
                </DialogDescription>
            </DialogHeader>
            <DialogFooter className="flex gap-2">
@@ -574,7 +574,7 @@ export function Header({ activePage }: HeaderProps) {
                 onClick={handleCreateBooking}
                 className="flex-1"
               >
-                Create Booking
+                Book venue
               </Button>
            </DialogFooter>
          </DialogContent>

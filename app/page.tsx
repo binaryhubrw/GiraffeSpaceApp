@@ -49,6 +49,11 @@ export default function Home() {
         if (eventsResponse.success) {
           // Get first 3 events
           const events = eventsResponse.data.slice(0, 3)
+          console.log('Home Page - First 3 Events:', events)
+          events.forEach((event: { eventPhoto: any }, index: number) => {
+            console.log(`Home Page - Event ${index + 1} Photo:`, event.eventPhoto)
+            console.log(`Home Page - Event ${index + 1} Photo Type:`, typeof event.eventPhoto)
+          })
           setPublishedEvents(events)
         }
       } catch (error) {

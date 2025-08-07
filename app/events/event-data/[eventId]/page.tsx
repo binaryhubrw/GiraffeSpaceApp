@@ -207,36 +207,82 @@ const EventDetailsPage: React.FC = () => {
     setProcessing(true);
     
     try {
-      // Prepare update data (excluding bookingDates and eventType as requested)
-      const updateData = {
-        eventName: formData.eventTitle,
-        eventDescription: formData.eventDescription,
-        eventPhoto: formData.eventPhoto,
-        maxAttendees: parseInt(formData.maxAttendees),
-        isEntryPaid: formData.isEntryPaid,
-        specialNotes: formData.specialNotes,
-        expectedGuests: parseInt(formData.expectedGuests),
-        socialMediaLinks: formData.socialMediaLinks,
-        startTime: formData.startTime,
-        endTime: formData.endTime,
-        guests: formData.guests.map(guest => ({
-          guestName: guest.guestName
-        })),
-        guestPhotos: formData.guests
-          .filter(guest => guest.guestPhoto)
-          .map(guest => guest.guestPhoto)
-      };
-
-      // Call updateEventById API
-      const response = await ApiService.updateEventById(eventId, updateData);
+      // Check if we have files to upload
+      const hasEventPhoto = formData.eventPhoto instanceof File;
+      const hasGuestPhotos = formData.guests.some(guest => guest.guestPhoto instanceof File);
       
-      if (response.success) {
-        toast.success('Event updated successfully!');
-        setSuccess(true);
-        // Navigate to user dashboard events page
-       
+      if (hasEventPhoto || hasGuestPhotos) {
+        // Use FormData for file uploads
+        const formDataToSend = new FormData();
+        
+        // Add text fields
+        formDataToSend.append('eventName', formData.eventTitle);
+        formDataToSend.append('eventDescription', formData.eventDescription);
+        formDataToSend.append('maxAttendees', formData.maxAttendees);
+        formDataToSend.append('isEntryPaid', formData.isEntryPaid.toString());
+        formDataToSend.append('specialNotes', formData.specialNotes);
+        formDataToSend.append('expectedGuests', formData.expectedGuests);
+        formDataToSend.append('socialMediaLinks', formData.socialMediaLinks);
+        formDataToSend.append('startTime', formData.startTime);
+        formDataToSend.append('endTime', formData.endTime);
+        
+        // Add guests data as JSON string
+        const guestsData = formData.guests.map(guest => ({
+          guestName: guest.guestName
+        }));
+        formDataToSend.append('guests', JSON.stringify(guestsData));
+        
+        // Add event photo if it's a File - use 'eventPhoto' field name
+        if (hasEventPhoto) {
+          formDataToSend.append('eventPhoto', formData.eventPhoto as File);
+        }
+        
+        // Add guest photos if they are Files - use 'guestPhotos' for each file
+        formData.guests.forEach((guest, index) => {
+          if (guest.guestPhoto instanceof File) {
+            formDataToSend.append('guestPhotos', guest.guestPhoto as File);
+          }
+        });
+        
+        // Call updateEventById API with FormData
+        const response = await ApiService.updateEventById(eventId, formDataToSend);
+        
+        if (response.success) {
+          toast.success('Event updated successfully!');
+          setSuccess(true);
+        } else {
+          toast.error(response.message || 'Failed to update event');
+        }
       } else {
-        toast.error(response.message || 'Failed to update event');
+        // Use JSON for non-file data
+        const updateData = {
+          eventName: formData.eventTitle,
+          eventDescription: formData.eventDescription,
+          eventPhoto: formData.eventPhoto,
+          maxAttendees: parseInt(formData.maxAttendees),
+          isEntryPaid: formData.isEntryPaid,
+          specialNotes: formData.specialNotes,
+          expectedGuests: parseInt(formData.expectedGuests),
+          socialMediaLinks: formData.socialMediaLinks,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          guests: formData.guests.map(guest => ({
+            guestName: guest.guestName
+          })),
+          guestPhotos: formData.guests
+            .filter(guest => guest.guestPhoto)
+            .map(guest => guest.guestPhoto)
+        };
+
+        // Call updateEventById API with JSON
+        const response = await ApiService.updateEventById(eventId, updateData);
+        
+        if (response.success) {
+          toast.success('Event updated successfully!');
+          setSuccess(true);
+        } else {
+          toast.error(response.message || 'Failed to update event');
+        }
       }
     } catch (error: any) {
       console.error('Error updating event:', error);
@@ -369,20 +415,14 @@ const EventDetailsPage: React.FC = () => {
               {/* Event Type - Disabled */}
               <div>
                 <Label className="text-base font-medium">Event Type *</Label>
-                <Select value={formData.eventType} disabled>
-                  <SelectTrigger className="mt-2 h-12 bg-gray-50">
-                    <SelectValue placeholder="Event type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CONFERENCE">Conference</SelectItem>
-                    <SelectItem value="WORKSHOP">Workshop</SelectItem>
-                    <SelectItem value="NETWORKING">Networking</SelectItem>
-                    <SelectItem value="SEMINAR">Seminar</SelectItem>
-                    <SelectItem value="SOCIAL">Social Event</SelectItem>
-                    <SelectItem value="MEETING">Meeting</SelectItem>
-                    <SelectItem value="OTHER">Other</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="mt-2 h-12 bg-gray-50 border border-gray-200 rounded-md px-3 flex items-center">
+                  <span className="text-gray-900 font-medium">
+                    {formData.eventType ? 
+                      formData.eventType.charAt(0).toUpperCase() + formData.eventType.slice(1).toLowerCase() : 
+                      'Not specified'
+                    }
+                  </span>
+                </div>
                 <p className="text-sm text-gray-500 mt-1">Event type cannot be changed after creation</p>
               </div>
 
@@ -589,6 +629,17 @@ const EventDetailsPage: React.FC = () => {
             <div className="space-y-6">
               {/* Featured Guests */}
               <div>
+                   {/* Expected Guests */}
+              <div>
+                <Label className="text-base font-medium">Expected Guests</Label>
+                <Input
+                  type="number"
+                  value={formData.expectedGuests}
+                  onChange={(e) => handleInputChange("expectedGuests", e.target.value)}
+                  placeholder="Expected number of guests (optional)"
+                  className="mt-2 text-base"
+                />
+              </div>
                 <Label className="text-base font-medium">Featured Guests *</Label>
                 <div className="mt-2 space-y-4">
                   {formData.guests.map((guest, index) => (
@@ -693,17 +744,7 @@ const EventDetailsPage: React.FC = () => {
                 />
               </div>
 
-              {/* Expected Guests */}
-              <div>
-                <Label className="text-base font-medium">Expected Guests</Label>
-                <Input
-                  type="number"
-                  value={formData.expectedGuests}
-                  onChange={(e) => handleInputChange("expectedGuests", e.target.value)}
-                  placeholder="Expected number of guests (optional)"
-                  className="mt-2 text-base"
-                />
-              </div>
+           
 
               {/* Social Media Links */}
               <div>
@@ -846,9 +887,9 @@ const EventDetailsPage: React.FC = () => {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                 <Check className="h-8 w-8 text-green-600" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">Event Updated Successfully!</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Event Setup Successfully!</h2>
               <p className="text-gray-600">
-                Your event has been updated successfully. If you want to publish your event, create tickets or Invite people.
+                Your event has been setedup successfully. If you want to publish your event, create tickets or Invite people.
               </p>
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="text-sm text-gray-600">Event Details</p>
@@ -907,6 +948,8 @@ const EventDetailsPage: React.FC = () => {
       <Header />
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">Event Setup</h1>
+
           {/* Progress Steps */}
           <div className="mb-8">
             <div className="flex items-center justify-center space-x-4">
@@ -988,10 +1031,10 @@ const EventDetailsPage: React.FC = () => {
                       {processing ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Updating...
+                          Event Setup...
                         </>
                       ) : (
-                        'Update Event'
+                        'Event Setup '
                       )}
                     </Button>
                   </>
