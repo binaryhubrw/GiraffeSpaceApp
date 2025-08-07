@@ -731,7 +731,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     {/* Calendars */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <Card className="rounded-lg shadow-sm">
-                        <CardContent className="p-0">
+                        <CardContent className="p-4"> {/* Changed from p-0 to p-4 */}
                           <Calendar
                             mode="multiple"
                             selected={selectedDates}
@@ -767,15 +767,15 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                               ...(venue?.bookingType === "HOURLY" && { partiallyBooked: partiallyBookedDates }),
                             }}
                             modifiersClassNames={{
-                              fullyBooked: "bg-gray-600 text-white opacity-70 cursor-not-allowed", // Fully booked style (green)
-                              partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50/50", // Partially booked style
+                              fullyBooked: "relative cursor-not-allowed after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:left-1 after:right-1 after:h-0.5 after:bg-red-400 after:rounded",
+                              partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50/50 rounded-md", // Partially booked style
                             }}
                             className="rounded-lg"
                           />
                         </CardContent>
                       </Card>
                       <Card className="rounded-lg shadow-sm">
-                        <CardContent className="p-0">
+                        <CardContent className="p-4"> {/* Changed from p-0 to p-4 */}
                           <Calendar
                             mode="multiple"
                             selected={selectedDates}
@@ -815,8 +815,8 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                               ...(venue?.bookingType === "HOURLY" && { partiallyBooked: partiallyBookedDates }),
                             }}
                             modifiersClassNames={{
-                              fullyBooked: "bg-green-600 text-white opacity-70 cursor-not-allowed", // Fully booked style (green)
-                              partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50/50", // Partially booked style
+                              fullyBooked: "relative cursor-not-allowed after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:left-1 after:right-1 after:h-0.5 after:bg-red-400 after:rounded",
+                              partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50/50 rounded-md", // Partially booked style
                             }}
                             className="rounded-lg"
                           />
@@ -828,7 +828,9 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                       <h4 className="font-semibold mb-2">Date Status Legend:</h4>
                       <div className="flex items-center gap-4 flex-wrap">
                         <div className="flex items-center gap-1">
-                          <span className="w-4 h-4 rounded-full bg-green-600"></span>
+                          <div className="w-4 h-4 flex items-center justify-center">
+                            <span className="h-0.5 w-4 bg-red-400 rounded"></span>
+                          </div>
                           <span>Fully Booked</span>
                         </div>
                         {venue?.bookingType === "HOURLY" && (

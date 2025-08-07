@@ -50,9 +50,8 @@ export default function VenuesPage() {
   
   const [isCapacityOpen, setIsCapacityOpen] = useState(false)
   const [selectedCapacity, setSelectedCapacity] = useState<string>("Any capacity")
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
-  const [selectedDate, setSelectedDate] = useState<string>("")
   const [searchTerm, setSearchTerm] = useState("")
+  const [organizationSearchTerm, setOrganizationSearchTerm] = useState<string>("") // New state for organization search
   const [isLoaded, setIsLoaded] = useState(false)
   const [venues, setVenues] = useState<VenueData[]>([])
   const [loading, setLoading] = useState(true)
@@ -122,35 +121,46 @@ export default function VenuesPage() {
     setIsCapacityOpen(false)
   }
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "Select date"
+  // const formatDate = (dateString: string) => {
+  //   if (!dateString) return "Select date"
 
-    const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    })
-  }
+  //   const date = new Date(dateString)
+  //   return date.toLocaleDateString("en-US", {
+  //     month: "short",
+  //     day: "numeric",
+  //     year: "numeric",
+  //   })
+  // }
 
   // Filter venues based on search term and capacity
   const filteredVenues = venues.filter((venue) => {
     const matchesSearch =
       venue.venueName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       venue.venueLocation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      venue.bookingType.toLowerCase().includes(searchTerm.toLowerCase())
+      venue.bookingType.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesOrganization = 
+      organizationSearchTerm === "" || 
+      (venue.organization?.organizationName?.toLowerCase().includes(organizationSearchTerm.toLowerCase()));
 
     const matchesCapacity = (() => {
       if (selectedCapacity === "Any capacity") return true
-      if (selectedCapacity === "Up to 50 people") return venue.capacity <= 50
-      if (selectedCapacity === "50-100 people") return venue.capacity >= 50 && venue.capacity <= 100
-      if (selectedCapacity === "100-200 people") return venue.capacity >= 100 && venue.capacity <= 200
-      if (selectedCapacity === "200-500 people") return venue.capacity >= 200 && venue.capacity <= 500
-      if (selectedCapacity === "500+ people") return venue.capacity >= 500
-      return true
-    })()
 
-    return matchesSearch && matchesCapacity && venue.status === "APPROVED"
+      const capacityString = selectedCapacity.replace(" people", "");
+      if (capacityString.includes("Up to")) {
+        const maxCapacity = parseInt(capacityString.replace("Up to ", ""));
+        return venue.capacity <= maxCapacity;
+      } else if (capacityString.includes("+")) {
+        const minCapacity = parseInt(capacityString.replace("+", ""));
+        return venue.capacity >= minCapacity;
+      } else if (capacityString.includes("-")) {
+        const [min, max] = capacityString.split("-").map(Number);
+        return venue.capacity >= min && venue.capacity <= max;
+      }
+      return true;
+    })();
+
+    return matchesSearch && matchesOrganization && matchesCapacity && venue.status === "APPROVED"
   })
 
   return (
@@ -197,16 +207,21 @@ export default function VenuesPage() {
             </div>
 
             {/* Capacity Dropdown */}
-            <div className="relative z-30">
-              <button
-                className="flex items-center justify-between gap-2 border rounded-md px-4 py-2 text-gray-700 bg-white min-w-[160px] hover:bg-gray-50 transition-colors duration-200"
+            <div className="relative z-40">
+              <div
+                className="relative w-full"
                 onClick={() => setIsCapacityOpen(!isCapacityOpen)}
               >
-                <span>{selectedCapacity}</span>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform duration-200 ${isCapacityOpen ? "rotate-180" : ""}`}
+                <input
+                  type="text"
+                  readOnly
+                  value={selectedCapacity}
+                  className="w-full pl-4 pr-10 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 cursor-pointer bg-white text-gray-700"
                 />
-              </button>
+                <ChevronDown
+                  className={`absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 transition-transform duration-200 ${isCapacityOpen ? "rotate-180" : ""}`}
+                />
+              </div>
 
               {isCapacityOpen && (
                 <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
@@ -221,34 +236,6 @@ export default function VenuesPage() {
                       </li>
                     ))}
                   </ul>
-                </div>
-              )}
-            </div>
-
-            {/* Date Picker */}
-            <div className="relative z-20">
-              <button
-                className="flex items-center justify-between gap-2 border rounded-md px-4 py-2 text-gray-700 bg-white min-w-[160px] hover:bg-gray-50 transition-colors duration-200"
-                onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-              >
-                <Calendar className="h-4 w-4 mr-1" />
-                <span>{formatDate(selectedDate)}</span>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform duration-200 ${isDatePickerOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-
-              {isDatePickerOpen && (
-                <div className="absolute z-50 mt-1 bg-white border rounded-md shadow-lg p-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <input
-                    type="date"
-                    className="border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-                    value={selectedDate}
-                    onChange={(e) => {
-                      setSelectedDate(e.target.value)
-                      setIsDatePickerOpen(false)
-                    }}
-                  />
                 </div>
               )}
             </div>

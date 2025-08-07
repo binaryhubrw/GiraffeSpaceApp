@@ -143,8 +143,7 @@ export default function ManageVenuesPage() {
     { value: "approved", label: "Approved" },
     { value: "pending", label: "Pending" },
     { value: "rejected", label: "Rejected" },
-    { value: "suspended", label: "Suspended" },
-    { value: "inactive", label: "Inactive" }
+    { value: "Queried", label: "Queried" }
   ];
 
   const handleEdit = (venueId: string) => {
