@@ -2,153 +2,96 @@
 
 import OverviewSection from "./overview-section";
 
-export default function Page() {
-  // Enhanced mock data with free/paid event types and revenue information
+
+
+export default function OverviewPage() {
+  // Mock data for demo. Replace with your real data fetching.
   const user = {
-    firstName: "John",
-    lastName: "Doe",
-    profilePictureURL: "/placeholder.svg",
-  };
+    firstName: "Kamali",
+    lastName: "Olivier",
+    profilePictureURL: "",
+  }
 
   const organizations = [
-    { id: 1, name: "Tech Events Inc" },
-    { id: 2, name: "Community Meetups" },
-  ];
+    { name: "Camp Kigali (KCEV)", role: "Organizer" },
+    { name: "Tech Rwanda", role: "Admin" },
+  ]
 
   const userEvents = [
     {
-      eventId: 1,
-      eventTitle: "Tech Conference 2024",
-      eventDate: "2024-03-15",
-      venue: "Convention Center",
+      eventId: "e1",
+      eventTitle: "Tech Innovation Summit",
+      eventDate: "2025-08-08",
+      eventType: "paid",
       category: "Conference",
-      attendanceStatus: "Confirmed",
-      attendeeCount: 150,
-      ticketCount: 1,
-      ticketPrice: 299,
-      ticketsSold: 120,
-      eventType: "paid"
+      ticketPrice: 5000,
+      ticketsSold: 420,
+      attendeeCount: 430,
+      ticketCount: 420,
+      venue: "Ubwiza Hall",
     },
     {
-      eventId: 2,
-      eventTitle: "Free AI Webinar",
-      eventDate: "2024-03-20",
-      venue: "Online",
-      category: "Webinar",
-      attendanceStatus: "Registered",
-      attendeeCount: 500,
-      ticketCount: 1,
-      ticketPrice: 0,
-      ticketsSold: 0,
-      eventType: "free"
-    },
-    {
-      eventId: 3,
-      eventTitle: "Local Developer Meetup",
-      eventDate: "2024-03-25",
-      venue: "Coffee Shop",
+      eventId: "e2",
+      eventTitle: "Health & AI Meetup",
+      eventDate: "2025-09-12",
+      eventType: "free",
       category: "Meetup",
-      attendanceStatus: "Attended",
-      attendeeCount: 20,
-      ticketCount: 1,
       ticketPrice: 0,
       ticketsSold: 0,
-      eventType: "free"
+      attendeeCount: 180,
+      ticketCount: 180,
+      venue: "Kigali Tech Hub",
     },
     {
-      eventId: 4,
-      eventTitle: "Premium Workshop: React Advanced",
-      eventDate: "2024-03-30",
-      venue: "Training Center",
+      eventId: "e3",
+      eventTitle: "Startup Pitch Night",
+      eventDate: "2025-07-15",
+      eventType: "paid",
+      category: "Startup",
+      ticketPrice: 3000,
+      ticketsSold: 260,
+      attendeeCount: 270,
+      ticketCount: 260,
+      venue: "Arena A",
+    },
+    {
+      eventId: "e4",
+      eventTitle: "Community Coding Day",
+      eventDate: "2025-08-25",
+      eventType: "free",
       category: "Workshop",
-      attendanceStatus: "Confirmed",
-      attendeeCount: 30,
-      ticketCount: 1,
-      ticketPrice: 149,
-      ticketsSold: 25,
-      eventType: "paid"
+      ticketPrice: 0,
+      ticketsSold: 0,
+      attendeeCount: 220,
+      ticketCount: 220,
+      venue: "Open Park",
     },
     {
-      eventId: 5,
-      eventTitle: "Startup Pitch Competition",
-      eventDate: "2024-04-05",
-      venue: "Innovation Hub",
-      category: "Competition",
-      attendanceStatus: "Registered",
-      attendeeCount: 80,
-      ticketCount: 1,
-      ticketPrice: 50,
-      ticketsSold: 75,
-      eventType: "paid"
-    },
-    {
-      eventId: 6,
-      eventTitle: "Open Source Contribution Day",
-      eventDate: "2024-04-10",
-      venue: "Community Center",
+      eventId: "e5",
+      eventTitle: "Design Systems 101",
+      eventDate: "2025-10-05",
+      eventType: "paid",
       category: "Workshop",
-      attendanceStatus: "Interested",
-      attendeeCount: 40,
-      ticketCount: 1,
-      ticketPrice: 0,
-      ticketsSold: 0,
-      eventType: "free"
+      ticketPrice: 4000,
+      ticketsSold: 150,
+      attendeeCount: 155,
+      ticketCount: 150,
+      venue: "Studio B",
     },
     {
-      eventId: 7,
-      eventTitle: "Enterprise AI Summit",
-      eventDate: "2024-04-15",
-      venue: "Grand Hotel",
-      category: "Summit",
-      attendanceStatus: "Confirmed",
-      attendeeCount: 200,
-      ticketCount: 1,
-      ticketPrice: 599,
-      ticketsSold: 180,
-      eventType: "paid"
+      eventId: "e6",
+      eventTitle: "Rwanda Dev Conference",
+      eventDate: "2025-11-20",
+      eventType: "paid",
+      category: "Conference",
+      ticketPrice: 7000,
+      ticketsSold: 650,
+      attendeeCount: 665,
+      ticketCount: 650,
+      venue: "Main Auditorium",
     },
-    {
-      eventId: 8,
-      eventTitle: "Community Networking Event",
-      eventDate: "2024-04-20",
-      venue: "Rooftop Venue",
-      category: "Networking",
-      attendanceStatus: "Registered",
-      attendeeCount: 60,
-      ticketCount: 1,
-      ticketPrice: 0,
-      ticketsSold: 0,
-      eventType: "free"
-    },
-    {
-      eventId: 9,
-      eventTitle: "Data Science Bootcamp",
-      eventDate: "2024-04-25",
-      venue: "University Campus",
-      category: "Bootcamp",
-      attendanceStatus: "Confirmed",
-      attendeeCount: 45,
-      ticketCount: 1,
-      ticketPrice: 399,
-      ticketsSold: 40,
-      eventType: "paid"
-    },
-    {
-      eventId: 10,
-      eventTitle: "Free Career Fair",
-      eventDate: "2024-04-30",
-      venue: "Exhibition Center",
-      category: "Career",
-      attendanceStatus: "Interested",
-      attendeeCount: 300,
-      ticketCount: 1,
-      ticketPrice: 0,
-      ticketsSold: 0,
-      eventType: "free"
-    }
-  ];
+   
+  ]
 
-  return (
-    <OverviewSection user={user} organizations={organizations} userEvents={userEvents} />
-  );
+  return <OverviewSection user={user} organizations={organizations} userEvents={userEvents} />
 }

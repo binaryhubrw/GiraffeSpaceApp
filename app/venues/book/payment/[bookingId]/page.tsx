@@ -366,7 +366,7 @@ export default function PayVenueBooking() {
       console.log("Processing venue booking payment:", paymentData)
 
       // Call the API to process the payment
-      const response = await ApiService.payEventBooking(bookingId, paymentData)
+      const response = await ApiService.payVenueBooking(bookingId, paymentData)
 
       if (response.success) {
         toast.success("Payment processed successfully!")

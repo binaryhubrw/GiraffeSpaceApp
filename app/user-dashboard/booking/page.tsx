@@ -161,6 +161,7 @@ export default function UserBookingsPage() {
 
       try {
         const response = await ApiService.getBookingByUserId(user.userId)
+        console.log("API Response:", response)
         
         if (response.success) {
           setBookings(response.data.bookings)
@@ -513,7 +514,7 @@ export default function UserBookingsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                                                  <DropdownMenuContent align="end">
-                           <DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => router.push(`/user-dashboard/booking/${booking.bookingId}`)}>
                              <Eye className="h-4 w-4 mr-2" />
                              View Details
                            </DropdownMenuItem>

@@ -1415,27 +1415,7 @@ class ApiService {
 
 
 
-  /**** pay booking **** */
-
-  static async payEventBooking(
-    bookingId: string,
-    paymentData: any
-  ): Promise<any> {
-    try {
-      const response = await axios.post(
-        `${this.BASE_URL}/venue-bookings/${bookingId}/payments`,
-        paymentData,
-        {
-          headers: this.getHeader(paymentData),
-          withCredentials: true,
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Error processing payment for event booking with ID ${bookingId}:`, error);
-      throw error;
-    } 
-  }
+ 
 
 
 
