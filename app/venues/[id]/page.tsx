@@ -76,7 +76,10 @@ interface AvailabilitySlot {
   date: string
   bookedHours: string[] | null
   isAvailable: boolean
+  status: "AVAILABLE" | "HOLDING" | "BOOKED"; // Add status field
   availableHours?: string[]
+  holdingExpiresAt?: string; // Optional for holding status
+  holdingCreatedAt?: string; // Optional for holding status
 }
 
 interface VenueData {
@@ -138,11 +141,19 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
   // New states for date statuses
   const [fullyBookedDates, setFullyBookedDates] = useState<Date[]>([])
   const [partiallyBookedDates, setPartiallyBookedDates] = useState<Date[]>([])
+  // Update holdingDates state to store objects with date and timestamps
+  const [holdingDates, setHoldingDates] = useState<{ date: Date; holdingExpiresAt: Date; holdingCreatedAt: Date }[]>([]);
   const [availabilitySlots, setAvailabilitySlots] = useState<AvailabilitySlot[]>([])
   const [showTimePopup, setShowTimePopup] = useState<{ isOpen: boolean; date: Date | null }>({
     isOpen: false,
     date: null,
   })
+  const [showCountdownPopup, setShowCountdownPopup] = useState<{ isOpen: boolean; date: Date | null; timeLeft: number | null }>({ // New state for countdown popup
+    isOpen: false,
+    date: null,
+    timeLeft: null,
+  });
+  const [hoveredHoldingDate, setHoveredHoldingDate] = useState<{ date: Date; timeLeft: number; clientX?: number; clientY?: number } | null>(null); // Add clientX and clientY
   const { isLoggedIn } = useAuth()
   const [mounted, setMounted] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date()) // State to control the displayed month
@@ -221,19 +232,22 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
 
             const newFullyBookedDates: Date[] = []
             const newPartiallyBookedDates: Date[] = []
+            const newHoldingDates: Date[] = [] // Initialize new holding dates array
 
-                         updatedSlots.forEach((slot: AvailabilitySlot) => {
+            updatedSlots.forEach((slot: AvailabilitySlot) => {
                const dateObj = new Date(slot.date)
                dateObj.setHours(0, 0, 0, 0) // Normalize date for comparison
 
-               if (venueData.bookingType === "HOURLY") {
-                 if (!slot.isAvailable || slot.availableHours?.length === 0) {
+               if (slot.status === "HOLDING") {
+                 newHoldingDates.push(dateObj);
+               } else if (venueData.bookingType === "HOURLY") {
+                 if (!slot.isAvailable || slot.availableHours?.length === 0 || slot.status === "BOOKED") {
                    newFullyBookedDates.push(dateObj)
                  } else if (slot.bookedHours && slot.bookedHours.length > 0) {
                    newPartiallyBookedDates.push(dateObj)
                  }
                } else if (venueData.bookingType === "DAILY") {
-                 if (!slot.isAvailable) {
+                 if (!slot.isAvailable || slot.status === "BOOKED") {
                    newFullyBookedDates.push(dateObj)
                  }
                  // No partial booking for DAILY type
@@ -241,6 +255,15 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
              })
             setFullyBookedDates(newFullyBookedDates)
             setPartiallyBookedDates(newPartiallyBookedDates)
+            // Map holding slots to the new holdingDates structure
+            setHoldingDates(updatedSlots
+              .filter(slot => slot.status === "HOLDING" && slot.holdingExpiresAt && slot.holdingCreatedAt)
+              .map(slot => ({
+                date: new Date(slot.date),
+                holdingExpiresAt: new Date(slot.holdingExpiresAt!),
+                holdingCreatedAt: new Date(slot.holdingCreatedAt!),
+              }))
+            );
           }
         } else {
           setError("Failed to fetch venue details")
@@ -254,6 +277,57 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     }
     fetchVenue()
   }, [id])
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout | undefined;
+    if (showCountdownPopup.isOpen && showCountdownPopup.timeLeft !== null) {
+      timer = setInterval(() => {
+        setShowCountdownPopup((prev) => {
+          if (prev.timeLeft && prev.timeLeft > 0) {
+            return { ...prev, timeLeft: prev.timeLeft - 1 };
+          } else {
+            // When countdown finishes, remove the date from holdingDates
+            if (prev.date) {
+              setHoldingDates((currentHoldingDates) =>
+                currentHoldingDates.filter((d) => d.date.toDateString() !== prev.date?.toDateString())
+              );
+            }
+            clearInterval(timer); // Clear the interval
+            return { ...prev, isOpen: false, date: null, timeLeft: null }; // Close popup
+          }
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timer) {
+        clearInterval(timer);
+      }
+    };
+  }, [showCountdownPopup.isOpen, showCountdownPopup.timeLeft, showCountdownPopup.date, setHoldingDates]);
+
+  // Effect to manage the hover countdown timer
+  useEffect(() => {
+    let hoverTimer: NodeJS.Timeout | undefined;
+    if (hoveredHoldingDate && hoveredHoldingDate.timeLeft > 0) {
+      hoverTimer = setInterval(() => {
+        setHoveredHoldingDate((prev) => {
+          if (prev && prev.timeLeft > 0) {
+            return { ...prev, timeLeft: prev.timeLeft - 1 };
+          } else {
+            clearInterval(hoverTimer); // Clear the interval
+            return null; // Clear hovered state
+          }
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (hoverTimer) {
+        clearInterval(hoverTimer);
+      }
+    };
+  }, [hoveredHoldingDate]);
 
   const nextPhoto = () => {
     if (photos.length === 0) return
@@ -760,15 +834,38 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                               const isFullyBooked = fullyBookedDates.some(
                                 (d) => d.toDateString() === date.toDateString(),
                               )
-                              return isPastDate || isFullyBooked
+                              const isHolding = holdingDates.some(
+                                (d) => d.date.toDateString() === date.toDateString(),
+                              )
+                              return isPastDate || isFullyBooked || isHolding;
                             }}
                             modifiers={{
                               fullyBooked: fullyBookedDates,
                               ...(venue?.bookingType === "HOURLY" && { partiallyBooked: partiallyBookedDates }),
+                              holding: holdingDates.map(h => h.date), // Pass only dates for modifiers
                             }}
                             modifiersClassNames={{
                               fullyBooked: "relative cursor-not-allowed after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:left-1 after:right-1 after:h-0.5 after:bg-red-400 after:rounded",
                               partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50/50 rounded-md", // Partially booked style
+                            }}
+                            onHoldingDateClick={(date) => {
+                              const holdingInfo = holdingDates.find(d => d.date.toDateString() === date.toDateString())
+                              if (holdingInfo) {
+                                const timeLeft = Math.max(0, Math.floor((holdingInfo.holdingExpiresAt.getTime() - Date.now()) / 1000))
+                                setShowCountdownPopup({ isOpen: true, date, timeLeft })
+                              }
+                            }}
+                            onDayMouseEnter={(day, dayModifiers, e) => {
+                              if (dayModifiers.holding) {
+                                const holdingInfo = holdingDates.find(d => d.date.toDateString() === day.toDateString())
+                                if (holdingInfo) {
+                                  const timeLeft = Math.max(0, Math.floor((holdingInfo.holdingExpiresAt.getTime() - Date.now()) / 1000))
+                                  setHoveredHoldingDate({ date: day, timeLeft, clientX: e.clientX, clientY: e.clientY })
+                                }
+                              }
+                            }}
+                            onDayMouseLeave={() => {
+                              setHoveredHoldingDate(null)
                             }}
                             className="rounded-lg"
                           />
@@ -808,15 +905,38 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                               const isFullyBooked = fullyBookedDates.some(
                                 (d) => d.toDateString() === date.toDateString(),
                               )
-                              return isPastDate || isFullyBooked
+                              const isHolding = holdingDates.some(
+                                (d) => d.date.toDateString() === date.toDateString(),
+                              )
+                              return isPastDate || isFullyBooked || isHolding;
                             }}
                             modifiers={{
                               fullyBooked: fullyBookedDates,
                               ...(venue?.bookingType === "HOURLY" && { partiallyBooked: partiallyBookedDates }),
+                              holding: holdingDates.map(h => h.date), // Pass only dates for modifiers
                             }}
                             modifiersClassNames={{
                               fullyBooked: "relative cursor-not-allowed after:content-[''] after:absolute after:top-1/2 after:-translate-y-1/2 after:left-1 after:right-1 after:h-0.5 after:bg-red-400 after:rounded",
                               partiallyBooked: "border-2 border-orange-500 text-orange-800 bg-orange-50/50 rounded-md", // Partially booked style
+                            }}
+                            onHoldingDateClick={(date) => {
+                              const holdingInfo = holdingDates.find(d => d.date.toDateString() === date.toDateString())
+                              if (holdingInfo) {
+                                const timeLeft = Math.max(0, Math.floor((holdingInfo.holdingExpiresAt.getTime() - Date.now()) / 1000))
+                                setShowCountdownPopup({ isOpen: true, date, timeLeft })
+                              }
+                            }}
+                            onDayMouseEnter={(day, dayModifiers) => {
+                              if (dayModifiers.holding) {
+                                const holdingInfo = holdingDates.find(d => d.date.toDateString() === day.toDateString());
+                                if (holdingInfo) {
+                                  const timeLeft = Math.max(0, Math.floor((holdingInfo.holdingExpiresAt.getTime() - Date.now()) / 1000));
+                                  setHoveredHoldingDate({ date: day, timeLeft });
+                                }
+                              }
+                            }}
+                            onDayMouseLeave={() => {
+                              setHoveredHoldingDate(null);
                             }}
                             className="rounded-lg"
                           />
@@ -832,6 +952,10 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                             <span className="h-0.5 w-4 bg-red-400 rounded"></span>
                           </div>
                           <span>Fully Booked</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-4 h-4 rounded-full bg-grayy-100"></span>
+                          <span className="text-gray-500">Holding</span>
                         </div>
                         {venue?.bookingType === "HOURLY" && (
                           <div className="flex items-center gap-1">
@@ -1118,6 +1242,56 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
       )}
+
+      {/* Countdown Popup for Holding Dates */}
+      {showCountdownPopup.isOpen && showCountdownPopup.date && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 text-center">
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => setShowCountdownPopup({ isOpen: false, date: null, timeLeft: null })}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <h3 className="text-lg font-semibold mb-4">Date on Hold</h3>
+            <p className="text-gray-700 text-lg mb-2">
+              The date {showCountdownPopup.date.toLocaleDateString()} is currently on hold.
+            </p>
+            {showCountdownPopup.timeLeft !== null && (
+              <p className="text-2xl font-bold text-blue-600 mb-4">
+                Time left: {Math.floor(showCountdownPopup.timeLeft / 60).toString().padStart(2, '0')}:{(showCountdownPopup.timeLeft % 60).toString().padStart(2, '0')}
+              </p>
+            )}
+            <p className="text-sm text-gray-500">
+              Please wait for the countdown to expire or proceed with booking if available.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Hover Countdown Tooltip for Holding Dates */}
+      {hoveredHoldingDate && (
+        <div 
+          style={{
+            position: 'fixed',
+            left: `${hoveredHoldingDate.clientX}px`,
+            top: `${hoveredHoldingDate.clientY}px`,
+            transform: 'translate(-50%, -100%)',
+            pointerEvents: 'none',
+            zIndex: 60,
+          }}
+          className="bg-gray-800 text-white text-xs px-2 py-1 rounded-md shadow-lg"
+        >
+          Holding expires in: {Math.floor(hoveredHoldingDate.timeLeft / 60).toString().padStart(2, '0')}:
+          {(hoveredHoldingDate.timeLeft % 60).toString().padStart(2, '0')}
+        </div>
+      )}
     </div>
   )
 }
+
+Calendar.displayName = "Calendar"
+
+export { Calendar }

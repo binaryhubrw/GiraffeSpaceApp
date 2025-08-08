@@ -257,3 +257,11 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Custom styles for holding dates in Calendar */
+/* This class will be applied via modifiersClassNames and override disabled styles */
+.rdp-day_holding {
+  background-color: yellow !important;
+  color: white !important;
+  opacity: 1 !important;
+}

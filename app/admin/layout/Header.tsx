@@ -98,6 +98,27 @@ export function AdminHeader() {
                     >
                       Profile
                     </Link>
+                    <Link
+                      href="/settings"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      Settings
+                    </Link>
+                    <Link
+                      href="/my-tickets"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      My tickets
+                    </Link>
+                    <Link
+                      href="/my-organizations"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      onClick={() => setIsUserMenuOpen(false)}
+                    >
+                      My Organization
+                    </Link>
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
@@ -155,6 +176,27 @@ export function AdminHeader() {
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Profile
+                    </Link>
+                    <Link
+                      href="/settings"
+                      className="block text-sm text-gray-600 hover:text-gray-900"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      Settings
+                    </Link>
+                    <Link
+                      href="/my-tickets"
+                      className="block text-sm text-gray-600 hover:text-gray-900"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      My tickets
+                    </Link>
+                    <Link
+                      href="/my-organizations"
+                      className="block text-sm text-gray-600 hover:text-gray-900"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      My Organization
                     </Link>
                   </div>
                   <button
