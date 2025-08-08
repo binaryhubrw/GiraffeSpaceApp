@@ -931,7 +931,7 @@ const EventDetailsPage: React.FC = () => {
                     className="flex-1 h-12 bg-blue-600 hover:bg-blue-700" 
                     onClick={() => router.push(`/events/create-ticket/${eventId}`)}
                   >
-                    Create Event Ticket and Publish your event
+                    Create Event Ticket
                   </Button>
                 )}
               </div>

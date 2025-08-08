@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { Calendar, Plus, X, MapPin, Loader2, Check, Ticket, DollarSign, Save, Eye, Settings, Info } from "lucide-react"
+import { Calendar, Plus, X, MapPin, Loader2, Check, Ticket, DollarSign, Save, Eye, Settings, Info, Percent } from "lucide-react"
 import Image from "next/image"
 import ApiService from "@/api/apiConfig"
 import { toast } from "sonner"
@@ -30,7 +30,23 @@ interface EventData {
   }>
 }
 
+interface Benefit {
+  id: string
+  title: string
+  description: string
+}
+
+interface DiscountTier {
+  id: string
+  name: string
+  percentage: number
+  startDate: string
+  endDate: string
+}
+
 interface TicketType {
+  startTime: string
+  endTime: string
   id?: string
   name: string
   description: string
@@ -42,7 +58,8 @@ interface TicketType {
   saleEndDate: string
   isActive: boolean
   bookingDate: string
-  benefits: string[]
+  benefits: Benefit[]
+  discountTiers: DiscountTier[]
   isRefundable: boolean
   refundPolicy: string
   transferable: boolean
@@ -77,8 +94,13 @@ export default function CreateTicketForm() {
   const [success, setSuccess] = useState(false)
 
   // Form state
+  const generateId = () => Math.random().toString(36).slice(2, 10)
+  const createEmptyBenefit = (): Benefit => ({ id: generateId(), title: "", description: "" })
+  const createEmptyDiscountTier = (): DiscountTier => ({ id: generateId(), name: "", percentage: 0, startDate: "", endDate: "" })
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([
     {
+      startTime: "",
+      endTime: "",
       name: "",
       description: "",
       price: 0,
@@ -89,7 +111,8 @@ export default function CreateTicketForm() {
       saleEndDate: "",
       isActive: true,
       bookingDate: "", // Added bookingDate
-      benefits: [""],
+      benefits: [createEmptyBenefit()],
+      discountTiers: [],
       isRefundable: true,
       refundPolicy: "",
       transferable: true,
@@ -173,16 +196,27 @@ export default function CreateTicketForm() {
     }
   }
 
-  const handleBenefitChange = (ticketIndex: number, benefitIndex: number, value: string) => {
-    const newTickets = [...ticketTypes]
-    newTickets[ticketIndex].benefits[benefitIndex] = value
-    setTicketTypes(newTickets)
+  const updateBenefit = (
+    ticketIndex: number,
+    benefitIndex: number,
+    field: keyof Benefit,
+    value: string,
+  ) => {
+    setTicketTypes((prev) => {
+      const next = [...prev]
+      const ticket = next[ticketIndex]
+      const benefit = ticket.benefits[benefitIndex]
+      ticket.benefits[benefitIndex] = { ...benefit, [field]: value }
+      return next
+    })
   }
 
   const addBenefit = (ticketIndex: number) => {
-    const newTickets = [...ticketTypes]
-    newTickets[ticketIndex].benefits.push("")
-    setTicketTypes(newTickets)
+    setTicketTypes((prev) => {
+      const next = [...prev]
+      next[ticketIndex].benefits.push(createEmptyBenefit())
+      return next
+    })
   }
 
   const removeBenefit = (ticketIndex: number, benefitIndex: number) => {
@@ -191,6 +225,36 @@ export default function CreateTicketForm() {
       newTickets[ticketIndex].benefits.splice(benefitIndex, 1)
       setTicketTypes(newTickets)
     }
+  }
+
+  const addDiscountTier = (ticketIndex: number) => {
+    setTicketTypes((prev) => {
+      const next = [...prev]
+      next[ticketIndex].discountTiers.push(createEmptyDiscountTier())
+      return next
+    })
+  }
+
+  const updateDiscountTier = (
+    ticketIndex: number,
+    discountIndex: number,
+    field: keyof DiscountTier,
+    value: string | number,
+  ) => {
+    setTicketTypes((prev) => {
+      const next = [...prev]
+      const tier = next[ticketIndex].discountTiers[discountIndex]
+      next[ticketIndex].discountTiers[discountIndex] = { ...tier, [field]: value as never }
+      return next
+    })
+  }
+
+  const removeDiscountTier = (ticketIndex: number, discountIndex: number) => {
+    setTicketTypes((prev) => {
+      const next = [...prev]
+      next[ticketIndex].discountTiers.splice(discountIndex, 1)
+      return next
+    })
   }
 
   const addTicketType = () => {
@@ -203,6 +267,8 @@ export default function CreateTicketForm() {
     setTicketTypes([
       ...ticketTypes,
       {
+        startTime: "",
+        endTime: "",
         name: "",
         description: "",
         price: 0,
@@ -213,7 +279,8 @@ export default function CreateTicketForm() {
         saleEndDate: defaultSaleEnd,
         isActive: true,
         bookingDate: defaultBookingDate, // Set default booking date
-        benefits: [""],
+        benefits: [createEmptyBenefit()],
+        discountTiers: [],
         isRefundable: true,
         refundPolicy: "",
         transferable: true,
@@ -434,20 +501,7 @@ export default function CreateTicketForm() {
                       )}
                     </div>
 
-                    <div>
-                      <Label htmlFor={`description-${index}`}>Description & Ticket Benefits *</Label>
-                      <Textarea
-                        id={`description-${index}`}
-                        value={ticket.description}
-                        onChange={(e) => handleTicketChange(index, "description", e.target.value)}
-                        placeholder="Describe what this ticket includes..."
-                        rows={3}
-                        className={`mt-1 ${errors[`ticket-${index}-description`] ? "border-red-500" : ""}`}
-                      />
-                      {errors[`ticket-${index}-description`] && (
-                        <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-description`]}</p>
-                      )}
-                    </div>
+                  
 
                     {/* Booking Date Selector */}
                     {eventData && eventData.bookingDates.length > 0 && (
@@ -481,6 +535,80 @@ export default function CreateTicketForm() {
                         </p>
                       </div>
                     )}
+                     <div>
+                                            <Label htmlFor={`startTime-${index}`}>Start Time *</Label>
+                                            <Input
+                                              id={`startTime-${index}`}
+                                              type="time"
+                                              value={ticket.startTime}
+                                              onChange={(e) => handleTicketChange(index, "startTime", e.target.value)}
+                                              className={`mt-1 ${errors[`ticket-${index}-startTime`] ? "border-red-500" : ""}`}
+                                            />
+                                            {errors[`ticket-${index}-startTime`] && (
+                                              <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-startTime`]}</p>
+                                            )}
+                                          </div>
+                    
+                                          <div>
+                                            <Label htmlFor={`endTime-${index}`}>End Time *</Label>
+                                            <Input
+                                              id={`endTime-${index}`}
+                                              type="time"
+                                              value={ticket.endTime}
+                                              onChange={(e) => handleTicketChange(index, "endTime", e.target.value)}
+                                              className={`mt-1 ${errors[`ticket-${index}-endTime`] ? "border-red-500" : ""}`}
+                                            />
+                                            {errors[`ticket-${index}-endTime`] && (
+                                              <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-endTime`]}</p>
+                                            )}
+                                          </div>
+                                          {/* Custom Benefits */}
+                    <div>
+                      <Label className="text-base font-semibold">Custom Benefits</Label>
+                      <p className="text-sm text-gray-600 mb-3">Add custom benefits specific to this ticket type</p>
+                      <div className="space-y-3">
+                        {ticket.benefits.map((benefit, benefitIndex) => (
+                          <Card key={benefit.id} className="p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                             
+                            
+                              <div>
+                                <Label className="text-sm">Title</Label>
+                                <Input
+                                  value={benefit.title}
+                                  onChange={(e) => updateBenefit(index, benefitIndex, "title", e.target.value)}
+                                  placeholder="Benefit title"
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div className="flex items-end gap-2">
+                                <div className="flex-1">
+                                  <Label className="text-sm">Description</Label>
+                                  <Input
+                                    value={benefit.description}
+                                    onChange={(e) => updateBenefit(index, benefitIndex, "description", e.target.value)}
+                                    placeholder="Benefit description"
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <Button variant="outline" size="sm" onClick={() => removeBenefit(index, benefitIndex)}>
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addBenefit(index)}
+                          className="w-full border-dashed bg-transparent"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Custom Benefit
+                        </Button>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -494,6 +622,7 @@ export default function CreateTicketForm() {
                 Add Another Ticket Type
               </Button>
             </div>
+            
           </div>
         )
 
@@ -582,6 +711,125 @@ export default function CreateTicketForm() {
                       </div>
                     </div>
 
+                     {/* Discount Tiers */}
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <Label className="text-base font-semibold">Discount Tiers</Label>
+                          <p className="text-sm text-gray-600">
+                            Create time-based discounts (e.g., Early Bird, Last Minute)
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addDiscountTier(index)}
+                          className="bg-transparent"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Discount
+                        </Button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {ticket.discountTiers.map((discount, discountIndex) => (
+                          <Card key={discount.id} className="p-4 border-dashed">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                              <div>
+                                <Label className="text-sm">Discount Name</Label>
+                                <Input
+                                  value={discount.name}
+                                  onChange={(e) => updateDiscountTier(index, discountIndex, "name", e.target.value)}
+                                  placeholder="e.g., Early Bird"
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-sm">Percentage (%)</Label>
+                                <div className="flex items-center gap-1 mt-1">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={discount.percentage}
+                                    onChange={(e) =>
+                                      updateDiscountTier(
+                                        index,
+                                        discountIndex,
+                                        "percentage",
+                                        Number.parseInt(e.target.value) || 0,
+                                      )
+                                    }
+                                    className={`${
+                                      errors[`ticket-${index}-discount-${discountIndex}-percentage`]
+                                        ? "border-red-500"
+                                        : ""
+                                    }`}
+                                  />
+                                  <Percent className="h-4 w-4 text-gray-400" />
+                                </div>
+                                {errors[`ticket-${index}-discount-${discountIndex}-percentage`] && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors[`ticket-${index}-discount-${discountIndex}-percentage`]}
+                                  </p>
+                                )}
+                              </div>
+                              <div>
+                                <Label className="text-sm">Start Date</Label>
+                                <Input
+                                  type="date"
+                                  value={discount.startDate}
+                                  onChange={(e) =>
+                                    updateDiscountTier(index, discountIndex, "startDate", e.target.value)
+                                  }
+                                  className="mt-1"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-sm">End Date</Label>
+                                <Input
+                                  type="date"
+                                  value={discount.endDate}
+                                  onChange={(e) => updateDiscountTier(index, discountIndex, "endDate", e.target.value)}
+                                  className={`mt-1 ${
+                                    errors[`ticket-${index}-discount-${discountIndex}-endDate`] ? "border-red-500" : ""
+                                  }`}
+                                />
+                                {errors[`ticket-${index}-discount-${discountIndex}-endDate`] && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors[`ticket-${index}-discount-${discountIndex}-endDate`]}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="flex items-end">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeDiscountTier(index, discountIndex)}
+                                  className="w-full bg-transparent"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          
+                            {discount.percentage > 0 && ticket.price > 0 && (
+                              <div className="mt-2 p-2 bg-green-50 rounded text-sm">
+                                <span className="text-green-700 font-medium">
+                                  Discounted Price: {currencies.find((c) => c.code === ticket.currency)?.symbol}
+                                  {(ticket.price * (1 - discount.percentage / 100)).toFixed(2)}
+                                </span>
+                                <span className="text-green-600 ml-2">
+                                  (Save {currencies.find((c) => c.code === ticket.currency)?.symbol}
+                                  {(ticket.price * (discount.percentage / 100)).toFixed(2)})
+                                </span>
+                              </div>
+                            )}
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* Sales Period */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -658,16 +906,7 @@ export default function CreateTicketForm() {
                           />
                         </div>
 
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <Label className="text-sm font-medium">Transferable</Label>
-                            <p className="text-xs text-gray-600">Allow ticket transfers</p>
-                          </div>
-                          <Switch
-                            checked={ticket.transferable}
-                            onCheckedChange={(checked) => handleTicketChange(index, "transferable", checked)}
-                          />
-                        </div>
+                       
 
                        
                       </div>
@@ -794,18 +1033,23 @@ export default function CreateTicketForm() {
                       </div>
                     </div>
 
-                    {ticket.benefits.filter((b) => b.trim()).length > 0 && (
+                    {ticket.benefits.some((b: Benefit) => b.title.trim() !== "" || b.description.trim() !== "") && (
                       <div className="mb-4">
                         <h4 className="font-medium mb-2">Benefits:</h4>
                         <ul className="space-y-1">
-                          {ticket.benefits
-                            .filter((b) => b.trim())
-                            .map((benefit, benefitIndex) => (
+                          {ticket.benefits.map((benefit: Benefit, benefitIndex: number) => {
+                            const hasContent = benefit.title.trim() !== "" || benefit.description.trim() !== ""
+                            if (!hasContent) return null
+                            return (
                               <li key={benefitIndex} className="flex items-center gap-2 text-sm">
                                 <Check className="h-3 w-3 text-blue-500" />
-                                <span>{benefit}</span>
+                                <span>
+                                  {benefit.title}
+                                  {benefit.description ? `: ${benefit.description}` : ""}
+                                </span>
                               </li>
-                            ))}
+                            )
+                          })}
                         </ul>
                       </div>
                     )}
