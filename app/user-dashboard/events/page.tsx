@@ -83,6 +83,7 @@ export default function EventSection() {
   const [customEndDate, setCustomEndDate] = useState("")
   const [attendanceCount, setAttendanceCount] = useState<number>(0)
   const [upcomingEventsCount, setUpcomingEventsCount] = useState<number>(0)
+  const [showBookingCheckDialog, setShowBookingCheckDialog] = useState(false)
 
   useEffect(() => {
     if (!isLoggedIn || !user) return;
