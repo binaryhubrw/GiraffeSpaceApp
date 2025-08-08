@@ -623,13 +623,13 @@ export function Header({ activePage }: HeaderProps) {
               Organization Required
             </DialogTitle>
             <DialogDescription>
-              Please create an organization before proceeding to manage venues 
+            Please you have to create organization before you manage venues 
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2">
                                                                                                        <button
                  onClick={handleCancelOrganization}
-                 className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
+                 className="flex-1 bg-red-800 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
                >
                  Cancel
                </button>
@@ -637,7 +637,7 @@ export function Header({ activePage }: HeaderProps) {
               onClick={handleCreateOrganization}
               className="flex-1"
             >
-              Create New Organization
+              Create Organization
             </Button>
                      </DialogFooter>
          </DialogContent>
@@ -658,7 +658,7 @@ export function Header({ activePage }: HeaderProps) {
            <DialogFooter className="flex gap-2">
              <button
                onClick={handleCancelBookingCheck}
-               className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
+               className="flex-1 bg-red-800 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
              >
                Cancel
              </button>

@@ -26,6 +26,7 @@ import {
   Plus,
   Mail,
   MailIcon,
+  ScanQrCode,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -202,7 +203,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                 <span
                   className={`px-2 md:px-3 py-1 rounded-full text-xs font-semibold w-fit ${
                     event.isEntryPaid
-                      ? "bg-red-100 text-red-600"
+                      ? "bg-yellow-200 text-yellow-900"
                       : "bg-green-100 text-green-600"
                   }`}
                 >
@@ -256,8 +257,8 @@ export default function EventDetails({ params }: { params: { id: string } }) {
             <div className="hidden md:flex gap-2">
              
             
-              <Button className=" flex gap-2 h-12 bg-violet-500 hover:bg-violet-500 ">
-                <Plus className="mr-2 h-5 w-5" />
+              <Button className=" flex gap-2 h-12 bg-blue-500 hover:bg-blue-700 ">
+                <Users className="mr-2 h-5 w-5 text-green-500" />
                 Ticket Inspector
               </Button>
               {!event.isEntryPaid && (
@@ -272,20 +273,20 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                 <>
                   <Link
                   href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
-                  className=" bg-[#8c32df]  hover:bg-[#c22af9] text-white font-medium py-2 px-4 rounded-md flex items-center"
+                  className=" bg-blue-500  hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
                 >
-                  <Ticket className="mr-2 h-5 w-5" /> Check Ticket
+                  <ScanQrCode className="mr-2 h-5 w-5 text-purple-300" /> Check Ticket
                 </Link>
                   <Link
                   href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
-                  className="bg-violet-700 hover:bg-[#8c32df] text-white font-medium py-2 px-4 rounded-md flex items-center"
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
                 >
-                  <Ticket className="mr-2 h-5 w-5" /> Create Ticket
+                  <Ticket className="mr-2 h-5 w-5 text-red-400" /> Create Ticket
                 </Link></>
               
               )}
-                <Button className=" h-12 bg-[#6527f5] hover:bg-[#7327F5] flex gap-2">
-                  <MailIcon className="mr-2 h-5 w-5" />
+                <Button className=" h-12 bg-blue-500 hover:bg-blue-700 flex gap-2">
+                  <MailIcon className="mr-2 h-5 w-5 text-yellow-500" />
                 Invite People
               </Button>
                <Link
@@ -344,14 +345,14 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                     ? "bg-green-100 text-green-800"
                     : event.eventStatus === "PENDING"
                     ? "bg-yellow-100 text-yellow-800"
-                    : "bg-red-100 text-red-800"
+                    : "bg-green-100 text-green-800"
                 }`}
               >
                 {event.eventStatus}
               </span>
             </div>
             {event.eventType && (
-              <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 bg-black bg-opacity-50 text-white px-2 md:px-3 py-1 md:py-2 rounded-md">
+              <div className="absolute bottom-2 md:bottom-4 left-2 md:left-4 bg-purple-600 bg-opacity-70 text-white px-2 md:px-3 py-1 md:py-2 rounded-md">
                 <p className="text-xs md:text-sm font-medium">
                   {event.eventType}
                 </p>
@@ -513,7 +514,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                   </p>
                   <div className="space-y-2">
                     <div className="flex items-center">
-                      <Users className="h-4 w-4 text-gray-500 mr-2 flex-shrink-0" />
+                      <Users className="h-4 w-4 text-purple-500 mr-2 flex-shrink-0 " />
                       <span className="text-xs md:text-sm">
                         Capacity:{" "}
                         {event.eventVenues && event.eventVenues[0]
@@ -523,7 +524,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                       </span>
                     </div>
                     <div className="flex items-start">
-                      <MapPin className="h-4 w-4 text-gray-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <MapPin className="h-4 w-4 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
                       <span className="text-xs md:text-sm break-words">
                         Location:{" "}
                         {event.eventVenues && event.eventVenues[0]
@@ -532,7 +533,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
                       </span>
                     </div>
                     <div className="flex items-center">
-                      <Building2 className="h-4 w-4 text-gray-500 mr-2 flex-shrink-0" />
+                      <Building2 className="h-4 w-4 text-yellow-500 mr-2 flex-shrink-0" />
                       <span className="text-xs md:text-sm break-words">
                         Booking Type:{" "}
                         {event.eventVenues && event.eventVenues[0]
