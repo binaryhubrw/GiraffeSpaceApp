@@ -1757,5 +1757,33 @@ class ApiService {
             throw error;
         }
     }
+
+  static async getFreeRegistrationsByEventId(eventId: string): Promise<any> {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const url = `${this.BASE_URL}/event/${eventId}/registrations/free`;
+      console.log("Making request to:", url);
+      
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      });
+      
+      console.log("Response received:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching free registrations for event ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+  // NOTE: getFreeAttendanceByEventId removed as requested
 }
 export default ApiService;
