@@ -117,7 +117,7 @@ export function EventCard({
             className="flex-1 text-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-800 border border-blue-200 hover:border-blue-300 rounded-md py-2 px-3 transition-colors flex items-center justify-center"
           >
             <Ticket className="h-4 w-4 mr-2" />
-            {isEntryPaid ? "Buy Ticket" : "Free Register"}
+            {isEntryPaid ? "Buy Ticket" : "Free Entrance"}
           </Link>
         </div>
       </div>

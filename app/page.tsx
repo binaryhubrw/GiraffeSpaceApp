@@ -98,29 +98,31 @@ export default function Home() {
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div className="space-y-6">
                 <h1
-                  className={`text-4xl md:text-5xl font-bold tracking-tight text-gray-900 transform transition-all duration-1000 ease-out ${
+                  className={`text-xl md:text-5xl font-bold tracking-tight text-gray-900 transform transition-all duration-1000 ease-out ${
                     isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
                   }`}
                 >
-                 Next-Gen Event And Venue Management System
+                 Next-Gen  <br/>  Event & Venue Management System
                 </h1>
                 <p
                   className={`text-lg text-gray-600 transform transition-all duration-1000 ease-out delay-200 ${
                     isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
                   }`}
                 >
-           Empowering your organization to create, manage, and elevate every event and venue experience.
-                </p>
+Empowering your organization to effortlessly create, manage <br/> 
+and elevate every event and venue experience.<br/> 
+Driving success and unforgettable moments every time.</p>
+
                 <div
-                  className={`flex flex-wrap gap-4 transform transition-all duration-1000 ease-out delay-400 ${
+                  className={`flex flex-row gap-4 transform transition-all duration-1000 ease-out delay-400 ${
                     isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
                   }`}
                 >
-                  <Button href="/venues" variant="primary">
-                    Available Venue
+                  <Button href="/venues" variant="primary" className="text-center">
+                    Browse Venue
                   </Button>
-                  <Button href="/events" variant="outline">
-                    Available Event
+                  <Button href="/events" variant="outline" className="text-center">
+                    Browse Event
                   </Button>
                 </div>
               </div>
@@ -136,11 +138,11 @@ export default function Home() {
         </Section>
 
         {/* Sample Available Venues Section */}
-        <Section>
+        <Section background="gray">
           <Container>
-            <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Available Venues</h2>
+            <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Explore Venues</h2>
             <p className="text-center text-gray-600 mb-12">
-              Explore some of our top available venues for your next event.
+              Discover a selection of our top-rated venues, ready to host your event. <br/> GiraffeSpace makes it easy to find the perfect space.
             </p>
             {loading ? (
               <div className="text-center py-8">Loading venues...</div>
@@ -211,11 +213,12 @@ export default function Home() {
         </Section>
 
         {/* Upcoming Events Section */}
-        <Section background="gray">
+        <Section background="blue">
           <Container>
             <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Upcoming Events</h2>
             <p className="text-center text-gray-600 mb-12">
-              Discover and register for upcoming events at the University of Rwanda.
+            Stay informed and never miss out.
+            Discover and register for upcoming events <br/>happening all around you. There’s always something exciting to join.
             </p>
 
             {loading ? (
@@ -262,9 +265,10 @@ export default function Home() {
               <div className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium mb-4">
                 Features
               </div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Everything you need to manage events</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Your complete Event & Venue Management Solution              </h2>
               <p className="max-w-2xl mx-auto text-gray-600">
-                Our platform provides a comprehensive solution for event management, from proposal to execution.
+              GiraffeSpace offers an end-to-end platform designed to streamline every stage of event & Venue management 
+              — from initial proposal to successful execution.
               </p>
             </div>
 
@@ -272,37 +276,37 @@ export default function Home() {
               <FeatureCard
                 icon={CalendarDays}
                 title="Event Planning"
-                description="Create and manage events with detailed scheduling, budgeting, and resource allocation."
+                description="Plan and manage events with precision. Our tools support detailed scheduling, budgeting, and efficient allocation of resources."
               />
 
               <FeatureCard
                 icon={Users}
                 title="Registration"
-                description="Handle attendee registrations, QR code check-ins, and attendance tracking."
+                description="Easily manage participant sign-ups with online registration, QR code check-ins, and real-time attendance tracking."
               />
 
               <FeatureCard
                 icon={MapPin}
                 title="Venue Management"
-                description="Book and manage venues, reserve facilities, and allocate resources."
+                description="Book venues, reserve facilities, and assign resources — all from a single, intuitive dashboard."
               />
 
               <FeatureCard
                 icon={BarChart3}
-                title="Reporting"
-                description="Generate detailed reports on attendance, finances, and resource usage."
+                title="Data-Driven Reporting"
+                description="Access comprehensive reports on attendance, financial performance, and resource utilization to make informed decisions."
               />
 
               <FeatureCard
                 icon={CheckCircle}
                 title="Approval Workflow"
-                description="Streamlined approval process for event proposals with multi-level authorization."
+                description="Streamline event approvals with configurable, multi-level authorization processes."
               />
 
               <FeatureCard
                 icon={Lock}
                 title="Role-Based Access"
-                description="Different access levels for administrators, organizers, faculty, and students."
+                description="Provide tailored access for administrators, event organizers, faculty members, and students — ensuring security and efficiency."
               />
             </div>
           </Container>
@@ -311,9 +315,9 @@ export default function Home() {
         {/* System Overview Section */}
         <Section>
           <Container>
-            <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">System Overview</h2>
+            <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Platform Insights</h2>
             <p className="text-center text-gray-600 mb-12">
-              Key statistics and metrics from our events management platform.
+            View key statistics and performance metrics across our entire System.
             </p>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -121,7 +121,7 @@ export default function Footer() {
       </div>
 
       {/* Bottom Bar */}
-      <div className="bg-gray-100  text-center text-gray-500 border-t">
+      <div className="bg-blue-100  text-center text-gray-500 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0 text-sm">
             <div className="font-medium">GiraffeSpace</div>
