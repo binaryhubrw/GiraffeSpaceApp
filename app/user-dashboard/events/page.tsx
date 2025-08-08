@@ -43,6 +43,8 @@ import { Input } from "@/components/ui/input"
 import { isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
 import ApiService from "@/api/apiConfig"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 
 const EVENTS_PER_PAGE = 3
@@ -89,6 +91,7 @@ export default function EventSection() {
   const [dateFilter, setDateFilter] = useState("all")
   const [customStartDate, setCustomStartDate] = useState("")
   const [customEndDate, setCustomEndDate] = useState("")
+  const [showBookingCheckDialog, setShowBookingCheckDialog] = useState(false)
 
   useEffect(() => {
     if (!isLoggedIn || !user) return;
@@ -175,6 +178,18 @@ export default function EventSection() {
   )
 
   // Action handlers
+  const handleCreateEventClick = () => {
+    setShowBookingCheckDialog(true)
+  }
+
+  const handleBookingDialogCancel = () => {
+    setShowBookingCheckDialog(false)
+  }
+
+  const handleBookingDialogBookVenue = () => {
+    setShowBookingCheckDialog(false)
+    router.push("/venues")
+  }
   const handleDelete = (id: string) => {
     setEvents((prev) => prev.filter((e) => e.eventId !== id))
     setShowDeleteId(null)
@@ -253,7 +268,7 @@ export default function EventSection() {
           <div className="w-full md:w-auto">
             <button
               className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 w-full md:w-auto"
-              onClick={() => router.push("/user-dashboard/events/create")}
+              onClick={handleCreateEventClick}
             >
               <Plus className="h-4 w-4" />
               Create Event
@@ -309,7 +324,7 @@ export default function EventSection() {
                 <p className="text-gray-600 text-xs md:text-sm mb-1">Payable Events</p>
                 <h2 className="text-xl md:text-3xl font-bold">{stats.totalPayable}</h2>
               </div>
-              <span className="inline-block bg-red-100 text-red-600 rounded-full px-2 md:px-3 py-1 text-xs font-semibold">Payable</span>
+              <span className="inline-block bg-yellow-200 text-yellow-700 rounded-full px-2 md:px-3 py-1 text-xs font-semibold">Payable</span>
             </div>
           </div>
           <div className="border rounded-lg p-3 md:p-6 bg-white">
@@ -406,6 +421,7 @@ export default function EventSection() {
                     <option value="published">Published</option>
                     <option value="pending">Pending</option>
                     <option value="cancelled">Cancelled</option>
+                    
                   </select>
                   <select
                     value={dateFilter}
@@ -556,7 +572,7 @@ export default function EventSection() {
                               : "You haven't created any events yet."}
                           </p>
                           <button
-                            onClick={() => router.push("/manage/events/create")}
+                            onClick={handleCreateEventClick}
                             className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
                           >
                             <Plus className="h-4 w-4 mr-2" />
@@ -676,7 +692,7 @@ export default function EventSection() {
                       : "You haven't created any events yet."}
                   </p>
                   <button
-                    onClick={() => router.push("/manage/events/create")}
+                    onClick={handleCreateEventClick}
                     className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 mx-auto"
                   >
                     <Plus className="h-4 w-4 mr-2" />
@@ -1018,6 +1034,32 @@ export default function EventSection() {
           </div>
         </div>
       )}
+
+      {/* Booking Check Dialog */}
+      <Dialog open={showBookingCheckDialog} onOpenChange={setShowBookingCheckDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              Venue Booking Required 
+            </DialogTitle>
+            <DialogDescription>
+            Firstly start by booking a venue where your event  will take place.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2">
+            <button
+              onClick={handleBookingDialogCancel}
+              className="flex-1 bg-red-800 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
+            >
+              Cancel
+            </button>
+            <Button onClick={handleBookingDialogBookVenue} className="flex-1">
+              Book venue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
               
       </div>

@@ -7,7 +7,6 @@ import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { Button } from "./button"
 import { useUserOrganizations } from "@/hooks/useUserOrganizations"
-import ApiService from "@/api/apiConfig"
 import {
   Dialog,
   DialogContent,
@@ -84,31 +83,10 @@ export function Header({ activePage }: HeaderProps) {
     }
   }
 
-  const handleManageEventsClick = async (e: React.MouseEvent) => {
+  const handleManageEventsClick = (e: React.MouseEvent) => {
     e.preventDefault()
     setIsManageMenuOpen(false)
-    
-    // Check if user exists and has userId
-    if (!user?.userId) {
-     
-      return
-    }
-    
-    try {
-      
-      const response = await ApiService.getBookingByUserId(user.userId)
-       console.log("Booking response:", response)
-      
-      if (!response.data?.bookings || response.data.bookings.length === 0) {
-        setShowBookingCheckDialog(true)
-      } else {
-        router.push("/user-dashboard")
-      }
-    } catch (error) {
-      console.error("Error checking bookings:", error)
-      // If there's an error, still allow navigation to dashboard
-      router.push("/user-dashboard")
-    }
+    router.push("/user-dashboard/events")
   }
 
   const handleCreateOrganization = () => {
@@ -649,10 +627,10 @@ export function Header({ activePage }: HeaderProps) {
            <DialogHeader>
                            <DialogTitle className="flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-blue-600" />
-                No Event Found
+                Venue Booking Required to Manage Events
               </DialogTitle>
                              <DialogDescription>
-                To manage your event effectively, Firstly start by booking a venue where it will take place.
+                Firstly start by booking a venue where your event will take place.
                </DialogDescription>
            </DialogHeader>
            <DialogFooter className="flex gap-2">

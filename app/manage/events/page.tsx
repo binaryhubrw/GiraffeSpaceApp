@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Calendar, Plus, Filter, ChevronDown, Users, MapPin, Clock } from "lucide-react"
 import Link from "next/link"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 // Sample event data with updated status values
 const sampleEvents = [
@@ -54,6 +56,7 @@ export default function ManageEventsPage() {
   const [activeTab, setActiveTab] = useState("my-events")
   const [statusFilter, setStatusFilter] = useState("all")
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
+  const [showBookingCheckDialog, setShowBookingCheckDialog] = useState(false)
 
   // Redirect if not logged in
   useEffect(() => {
@@ -78,6 +81,19 @@ export default function ManageEventsPage() {
     upcomingEventsPeriod: "Next 30 days",
   }
 
+  const handleCreateEventClick = () => {
+    setShowBookingCheckDialog(true)
+  }
+
+  const handleBookingDialogCancel = () => {
+    setShowBookingCheckDialog(false)
+  }
+
+  const handleBookingDialogBookVenue = () => {
+    setShowBookingCheckDialog(false)
+    router.push("/venues")
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
 
@@ -93,7 +109,7 @@ export default function ManageEventsPage() {
             <div className="flex flex-col md:flex-row gap-4 mt-4 md:mt-0">
               <button
                 className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-                onClick={() => router.push("/manage/events/create")}
+                onClick={handleCreateEventClick}
               >
                 <Plus className="h-4 w-4" />
                 Create Event
@@ -283,7 +299,7 @@ export default function ManageEventsPage() {
                                 : "You haven't created any events yet."}
                             </p>
                             <button
-                              onClick={() => router.push("/manage/events/create")}
+                              onClick={handleCreateEventClick}
                               className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
                             >
                               <Plus className="h-4 w-4 mr-2" />
@@ -437,6 +453,32 @@ export default function ManageEventsPage() {
             </div>
           )}
         </div>
+
+        {/* Booking Check Dialog */}
+        <Dialog open={showBookingCheckDialog} onOpenChange={setShowBookingCheckDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-blue-600" />
+                Venue Booking Required to Manage Event
+              </DialogTitle>
+              <DialogDescription>
+              Firstly start by booking a venue where your event it will take place.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2">
+              <button
+                onClick={handleBookingDialogCancel}
+                className="flex-1 bg-red-800 hover:bg-red-700 text-white px-4 py-2 rounded-md font-medium"
+              >
+                Cancel
+              </button>
+              <Button onClick={handleBookingDialogBookVenue} className="flex-1">
+                Book venue
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
 
       <Footer />

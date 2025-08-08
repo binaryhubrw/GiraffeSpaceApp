@@ -22,6 +22,8 @@ import {
   Navigation,
   Info,
   X,
+  TriangleAlert,
+  Book,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -582,7 +584,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
               </div>
             </div>
             {/* Tabs */}
-            <div className="bg-white rounded-lg shadow-sm">
+            <div className="rounded-lg shadow-sm bg-blue-100">
               <div className="border-b px-6">
                 <div className="flex space-x-8">
                   <button
@@ -618,7 +620,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     {/* Venue Location */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Location</h2>
-                      <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="border border-gray-200 rounded-lg p-4 bg-white">
                         <div className="flex flex-col space-y-4">
                           <div className="flex items-start space-x-3">
                             <MapPin className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
@@ -651,9 +653,9 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     {/* Amenities */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Amenities</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 ">
                         {venue?.amenities.map((amenity) => (
-                          <div key={amenity.id} className="border border-gray-200 rounded-lg p-4">
+                          <div key={amenity.id} className="border border-gray-200 bg-white rounded-lg p-4">
                             <div className="flex justify-between items-start">
                               <div>
                                 <h3 className="font-medium text-gray-900">{amenity.resourceName}</h3>
@@ -671,9 +673,10 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     {/* Booking Conditions */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Booking Conditions</h2>
-                      <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
-                        <div className="flex items-start space-x-3">
-                          <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="bg-white p-4">
+                         <div className="bg-[#f9e8f6] border border-blue-100 rounded-lg p-4 ">
+                        <div className="flex items-start space-x-3 ">
+                          <TriangleAlert className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
                           <div>
                             <p className="text-sm text-blue-900 font-medium">Important Booking Information</p>
                             <p className="text-sm text-blue-800 mt-1">
@@ -692,9 +695,18 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                         </div>
                       </div>
                       {venue?.bookingConditions.map((condition) => (
-                        <div key={condition.id} className="border border-gray-200 rounded-lg p-4 mb-4">
-                          <h3 className="font-medium text-gray-900 mb-2">{condition.descriptionCondition}</h3>
-                          <p className="text-gray-600 mb-4">{condition.notaBene}</p>
+                        <div key={condition.id} className=" p-4 mb-4">
+                          <p className="flex gap-3">
+
+                            <Book className="h-5 w-5 text-blue-600"/>
+                            <span className="font-medium text-gray-500">Description</span> 
+                          </p>
+                          <h3 className="font-medium text-gray-900 mb-2 pl-8">{condition.descriptionCondition}</h3>
+                          <div className="flex gap-3">
+                            <Info className="h-5 w-5 text-yellow-500" />
+                            <p className="text-gray-500 ">Note</p>
+                          </div>
+                          <p className="text-gray-900 mb-4 pl-8">{condition.notaBene}</p>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                             <div>
                               <p className="text-gray-500">Deposit Required</p>
@@ -711,6 +723,9 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                         </div>
                       ))}
                     </div>
+
+                      </div>
+                     
                     {/* Virtual Tour */}
                     {venue?.virtualTourUrl && (
                       <div className="mb-8">
@@ -741,7 +756,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     {/* Organization Information */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Organization Information</h2>
-                      <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="border bg-white rounded-lg p-4">
                         <h3 className="font-medium text-lg text-gray-900 mb-2">
                           {venue?.organization.organizationName}
                         </h3>
@@ -768,7 +783,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     {/* Manager Information */}
                     <div>
                       <h2 className="text-xl font-semibold mb-4 text-gray-900">Venue Manager</h2>
-                      <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="border bg-white rounded-lg p-4">
                         <h3 className="font-medium text-lg text-gray-900 mb-2">
                           {venue?.manager.firstName} {venue?.manager.lastName}
                         </h3>
