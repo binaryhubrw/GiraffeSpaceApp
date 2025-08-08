@@ -904,12 +904,7 @@ const EventDetailsPage: React.FC = () => {
                 >
                   Cancel
                 </Button>
-                <Button 
-                  className="flex-1 h-12 bg-green-600 hover:bg-green-700" 
-                  onClick={handleInvitePeople}
-                >
-                  Invite People
-                </Button>
+              
                 
                 {!formData.isEntryPaid ? (
                   <Button 
@@ -929,7 +924,7 @@ const EventDetailsPage: React.FC = () => {
                 ) : (
                   <Button 
                     className="flex-1 h-12 bg-blue-600 hover:bg-blue-700" 
-                    onClick={() => router.push(`/events/create-ticket/${eventId}`)}
+                    onClick={() => router.push(`/events/${eventId}/create-ticket`)}
                   >
                     Create Event Ticket
                   </Button>
