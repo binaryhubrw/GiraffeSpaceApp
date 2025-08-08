@@ -130,7 +130,7 @@ export default function Footer() {
               <span className="font-semibold">Binary Hub</span> © 2025
             </div>
             <div>
-              Built by the{" "}
+              Powered by {" "}
               <a
                 href="https://urbinaryhub.rw"
                 target="_blank"

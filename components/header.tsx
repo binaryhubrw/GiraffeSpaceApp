@@ -623,7 +623,7 @@ export function Header({ activePage }: HeaderProps) {
               Organization Required
             </DialogTitle>
             <DialogDescription>
-              You need to create an organization before you manage venues. 
+              Please create an organization before proceeding to manage venues 
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2">
