@@ -11,7 +11,7 @@ import React from "react";
 
 export default function Footer() {
   return (
-    <footer className="bg-white border-t border-gray-200 mt-20">
+    <footer className="bg-blue-100 border-t border-gray-200 mt-20">
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -121,13 +121,13 @@ export default function Footer() {
       </div>
 
       {/* Bottom Bar */}
-      <div className="bg-blue-100  text-center text-gray-500 border-t">
+      <div className="bg-gray-100  text-center text-gray-500 border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col md:flex-row items-center justify-between space-y-2 md:space-y-0 text-sm">
             <div className="font-medium">GiraffeSpace</div>
             <div className="text-center">
-              All rights reserved by{" "}
-              <span className="font-semibold">Binary Hub</span> © 2025
+            © 2025 GiraffeSpace.{" "}
+              <span className="font-semibold">All rights reserved.</span> 
             </div>
             <div>
               Powered by {" "}
