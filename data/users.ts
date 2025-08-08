@@ -57,6 +57,37 @@ export interface UserApiResponse {
   token: string;
 }
 
+export interface FreeRegistration {
+  freeRegistrationId: string;
+  eventId: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  nationalId: string | null;
+  gender: string | null;
+  address: Array<{ sector: string; street?: string; country: string; district: string; province: string }> | null;
+  qrCode: string;
+  barcode: string;
+  sevenDigitCode: string;
+  pdfUrl: string | null;
+  attended: boolean;
+  attendedTimes: number;
+  checkInHistory: Array<{ method: string; checkInDate: string; checkInTime: string }>;
+  isUsed: boolean;
+  registrationDate: string;
+  attendanceRatio?: string; // e.g., "1/1"
+  isFullyAttended?: boolean;
+  registeredByDetails: { // Define this object more precisely if needed
+    userId: string;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phoneNumber: string | null;
+  } | null;
+  checkedInByStaff: string | null;
+}
+
 // Example mock data
 export const users: User[] = [
   {

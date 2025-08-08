@@ -42,28 +42,18 @@ import { Pencil, Eye, Trash2, XCircle } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore } from "date-fns"
 import ApiService from "@/api/apiConfig"
+import axios from "axios"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 
 const EVENTS_PER_PAGE = 3
+const ATTENDANCE_EVENT_ID = "c1883bb9-8a54-4dd3-a234-6add0e872d48"
 
-// Helper to determine event pay type
-function getPayType(event: {
-    id: string; name: string; date: string; venue: string; registrations: number; capacity: number; status: string;
-    ticketPrice: number | string;
-  }) {
-  let price = event.ticketPrice !== undefined ? event.ticketPrice : "Free"
-  if (typeof price === "string") price = price.trim()
-  if (
-    price === 0 ||
-    price === "0" ||
-    (typeof price === "string" && (price.toLowerCase() === "free" || price.toLowerCase() === "by invitation"))
-  ) {
-    return "Free Entrance"
-  }
-  return "Payable"
+// Helper to determine event pay type based on backend field isEntryPaid
+function getPayType(event: { isEntryPaid?: boolean }) {
+  return event.isEntryPaid ? "Payable" : "Free Entrance"
 }
 
 // Helper to determine if an event can request publication
@@ -91,7 +81,8 @@ export default function EventSection() {
   const [dateFilter, setDateFilter] = useState("all")
   const [customStartDate, setCustomStartDate] = useState("")
   const [customEndDate, setCustomEndDate] = useState("")
-  const [showBookingCheckDialog, setShowBookingCheckDialog] = useState(false)
+  const [attendanceCount, setAttendanceCount] = useState<number>(0)
+  const [upcomingEventsCount, setUpcomingEventsCount] = useState<number>(0)
 
   useEffect(() => {
     if (!isLoggedIn || !user) return;
@@ -107,6 +98,60 @@ export default function EventSection() {
       .catch(() => setEvents([]))
       .finally(() => setLoading(false))
   }, [isLoggedIn, user])
+
+  // Fetch total attendees for a specific event from backend
+  useEffect(() => {
+    if (!isLoggedIn) return
+    ;(async () => {
+      try {
+        const res = await axios.get(
+          `${ApiService.BASE_URL}/event/${ATTENDANCE_EVENT_ID}/attendance/free`,
+          { headers: ApiService.getHeader(), withCredentials: true }
+        )
+        if (res?.data?.success && Array.isArray(res.data.data)) {
+          const count = res.data.data.filter((r: any) => r?.attended === true).length
+          setAttendanceCount(count)
+        } else {
+          setAttendanceCount(0)
+        }
+      } catch (e: any) {
+        if (e?.response?.status === 404) {
+          setAttendanceCount(0)
+          return
+        }
+        setAttendanceCount(0)
+      }
+    })()
+  }, [isLoggedIn])
+
+  // Fetch upcoming events count (next 30 days) from /event/all
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await axios.get(
+          `${ApiService.BASE_URL}/event/all`,
+          { headers: ApiService.getHeader(), withCredentials: true }
+        )
+        if (res?.data?.success && Array.isArray(res.data.data)) {
+          const now = new Date()
+          const horizon = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
+          const count = res.data.data.filter((ev: any) =>
+            Array.isArray(ev?.bookingDates) && ev.bookingDates.some((bd: any) => {
+              const dateStr = bd?.date
+              if (!dateStr) return false
+              const dt = parseISO(String(dateStr))
+              return dt.getTime() >= now.getTime() && dt.getTime() <= horizon.getTime()
+            })
+          ).length
+          setUpcomingEventsCount(count)
+        } else {
+          setUpcomingEventsCount(0)
+        }
+      } catch (e) {
+        setUpcomingEventsCount(0)
+      }
+    })()
+  }, [])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -160,12 +205,10 @@ export default function EventSection() {
     )
     .filter((event) => {
       if (payTypeFilter === "all") return true
-      let price = (event.ticketPrice !== undefined ? event.ticketPrice : "Free")
-      if (typeof price === "string") price = price.trim()
       if (payTypeFilter === "free") {
-        return price === 0 || price === "0" || (typeof price === "string" && (price.toLowerCase() === "free" || price.toLowerCase() === "by invitation"))
+        return event.isEntryPaid === false
       } else if (payTypeFilter === "payable") {
-        return !(price === 0 || price === "0" || (typeof price === "string" && (price.toLowerCase() === "free" || price.toLowerCase() === "by invitation")))
+        return event.isEntryPaid === true
       }
       return true
     })
@@ -240,11 +283,9 @@ export default function EventSection() {
   const stats = {
     totalEvents: events.length,
     totalEventsChange: "+12%",
-    totalAttendees: 1892,
+    totalAttendees: attendanceCount,
     totalAttendeesChange: "+5%",
-    venuesUsed: 12,
-    venuesUsedChange: "+2",
-    upcomingEvents: 8,
+    upcomingEvents: upcomingEventsCount,
     upcomingEventsPeriod: "Next 30 days",
     totalPayable,
     totalFree,
@@ -298,16 +339,7 @@ export default function EventSection() {
               <Users className="h-4 md:h-5 w-4 md:w-5 text-gray-400" />
             </div>
           </div>
-          <div className="border rounded-lg p-3 md:p-6 bg-white">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-gray-600 text-xs md:text-sm mb-1">Venues Used</p>
-                <h2 className="text-xl md:text-3xl font-bold">{stats.venuesUsed}</h2>
-                <p className="text-gray-600 text-xs md:text-sm">{stats.venuesUsedChange}</p>
-              </div>
-              <MapPin className="h-4 md:h-5 w-4 md:w-5 text-gray-400" />
-            </div>
-          </div>
+          
           <div className="border rounded-lg p-3 md:p-6 bg-white">
             <div className="flex justify-between items-start">
               <div>

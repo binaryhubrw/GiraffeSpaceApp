@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Calendar, Users, DollarSign, Ticket, CreditCard, Filter, Building, TrendingUp } from 'lucide-react'
+import { Calendar, Users, DollarSign, Ticket, CreditCard, Building } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart"
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LineChart, Line } from "recharts"
@@ -166,39 +166,7 @@ export default function OverviewSection({
                 </div>
               </div>
 
-              {/* Filters */}
-              <div className="flex flex-1 flex-wrap items-center gap-2">
-                <div className="flex items-center gap-1 rounded-md border border-gray-200 bg-white p-1">
-                  {(["all", "free", "paid"] as EventTypeFilter[]).map((t) => (
-                    <Button
-                      key={t}
-                      variant={typeFilter === t ? "default" : "ghost"}
-                      onClick={() => setTypeFilter(t)}
-                      className={`h-8 ${typeFilter === t ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-gray-700"}`}
-                    >
-                      {t === "all" ? "All" : t === "free" ? "Free" : "Paid"}
-                    </Button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-1 rounded-md border border-gray-200 bg-white p-1">
-                  {(["30d", "90d", "all"] as RangeFilter[]).map((r) => (
-                    <Button
-                      key={r}
-                      variant={rangeFilter === r ? "default" : "ghost"}
-                      onClick={() => setRangeFilter(r)}
-                      className={`h-8 ${rangeFilter === r ? "bg-blue-600 hover:bg-blue-700 text-white" : "text-gray-700"}`}
-                    >
-                      {r === "30d" ? "Last 30 days" : r === "90d" ? "Last 90 days" : "All time"}
-                    </Button>
-                  ))}
-                </div>
-                <div className="ml-auto flex items-center gap-2">
-                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                    <TrendingUp className="mr-2 h-4 w-4" />
-                    Create New Event
-                  </Button>
-                </div>
-              </div>
+              {/* Filters removed per request */}
             </div>
 
             {/* Quick Stats */}

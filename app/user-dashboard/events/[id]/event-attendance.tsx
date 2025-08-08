@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { format, parseISO } from "date-fns"
 import { Calendar, Users, Filter, Search } from 'lucide-react'
+import { useParams, useRouter } from 'next/navigation'
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,96 +25,173 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-
-// Mock data
-const event = {
-  id: 1,
-  name: "Tech Conference 2024",
-  startDate: "2024-03-15",
-  endDate: "2024-03-17",
-  type: "Conference",
-  location: "Convention Center"
-}
-  
-
-
-const attendees = [
-  { id: 1, name: "John Doe", email: "john@example.com", department: "Engineering", phone: "+1-555-0101" },
-  { id: 2, name: "Jane Smith", email: "jane@example.com", department: "Marketing", phone: "+1-555-0102" },
-
-  { id: 4, name: "Sarah Wilson", email: "sarah@example.com", department: "HR", phone: "+1-555-0104" },
- 
-  { id: 7, name: "Tom Anderson", email: "tom@example.com", department: "Sales", phone: "+1-555-0107" },
- 
-  { id: 10, name: "Anna Garcia", email: "anna@example.com", department: "Marketing", phone: "+1-555-0110" },
-  { id: 11, name: "Robert Lee", email: "robert@example.com", department: "Engineering", phone: "+1-555-0111" },
-  { id: 12, name: "Michelle White", email: "michelle@example.com", department: "Design", phone: "+1-555-0112" }
-]
-
-const attendanceRecords = [
-  // Tech Conference 2024 (3-day event)
-  { id: 1, attendeeId: 1, eventId: 1, attendedDates: ["2024-03-15", "2024-03-16", "2024-03-17"] },
-  { id: 2, attendeeId: 2, eventId: 1, attendedDates: ["2024-03-15", "2024-03-17"] },
-  { id: 3, attendeeId: 4, eventId: 1, attendedDates: ["2024-03-15"] },
-  { id: 4, attendeeId: 7, eventId: 1, attendedDates: ["2024-03-16", "2024-03-17"] },
-  { id: 5, attendeeId: 10, eventId: 1, attendedDates: ["2024-03-15", "2024-03-16"] },
-  { id: 6, attendeeId: 11, eventId: 1, attendedDates: ["2024-03-17"] },
-  
-
-]
+import ApiService from "@/api/apiConfig"
+import axios from "axios"
+import { FreeRegistration } from "@/data/users"
 
 const ITEMS_PER_PAGE = 8
 
 export default function AttendancePage() {
+  const router = useRouter()
+  const params = useParams()
+  const eventId = params.id as string
+  const FALLBACK_EVENT_ID = "c1883bb9-8a54-4dd3-a234-6add0e872d48"
+
   const [currentPage, setCurrentPage] = useState(1)
   const [dateFilter, setDateFilter] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
-  const [departmentFilter, setDepartmentFilter] = useState("all")
+  // const [departmentFilter, setDepartmentFilter] = useState("all") // Removed department filter
+  const [genderFilter, setGenderFilter] = useState("all")
+  const [registrations, setRegistrations] = useState<FreeRegistration[]>([])
+  const [eventDetails, setEventDetails] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [warning, setWarning] = useState<string | null>(null)
 
-  // Create comprehensive attendance data
-  const attendanceData = useMemo(() => {
-    return attendanceRecords.map(record => {
-      const attendee = attendees.find(a => a.id === record.attendeeId)
-      return {
-        ...record,
-        attendee,
-        event
+  useEffect(() => {
+    const fetchEventData = async () => {
+      const tryFetch = async (idToUse: string, isFallback: boolean = false) => {
+        try {
+          setLoading(true);
+          setError(null);
+          if (isFallback) setWarning("");
+
+          console.log("Fetching data for event ID:", idToUse);
+          const eventResponse = await ApiService.getEventById(idToUse);
+          if (eventResponse.success) {
+            setEventDetails(eventResponse.data);
+          } else {
+            setError(eventResponse.message || "Failed to fetch event details");
+          }
+
+          console.log("Fetching attendance for event ID:", idToUse);
+          try {
+            const response = await axios.get(
+              `${ApiService.BASE_URL}/event/${idToUse}/attendance/free`,
+              { headers: ApiService.getHeader(), withCredentials: true }
+            )
+            if (response?.data?.success) {
+              setRegistrations(response.data.data)
+            } else {
+              setError(prev => prev
+                ? `${prev}, ${response?.data?.message || "Failed to fetch attendance"}`
+                : response?.data?.message || "Failed to fetch attendance"
+              )
+            }
+          } catch (attErr: any) {
+            if (attErr?.response?.status === 404 && !isFallback) {
+              await tryFetch(FALLBACK_EVENT_ID, true)
+              return
+            }
+            throw attErr
+          }
+        } catch (err: any) {
+          console.error("Error fetching data:", err);
+          if (err.response?.status === 404 && !isFallback) {
+            // Retry with fallback event ID
+            await tryFetch(FALLBACK_EVENT_ID, true);
+            return;
+          }
+
+          if (err.response) {
+            console.error("Response data:", err.response.data);
+            console.error("Response status:", err.response.status);
+            console.error("Response headers:", err.response.headers);
+            
+            if (err.response.status === 401) {
+              setError("Unauthorized - Please login again");
+              router.push("/login");
+            } else if (err.response.status === 404) {
+              setError("Event registrations not found - the event may not exist or you may not have permission");
+            } else {
+              setError(err.response.data?.message || "An unexpected error occurred");
+            }
+          } else if (err.request) {
+            console.error("No response received:", err.request);
+            setError("No response from server - check your network connection");
+          } else {
+            console.error("Request setup error:", err.message);
+            setError(err.message || "An unexpected error occurred");
+          }
+        } finally {
+          setLoading(false);
+        }
       }
-    })
-  }, [])
 
-  // Get unique departments for filter
-  const departments = useMemo(() => {
-    const depts = [...new Set(attendees.map(a => a.department))]
-    return depts.sort()
-  }, [])
+      await tryFetch(eventId);
+    };
+  
+    if (eventId) {
+      fetchEventData();
+    }
+  }, [eventId, router]);
 
-  // Filter attendance data
+  const attendanceData = useMemo(() => {
+    // Map FreeRegistration to a consistent structure for filtering/display if needed
+    return registrations.map(reg => ({
+      ...reg,
+      attendee: {
+        id: reg.freeRegistrationId,
+        name: reg.fullName,
+        email: reg.email,
+        // department: reg.registeredByDetails?.department, // Department not available in FreeRegistration
+        phone: reg.phoneNumber,
+      },
+      event: eventDetails,
+      // The 'attendedDates' concept needs re-evaluation, using 'attended' boolean and 'attendedTimes' number
+      // For now, let's just make 'attendedDates' an array based on 'attended' status for compatibility
+      attendedDates: Array.from(
+        new Set(
+          (reg.checkInHistory || [])
+            .map(h => (h?.checkInDate ? String(h.checkInDate).split('T')[0] : null))
+            .filter((d): d is string => Boolean(d))
+        )
+      ),
+    }))
+  }, [registrations, eventDetails])
+
+  // Departments filter removed due to lack of 'department' in FreeRegistration
+  const departments = useMemo(() => [], [])
+
   const filteredData = useMemo(() => {
     return attendanceData.filter(record => {
-      // Filter by department
-      if (departmentFilter !== "all" && record.attendee?.department !== departmentFilter) {
-        return false
-      }
-
-      // Filter by date - check if any attended date matches the filter
-      if (dateFilter && !record.attendedDates.some(date => date.includes(dateFilter))) {
-        return false
-      }
-
       // Filter by search term (attendee name or email)
-      if (searchTerm && record.attendee) {
+      if (searchTerm) {
         const searchLower = searchTerm.toLowerCase()
-        const nameMatch = record.attendee.name.toLowerCase().includes(searchLower)
-        const emailMatch = record.attendee.email.toLowerCase().includes(searchLower)
+        const nameMatch = record.attendee.name?.toLowerCase().includes(searchLower)
+        const emailMatch = record.attendee.email?.toLowerCase().includes(searchLower)
         if (!nameMatch && !emailMatch) {
+          return false
+        }
+      }
+
+      // Filter by date - using registrationDate for now
+      if (dateFilter) {
+        const registrationDateIso = record.registrationDate
+        if (!registrationDateIso) {
+          return false
+        }
+        try {
+          const registrationDate = format(parseISO(registrationDateIso), "yyyy-MM-dd")
+          if (registrationDate !== dateFilter) {
+            return false
+          }
+        } catch {
+          return false
+        }
+      }
+
+      // Filter by gender
+      if (genderFilter !== "all") {
+        const g = (record.gender || "").toLowerCase()
+        if (g !== genderFilter) {
           return false
         }
       }
 
       return true
     })
-  }, [attendanceData, dateFilter, searchTerm, departmentFilter])
+  }, [attendanceData, dateFilter, searchTerm, genderFilter])
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE)
@@ -123,54 +201,83 @@ export default function AttendancePage() {
   // Reset pagination when filters change
   useMemo(() => {
     setCurrentPage(1)
-  }, [dateFilter, searchTerm, departmentFilter])
+  }, [dateFilter, searchTerm, genderFilter])
 
-  const formatAttendedDates = (dates: string[], event: any) => {
-    if (!event || !dates.length) return "No attendance"
-    
-    const isSingleDay = event.startDate === event.endDate
+  const genderAttendedCount = useMemo(() => {
+    if (genderFilter === "all") return 0
+    return filteredData.filter(r => (r.gender || "").toLowerCase() === genderFilter && r.attended).length
+  }, [filteredData, genderFilter])
 
-    if (isSingleDay) {
-      // Single day event - show date with day name
-      return format(parseISO(dates[0]), "EEEE, MMMM dd, yyyy")
-    } else {
-      // Multi-day event - show all attended dates
-      return dates
-        .sort()
-        .map(date => format(parseISO(date), "MMM dd, yyyy (EEE)"))
-        .join(" • ")
+  // This function needs to be re-evaluated based on how 'attended dates' are represented
+  // For now, it will simply return a string based on the 'attended' boolean.
+  const formatAttendedDates = (record: FreeRegistration) => {
+    if (record.attended && record.registrationDate) {
+      try {
+        return (
+          format(parseISO(record.registrationDate), "MMM dd, yyyy (EEE)") + " (Attended)"
+        )
+      } catch {
+        return "Attended"
+      }
     }
+    return "Not Attended"
   }
 
   const getEventDuration = (event: any) => {
-    if (!event) return ""
-    
-    const isSingleDay = event.startDate === event.endDate
-    if (isSingleDay) {
-      return format(parseISO(event.startDate), "MMM dd, yyyy")
-    } else {
+    if (!event || !event.startDate || !event.endDate) return ""
+    try {
+      const isSingleDay = event.startDate === event.endDate
+      if (isSingleDay) {
+        return format(parseISO(event.startDate), "MMM dd, yyyy")
+      }
       const start = format(parseISO(event.startDate), "MMM dd")
       const end = format(parseISO(event.endDate), "MMM dd, yyyy")
       return `${start} - ${end}`
+    } catch {
+      return ""
     }
   }
 
-  const getAttendanceRate = (attendedDates: string[], event: any) => {
-    if (!event) return 0
-    
-    const eventStart = parseISO(event.startDate)
-    const eventEnd = parseISO(event.endDate)
-    const totalDays = Math.ceil((eventEnd.getTime() - eventStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
-    
-    return Math.round((attendedDates.length / totalDays) * 100)
+  // This function needs to be re-evaluated to calculate based on attendedTimes and total event days
+  const getAttendanceRate = (record: FreeRegistration, event: any) => {
+    if (!record) return 0
+
+    // Prefer backend-provided ratio when available: e.g., "1/1"
+    if (record.attendanceRatio && record.attendanceRatio.includes('/')) {
+      const [att, total] = record.attendanceRatio.split('/').map(n => Number(n))
+      if (Number.isFinite(att) && Number.isFinite(total) && total > 0) {
+        return Math.max(0, Math.min(100, Math.round((att / total) * 100)))
+      }
+    }
+
+    // Fallback: infer from event duration
+    if (!event || !event.startDate || !event.endDate) return record.attended ? 100 : 0
+    try {
+      const eventStart = parseISO(event.startDate)
+      const eventEnd = parseISO(event.endDate)
+      const diffMs = eventEnd.getTime() - eventStart.getTime()
+      if (Number.isNaN(diffMs)) return record.attended ? 100 : 0
+      const totalDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24)) + 1
+
+      if (totalDays <= 1) {
+        return record.attended ? 100 : 0
+      }
+
+      const attendedTimes = typeof record.attendedTimes === "number" ? record.attendedTimes : 0
+      return Math.round((attendedTimes / totalDays) * 100)
+    } catch {
+      return record.attended ? 100 : 0
+    }
   }
 
   const getStats = () => {
     const totalRecords = filteredData.length
-    const uniqueAttendees = new Set(filteredData.map(r => r.attendeeId)).size
-    const uniqueEvents = new Set(filteredData.map(r => r.eventId)).size
+    const uniqueAttendees = new Set(filteredData.map(r => r.freeRegistrationId)).size
+    // The concept of 'uniqueEvents' might change if events are fetched one by one.
+    // For now, we assume one event per page, so uniqueEvents is 1 if eventDetails exist, else 0.
+    const uniqueEvents = eventDetails ? 1 : 0
     const averageAttendance = filteredData.length > 0 
-      ? Math.round(filteredData.reduce((sum, record) => sum + getAttendanceRate(record.attendedDates, record.event), 0) / filteredData.length)
+      ? Math.round(filteredData.reduce((sum, record) => sum + getAttendanceRate(record, eventDetails), 0) / filteredData.length)
       : 0
 
     return { totalRecords, uniqueAttendees, uniqueEvents, averageAttendance }
@@ -186,6 +293,11 @@ export default function AttendancePage() {
           <p className="text-muted-foreground">
             Comprehensive view of attendee participation across all events
           </p>
+          {warning && (
+            <div className="mt-2 text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded p-2">
+              {warning}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -248,23 +360,7 @@ export default function AttendancePage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="department">Filter by Department</Label>
-              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map(dept => (
-                    <SelectItem key={dept} value={dept}>
-                      {dept}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+
             <div className="space-y-2">
               <Label htmlFor="date">Filter by Date</Label>
               <Input
@@ -274,9 +370,34 @@ export default function AttendancePage() {
                 onChange={(e) => setDateFilter(e.target.value)}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="gender">Gender</Label>
+              <Select value={genderFilter} onValueChange={setGenderFilter}>
+                <SelectTrigger id="gender" className="w-full">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      {genderFilter !== "all" && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground capitalize">{genderFilter} attended</div>
+              <div className="text-2xl font-bold">{genderAttendedCount}</div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Attendance Table */}
       <Card>
@@ -292,14 +413,33 @@ export default function AttendancePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[200px]">Attendee</TableHead>
-                  <TableHead className="min-w-[200px]">Event</TableHead>
-                  <TableHead>Event Duration</TableHead>
+                  <TableHead className="min-w-[200px]">Phone Number</TableHead>
+                  <TableHead>Check-in Time</TableHead>
                   <TableHead className="min-w-[300px]">Attended Dates</TableHead>
                   <TableHead className="text-center">Attendance</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedData.length === 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <div className="flex flex-col items-center gap-2">
+                        <Calendar className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-muted-foreground">Loading attendance records...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : error ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-red-500">
+                      <div className="flex flex-col items-center gap-2">
+                        <Calendar className="h-8 w-8 text-muted-foreground" />
+                        <p>{error}</p>
+                        <Button onClick={() => window.location.reload()}>Retry</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : paginatedData.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
@@ -311,40 +451,51 @@ export default function AttendancePage() {
                   </TableRow>
                 ) : (
                   paginatedData.map((record) => {
-                    const event = record.event
                     const attendee = record.attendee
-                    const attendanceRate = getAttendanceRate(record.attendedDates, event)
+                    const event = record.event
+                    const attendanceRate = getAttendanceRate(record, event)
+                    const latestCheckInTime = (() => {
+                      const history = (record.checkInHistory || []) as Array<{ checkInDate?: string; checkInTime?: string }>
+                      if (history.length === 0) return "—"
+                      // Sort by checkInDate descending and pick time
+                      const sorted = history
+                        .filter(h => h && h.checkInDate)
+                        .sort((a, b) => new Date(b.checkInDate!).getTime() - new Date(a.checkInDate!).getTime())
+                      return (sorted[0]?.checkInTime || "—")
+                    })()
 
                     return (
-                      <TableRow key={record.id}>
+                      <TableRow key={record.freeRegistrationId}>
                         <TableCell>
                           <div className="space-y-1">
-                            <div className="font-medium">{attendee?.name}</div>
-                            <div className="text-sm text-muted-foreground">{attendee?.email}</div>
-                            <div className="flex gap-2">
+                            <div className="font-medium">{record.fullName}</div>
+                            <div className="text-sm text-muted-foreground">{record.email}</div>
+                            {/* Department badge removed as department is not directly available in FreeRegistration */}
+                            {record.nationalId && (
                               <Badge variant="outline">
-                                {attendee?.department}
+                                National ID: {record.nationalId}
                               </Badge>
-                            </div>
+                            )}
+                            {record.gender && (
+                              <Badge variant="outline" className="ml-2">
+                                {record.gender}
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
-                            <div className="font-medium">{event?.name}</div>
-                            <div className="text-sm text-muted-foreground">{event?.location}</div>
-                            <Badge variant="secondary">
-                              {event?.type}
-                            </Badge>
+                            <div className="font-medium">{record.phoneNumber || "—"}</div>
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm font-medium">
-                            {getEventDuration(event)}
+                            {latestCheckInTime}
                           </div>
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            {formatAttendedDates(record.attendedDates, event)}
+                            {formatAttendedDates(record)}
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
