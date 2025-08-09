@@ -170,58 +170,7 @@ export default function PayVenueBooking() {
       try {
         setLoading(true);
 
-        // If we have booking data from context, use it
-        if (contextBookingData && contextBookingData.venueBookings) {
-          const venueBooking = contextBookingData.venueBookings.find(
-            (booking: any) => booking.bookingId === bookingId
-          );
-
-          if (venueBooking) {
-            // Transform context data to match the expected format
-            const transformedData: VenueBookingData = {
-              bookingId: venueBooking.bookingId,
-              eventId: venueBooking.eventId,
-              venueId: venueBooking.venueId,
-              eventTitle: contextBookingData.event.eventName,
-              bookingDates: venueBooking.bookingDates,
-              bookingReason: venueBooking.bookingReason,
-              venue: {
-                venueName: venueBooking.venue.venueName,
-                description: venueBooking.venue.description || "",
-                capacity: venueBooking.venue.capacity,
-                venueLocation: venueBooking.venue.venueLocation,
-                mainPhotoUrl: venueBooking.venue.mainPhotoUrl,
-                photoGallery: venueBooking.venue.photoGallery || [],
-                basePrice:
-                  venueBooking.venue.venueVariables?.[0]?.venueAmount || 0,
-                bookingType: venueBooking.venue.bookingType,
-                amenities: [],
-              },
-              organizer: {
-                firstName: venueBooking.user.firstName,
-                lastName: venueBooking.user.lastName,
-                email: venueBooking.user.email,
-                phoneNumber: venueBooking.user.phoneNumber,
-              },
-              pricing: {
-                baseAmount: venueBooking.amountToBePaid,
-                discountPercent: 0,
-                discountAmount: 0,
-                taxPercent: 0,
-                taxAmount: 0,
-                totalAmount: venueBooking.amountToBePaid,
-              },
-              bookingStatus: venueBooking.bookingStatus,
-              createdAt: venueBooking.createdAt,
-            };
-
-            setBookingData(transformedData);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // Fetch real booking data from API
+        // Always fetch real booking data from API for accurate information
         const response = await ApiService.getBookingById(bookingId);
         console.log("Booking data response:", response);
 
@@ -278,6 +227,7 @@ export default function PayVenueBooking() {
           console.log("Transformed booking data:", transformedData);
           console.log("Venue data in transformed object:", transformedData.venue);
           console.log("Pricing data in transformed object:", transformedData.pricing);
+          console.log("Payment summary data:", transformedData.paymentSummary);
         } else {
           setError("Failed to load booking data");
         }

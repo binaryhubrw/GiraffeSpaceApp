@@ -1785,5 +1785,42 @@ class ApiService {
   }
 
   // NOTE: getFreeAttendanceByEventId removed as requested
+
+  /******Add ticket check in staff****** */
+  static async addTicketCheckInStaff(eventId: string, staffData: any): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${this.BASE_URL}/event/${eventId}/check-in-staff`,
+        staffData,
+        {
+          headers: this.getHeader(staffData),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error adding ticket check-in staff for event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+  /**** getAllStaffByEventId**** */
+  static async getAllStaffByEventId(eventId: string): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${this.BASE_URL}/event/${eventId}/check-in-staff`,
+        {
+          headers: this.getHeader(),
+          withCredentials: true,
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching check-in staff for event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+
 }
 export default ApiService;

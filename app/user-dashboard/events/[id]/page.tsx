@@ -257,10 +257,10 @@ export default function EventDetails({ params }: { params: { id: string } }) {
             <div className="hidden md:flex gap-2">
              
             
-              <Button className=" flex gap-2 h-12 bg-blue-500 hover:bg-blue-700 ">
+              <Link  href={`/user-dashboard/events/${event.eventId}/ticket-insipector`}  className=" font-medium py-2 px-4 rounded-md flex items-center text-white bg-blue-500 hover:bg-blue-700 ">
                 <Users className="mr-2 h-5 w-5 text-green-500" />
                 Ticket Inspector
-              </Button>
+              </Link>
               {!event.isEntryPaid && (
                 <Link
                   href={`/events/check-invitation`}

@@ -49,9 +49,9 @@ export default function UserDashboardLayout({
 
       {/* Main Content */}
       <div className={`pt-16 transition-all duration-300 ${
-        sidebarOpen ? 'md:pl-60' : 'md:pl-60'
+        sidebarOpen ? 'md:pl-40' : 'md:pl-40'
       }`}>
-        <main className="min-h-screen bg-[#eff6ff] p-4 md:p-8">
+        <main className="min-h-screen bg-[#eff6ff] ">
           {children}
         </main>
       </div>

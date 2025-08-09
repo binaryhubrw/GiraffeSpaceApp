@@ -298,8 +298,8 @@ export default function EventSection() {
   }
 
   return (
-    <div className="p-4 md:p-8">
-      <div className={`transform transition-all duration-1000 ease-out ${isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}`}>
+    <div className="py-4 md:py-8 px-0 md:px-4">
+      <div className={`transform transition-all duration-1000 ease-out ${isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"} mx-0` }>
         {/* Dashboard Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8">
           <div className="mb-4 md:mb-0">
@@ -374,7 +374,7 @@ export default function EventSection() {
 
       <div className="bg-white">
         {/* Tab Navigation - Mobile Responsive */}
-        <div className="border-b mb-4 md:mb-6 mx-3">
+        <div className="border-b mb-4 md:mb-6">
           <div className="flex -mb-px overflow-x-auto">
             <button
               className={`px-4 md:px-6 py-2 font-medium text-sm border-b-2 whitespace-nowrap ${
@@ -402,7 +402,7 @@ export default function EventSection() {
         {activeTab === "my-events" && (
           <>
             {/* Events Header - Mobile Responsive */}
-            <div className="flex flex-col gap-4 mb-4 mx-3">
+            <div className="flex flex-col gap-4 mb-4">
               <h2 className="text-lg md:text-xl font-bold">Your Events</h2>
               
               {/* Mobile Filter Toggle */}
@@ -577,7 +577,7 @@ export default function EventSection() {
               </div>
             </div>
           {/* Events Table - Mobile Responsive */}
-          <div className="mx-3">
+          <div>
             {/* Desktop Table */}
             <div className="hidden md:block border rounded-lg overflow-x-auto">
               <Table>
@@ -849,7 +849,7 @@ export default function EventSection() {
           </div>
           {/* Pagination - Mobile Responsive */}
           {totalPages > 1 && (
-            <div className="mt-6 mx-3">
+            <div className="mt-6">
               <Pagination>
                 <PaginationContent className="flex flex-wrap justify-center gap-1 md:gap-2">
                   <PaginationItem>
