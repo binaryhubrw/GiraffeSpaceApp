@@ -15,6 +15,22 @@ function isJwtExpired(token: string): boolean {
   }
 }
 
+function isTokenExpiredAfter24Hours(token: string): boolean {
+  try {
+    const payload = token.split('.')[1]
+    const decoded = JSON.parse(Buffer.from(payload, 'base64').toString('utf-8'))
+    if (!decoded.iat) return false // iat = issued at time
+    
+    // Check if 24 hours (86400000 milliseconds) have passed since token was issued
+    const tokenIssuedAt = decoded.iat * 1000 // Convert to milliseconds
+    const twentyFourHoursInMs = 24 * 60 * 60 * 1000
+    return Date.now() >= tokenIssuedAt + twentyFourHoursInMs
+  } catch {
+    // If token is malformed, treat as expired
+    return true
+  }
+}
+
 export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value
 
@@ -34,7 +50,32 @@ export function middleware(request: NextRequest) {
   if (!isPublic && (!token || isJwtExpired(token))) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', request.nextUrl.pathname)
-    return NextResponse.redirect(loginUrl)
+    
+    // Set a cookie flag to indicate token expiration for client-side logout
+    const response = NextResponse.redirect(loginUrl)
+    response.cookies.set('token-expired', 'true', { 
+      path: '/', 
+      sameSite: 'lax',
+      maxAge: 60 // 1 minute, just enough for the redirect
+    })
+    
+    return response
+  }
+
+  // Check for 24-hour expiration
+  if (!isPublic && token && isTokenExpiredAfter24Hours(token)) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', request.nextUrl.pathname)
+    
+    // Set a cookie flag to indicate 24-hour expiration for client-side logout
+    const response = NextResponse.redirect(loginUrl)
+    response.cookies.set('token-expired-24h', 'true', { 
+      path: '/', 
+      sameSite: 'lax',
+      maxAge: 60 // 1 minute, just enough for the redirect
+    })
+    
+    return response
   }
 
   return NextResponse.next()

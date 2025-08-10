@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getUserByEmail, getUserByUsername, type User, users, UserApiResponse } from "@/data/users"
 import ApiService from "@/api/apiConfig"
 import Cookies from 'js-cookie'
+import { toast } from "sonner"
 
 type AuthContextType = {
   isLoggedIn: boolean
@@ -22,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [mounted, setMounted] = useState(false)
   const router = useRouter();
+
 
   // Check if user is logged in from localStorage on initial load
   useEffect(() => {
@@ -41,6 +43,88 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setMounted(true)
   }, [])
+
+
+
+  const logout = () => {
+    setIsLoggedIn(false)
+    setUser(null)
+    localStorage.removeItem("isLoggedIn")
+    localStorage.removeItem("currentUser")
+    localStorage.removeItem("token")
+    // Remove auth-token cookie on logout
+    Cookies.remove('auth-token')
+    router.push("/");
+  }
+
+  // Check for token expiration flags from middleware
+  useEffect(() => {
+    if (mounted && isLoggedIn) {
+      const tokenExpired = Cookies.get('token-expired')
+      const tokenExpired24h = Cookies.get('token-expired-24h')
+      
+      if (tokenExpired === 'true' || tokenExpired24h === 'true') {
+        // Clear the expiration flags
+        Cookies.remove('token-expired')
+        Cookies.remove('token-expired-24h')
+        
+        // Auto logout
+        logout()
+        
+        // Show a toast notification about the automatic logout
+        if (tokenExpired24h === 'true') {
+          toast.error("Your session has expired after 24 hours. Please login again.")
+        } else {
+          toast.error("Your session has expired. Please login again.")
+        }
+      }
+    }
+  }, [mounted, isLoggedIn])
+
+  // Periodic check for token expiration (every 5 minutes)
+  useEffect(() => {
+    if (mounted && isLoggedIn) {
+      const checkTokenExpiration = () => {
+        const token = localStorage.getItem('token')
+        if (token) {
+          try {
+            const payload = token.split('.')[1]
+            const decoded = JSON.parse(Buffer.from(payload, 'base64').toString('utf-8'))
+            
+            // Check if token is expired
+            if (decoded.exp && Date.now() >= decoded.exp * 1000) {
+              logout()
+              toast.error("Your session has expired. Please login again.")
+              return
+            }
+            
+            // Check if 24 hours have passed since token was issued
+            if (decoded.iat) {
+              const tokenIssuedAt = decoded.iat * 1000
+              const twentyFourHoursInMs = 24 * 60 * 60 * 1000
+              if (Date.now() >= tokenIssuedAt + twentyFourHoursInMs) {
+                logout()
+                toast.error("Your session has expired after 24 hours. Please login again.")
+                return
+              }
+            }
+          } catch (error) {
+            // If token is malformed, logout
+            logout()
+            toast.error("There was an issue with your session. Please login again.")
+          }
+        }
+      }
+
+      // Check immediately
+      checkTokenExpiration()
+      
+      // Set up periodic check every 5 minutes
+      const interval = setInterval(checkTokenExpiration, 5 * 60 * 1000)
+      
+      return () => clearInterval(interval)
+    }
+  }, [mounted, isLoggedIn])
 
 const login = async (
   identifier: string,
@@ -98,16 +182,7 @@ const updateUser = async (
   }
 };
 
-  const logout = () => {
-    setIsLoggedIn(false)
-    setUser(null)
-    localStorage.removeItem("isLoggedIn")
-    localStorage.removeItem("currentUser")
-    localStorage.removeItem("token")
-    // Remove auth-token cookie on logout
-    Cookies.remove('auth-token')
-    router.push("/");
-  }
+
 
   // Provide the context value
   const contextValue: AuthContextType = {
