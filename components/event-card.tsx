@@ -59,7 +59,7 @@ export function EventCard({
   }
 
   return (
-    <div className="bg-white rounded-lg overflow-hidden shadow">
+    <div className="bg-white rounded-lg overflow-hidden shadow-md">
       <div className={`h-48 relative ${gradient ? `bg-gradient-to-r ${gradientFrom} ${gradientTo}` : ""}`}>
         {imageSrc && !gradient && (
           <Image src={imageSrc || "/placeholder.svg"} alt={imageAlt} fill className="object-cover" />

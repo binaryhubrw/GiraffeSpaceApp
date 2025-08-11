@@ -9,8 +9,8 @@ interface SectionProps {
 export function Section({ children, className = "", background = "white" }: SectionProps) {
   const bgClasses = {
     white: "bg-white",
-    gray: "bg-gray-100",
-    blue: "bg-blue-100",
+    gray: "bg-gray-50",
+    blue: "bg-blue-50",
   }
 
   return <section className={`py-16 ${bgClasses[background]} ${className}`}>{children}</section>
