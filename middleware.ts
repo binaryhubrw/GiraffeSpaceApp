@@ -42,7 +42,9 @@ export function middleware(request: NextRequest) {
     '/not-found',
     '/',
     'events',
-    'venues'
+    'venues',
+    '/events/check-attendance/insipector',
+    '/events/check-attendance/scan'
   ]
   const isPublic = publicPaths.some(path => request.nextUrl.pathname.startsWith(path))
 

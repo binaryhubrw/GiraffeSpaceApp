@@ -278,23 +278,26 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
     setSubmitting(true)
 
     try {
-      const registrationData = attendees.map((attendee) => ({
+      const registrations = attendees.map((attendee) => ({
         fullName: attendee.fullName?.trim()
           ? attendee.fullName
           : `${attendee.firstName || ""} ${attendee.lastName || ""}`.trim(),
         email: attendee.email,
-        receiverEmail: sharedReceiverEmail,
-        phoneNumber: attendee.phoneNumber,
         nationalId: attendee.nationalId,
-        passportId: attendee.passportId,
         gender: attendee.gender,
-        address: attendee.address,
       }));
 
+      const registrationData = {
+        registrations: registrations,
+        sendAllInvitationsToEmail: sharedReceiverEmail,
+      };
+
+      console.log("Sending registration data:", registrationData); // Debug log
       await ApiService.registerOnFreeEvent(eventId, registrationData);
       toast.success("Registration successful!");
       setSuccess(true);
     } catch (err) {
+      console.error("Registration error:", err);
       toast.error("Failed to register for the event. Please try again.");
       setError("Failed to register for the event. Please try again.");
     } finally {

@@ -263,7 +263,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               </Link>
               {!event.isEntryPaid && (
                 <Link
-                  href={`/events/check-invitation`}
+                  href={`/events/check-attendance/insipector`}
                   className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
                 >
                   <CheckCircle className="mr-2 h-5 w-5" /> Check Invitation

@@ -1,6 +1,7 @@
 import axios, { AxiosRequestHeaders, AxiosProgressEvent } from "axios";
 import { jwtDecode, JwtPayload } from "jwt-decode";
 import type { User, UserResult, UserApiResponse } from "@/data/users";
+import { StringToBoolean } from "class-variance-authority/types";
 interface UserFormData {
   [key: string]: any;
 }
@@ -1658,21 +1659,10 @@ class ApiService {
     }
   }
 
-  /***** register on free event***** */
-  static async registerOnFreeEvent(eventId: string, registrationData: any): Promise<any> {
-    try {
-      const response = await axios.post(`${this.BASE_URL}/event/${eventId}/register/free`, registrationData, {
-        headers: this.getHeader(registrationData),
-        withCredentials: true,
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`Error registering on free event with ID ${eventId}:`, error);
-      throw error;
-    }
-  }
 
-  /***** check and scann ticket***** */
+
+
+ /***** check and scann ticket***** */
   static async checkAndScanTicket(ticketData: any): Promise<any> {
     try {
       const response = await axios.post(`${this.BASE_URL}/event/tickets/check-in`, ticketData, {
@@ -1714,6 +1704,134 @@ class ApiService {
       throw error;
     }
   }
+
+
+
+  /***** FREE EVENTS REGISTRATION CHECKING ROUTE ****** */
+
+
+
+  /***** register on free event***** */
+  static async registerOnFreeEvent(eventId: string, registrationData: any): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/event/${eventId}/register/free`, registrationData, {
+        headers: this.getHeader(registrationData),
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error registering on free event with ID ${eventId}:`, error);
+      throw error;
+    }
+  }
+
+ 
+
+  /**** check Inspector Access***** */
+  static async checkInspectorAccess(sixDigitCode: string): Promise<any> {
+    try {
+      const requestBody = { sixDigitCode: sixDigitCode }
+      const response = await axios.post(`${this.BASE_URL}/event/check-in-staff/validate-code`, requestBody, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error checking inspector access :`, error);
+      throw error;
+    }
+  }
+ 
+  /*** check invitation detail with code*** */
+  static async checkInvitationDetailWithInvitation(invitationData: {
+    ticketCode: string;
+    codeType: string;
+    sixDigitCode: string;
+  }): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/event/free-check-in/details`, invitationData, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching invitation details for `, error);
+      throw error;
+    }
+  }
+
+
+  /***** check invitation detail with qrcode***** */
+  // static async checkInvitationDetailWithQRCode(qrCodeData: string): Promise<any> {
+  //   try {
+  //     const response = await axios.post(`${this.BASE_URL}/event/free-check-in/details`, qrCodeData, {
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       withCredentials: true,
+  //     });
+  //     return response.data;
+  //   } catch (error) {
+  //     console.error(`Error fetching invitation details for QR code:`, error);
+  //     throw error;
+  //   }
+  // }
+
+  /***** update invitation details***** */
+  static async updateInvitationDetails(registrationId: string,updateData: {
+    sixDigitCode: string;
+    fullName: string;
+    phoneNumber: string;
+    gender: string;
+    address: {
+      province: string;
+      district: string;
+      sector: string;
+      country: string;
+    };
+  }): Promise<any> {
+    try {
+      const response = await axios.patch(`${this.BASE_URL}/event/registrations/free/${registrationId}`, updateData, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating invitation details:`, error);
+      throw error;
+    }
+  }
+
+
+
+
+  /******* confirm attendance*************** */
+  static async confirmAttendance(attendanceData: {
+    ticketCode: string;
+    codeType: string;
+    sixDigitCode: string;
+  }): Promise<any> {
+    try {
+      const response = await axios.post(`${this.BASE_URL}/event/free-check-in`, attendanceData, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error confirming attendance:`, error);
+      throw error;
+    }
+  }
+
+
 
   // Fetch organizations for a specific user
   static async getOrganizationsByUserId(userId: string): Promise<any> {
