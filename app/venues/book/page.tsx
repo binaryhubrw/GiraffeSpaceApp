@@ -648,7 +648,7 @@ export default function CreateEventForm() {
         </div>
 
         {/* Progress Steps */}
-        <div className="mb-8">
+        <div className="mb-8 ">
           <div className="flex items-center justify-between mb-4">
             {steps
               .filter((step) => !(isPrivateEvent && step.id === 3))
@@ -697,7 +697,7 @@ export default function CreateEventForm() {
         </div>
 
         {/* Main Content */}
-        <Card className="shadow-lg border-0">
+        <Card className="shadow-lg bg-white border-2  border-blue-200">
           <CardContent className="p-8">{renderStepContent()}</CardContent>
         </Card>
 

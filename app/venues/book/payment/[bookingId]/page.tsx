@@ -197,9 +197,11 @@ export default function PayVenueBooking() {
               amenities: apiData.venue.amenities || [],
               depositRequired: apiData.venue.depositRequired,
               paymentCompletionRequired: {
-                daysBeforeEvent: apiData.venue.paymentCompletionRequired?.daysBeforeEvent,
+                daysBeforeEvent:
+                  apiData.venue.paymentCompletionRequired?.daysBeforeEvent,
                 deadline: apiData.venue.paymentCompletionRequired?.deadline,
-                bookingTimeout: apiData.venue.paymentCompletionRequired?.bookingTimeout,
+                bookingTimeout:
+                  apiData.venue.paymentCompletionRequired?.bookingTimeout,
               },
             },
             organizer: {
@@ -222,11 +224,17 @@ export default function PayVenueBooking() {
           };
 
           setBookingData(transformedData);
-          
+
           // Debug: Log the transformed data to see what's being set
           console.log("Transformed booking data:", transformedData);
-          console.log("Venue data in transformed object:", transformedData.venue);
-          console.log("Pricing data in transformed object:", transformedData.pricing);
+          console.log(
+            "Venue data in transformed object:",
+            transformedData.venue
+          );
+          console.log(
+            "Pricing data in transformed object:",
+            transformedData.pricing
+          );
           console.log("Payment summary data:", transformedData.paymentSummary);
         } else {
           setError("Failed to load booking data");
@@ -261,15 +269,16 @@ export default function PayVenueBooking() {
   // Countdown timer for booking timeout
   useEffect(() => {
     if (bookingData?.venue.paymentCompletionRequired?.bookingTimeout) {
-      const timeoutMinutes = bookingData.venue.paymentCompletionRequired.bookingTimeout;
+      const timeoutMinutes =
+        bookingData.venue.paymentCompletionRequired.bookingTimeout;
       const timeoutMs = timeoutMinutes * 60 * 1000; // Convert minutes to milliseconds
-      
+
       // Calculate time remaining from booking creation
       const bookingCreatedAt = new Date(bookingData.createdAt).getTime();
       const now = new Date().getTime();
       const elapsed = now - bookingCreatedAt;
       const remaining = Math.max(0, timeoutMs - elapsed);
-      
+
       setTimeRemaining(Math.ceil(remaining / 1000)); // Convert to seconds
 
       const interval = setInterval(() => {
@@ -291,9 +300,10 @@ export default function PayVenueBooking() {
   useEffect(() => {
     if (paymentMethod === "mobile" && bookingData) {
       // Set deposit amount as default if available, otherwise set remaining amount
-      const defaultAmount = bookingData.venue.depositRequired?.amount || 
-                           bookingData.paymentSummary?.remainingAmount || 
-                           bookingData.pricing.totalAmount;
+      const defaultAmount =
+        bookingData.venue.depositRequired?.amount ||
+        bookingData.paymentSummary?.remainingAmount ||
+        bookingData.pricing.totalAmount;
       setAmountPaid(defaultAmount);
     }
   }, [paymentMethod, bookingData]);
@@ -389,7 +399,7 @@ export default function PayVenueBooking() {
       console.log("Processing venue booking payment:", paymentData);
 
       // Call the API to process the payment
-      const response = await ApiService.PayVenuBooking(bookingId, paymentData)
+      const response = await ApiService.PayVenuBooking(bookingId, paymentData);
 
       if (response.success) {
         toast.success("Payment processed successfully!");
@@ -450,10 +460,10 @@ export default function PayVenueBooking() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen m-4 shadow-md flex flex-col">
         <Header />
         <main className="flex-1 bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
-          <Card className="max-w-md w-full mx-4">
+          <Card className="max-w-xl w-full mx-4 m-6 shadow-lg border-r-2 border-green-200">
             <CardContent className="p-8 text-center space-y-4">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                 <Check className="h-8 w-8 text-green-600" />
@@ -489,7 +499,7 @@ export default function PayVenueBooking() {
               <div className="flex gap-4 pt-6">
                 <Button
                   variant="ghost"
-                  className="flex-1 h-12 bg-transparent"
+                  className="flex-1 h-12 bg-transparent border border-blue-600"
                   onClick={() =>
                     (window.location.href = "/user-dashboard/booking")
                   }
@@ -605,14 +615,17 @@ export default function PayVenueBooking() {
                   <div>
                     <h4 className="font-semibold mb-2">Venue Amenities</h4>
                     <div className="flex flex-wrap gap-2">
-                      {bookingData?.venue.amenities && bookingData.venue.amenities.length > 0 ? (
+                      {bookingData?.venue.amenities &&
+                      bookingData.venue.amenities.length > 0 ? (
                         bookingData.venue.amenities.map((amenity, index) => (
                           <Badge key={index} variant="outline">
                             {amenity}
                           </Badge>
                         ))
                       ) : (
-                        <p className="text-gray-500 text-sm">No amenities specified for this venue</p>
+                        <p className="text-gray-500 text-sm">
+                          No amenities specified for this venue
+                        </p>
                       )}
                     </div>
                   </div>
@@ -969,11 +982,15 @@ export default function PayVenueBooking() {
                         {bookingData?.venue.depositRequired && (
                           <>
                             <br />
-                            <span className="text-blue-600 font-medium">
-                              Deposit required:{" "}
-                              {bookingData.venue.depositRequired.amount} Rwf (
-                              {bookingData.venue.depositRequired.percentage}%)
-                            </span>
+                            {!["APPROVED_PAID", "PARTIAL"].includes(
+                              bookingData?.bookingStatus || ""
+                            ) && (
+                              <span className="text-blue-600 font-medium">
+                                Deposit required:{" "}
+                                {bookingData.venue.depositRequired.amount} Rwf (
+                                {bookingData.venue.depositRequired.percentage}%)
+                              </span>
+                            )}
                             <br />
                             <span className="text-green-600 font-medium">
                               ✓ Pre-filled with deposit amount
@@ -1070,7 +1087,7 @@ export default function PayVenueBooking() {
 
           {/* Progress Steps */}
           <div className="mb-8">
-            <div className="flex items-center justify-center space-x-8">
+            <div className="flex items-center justify-center space-x-8   ">
               {[
                 { step: 1, title: "Review Booking", icon: FileText },
                 { step: 2, title: "Payment", icon: CreditCard },
@@ -1108,16 +1125,16 @@ export default function PayVenueBooking() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 ">
             {/* Main Content */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2  shadow-md border-2 border-blue-100">
               <Card className="shadow-lg border-0">
                 <CardContent className="p-8">{renderStepContent()}</CardContent>
               </Card>
 
               {/* Navigation */}
               {currentStep < 3 && (
-                <div className="flex justify-between mt-6">
+                <div className="flex justify-between m-6 ">
                   <Button
                     variant="outline"
                     onClick={prevStep}
@@ -1167,18 +1184,29 @@ export default function PayVenueBooking() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {bookingData?.venue.paymentCompletionRequired?.bookingTimeout &&
-                   !["APPROVED_PAID", "PARTIAL"].includes(bookingData?.bookingStatus || "") && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
-                      <div className="flex items-center gap-2 text-red-700">
-                        <Clock className="h-4 w-4" />
-                        <span className="font-semibold text-sm">Booking Timeout Alert</span>
+                  {bookingData?.venue.paymentCompletionRequired
+                    ?.bookingTimeout &&
+                    !["APPROVED_PAID", "PARTIAL"].includes(
+                      bookingData?.bookingStatus || ""
+                    ) && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg mb-4">
+                        <div className="flex items-center gap-2 text-red-700">
+                          <Clock className="h-4 w-4" />
+                          <span className="font-semibold text-sm">
+                            Booking Timeout Alert
+                          </span>
+                        </div>
+                        <p className="text-xs text-red-600 mt-1">
+                          You have{" "}
+                          <strong>
+                            {Math.floor(timeRemaining / 60)}:
+                            {(timeRemaining % 60).toString().padStart(2, "0")}
+                          </strong>{" "}
+                          remaining to make your first payment, or your booking
+                          will be automatically canceled.
+                        </p>
                       </div>
-                      <p className="text-xs text-red-600 mt-1">
-                        You have <strong>{Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}</strong> remaining to make your first payment, or your booking will be automatically canceled.
-                      </p>
-                    </div>
-                  )}
+                    )}
                   <div className="space-y-3">
                     <div>
                       <div className="text-sm text-muted-foreground">Venue</div>
@@ -1372,38 +1400,41 @@ export default function PayVenueBooking() {
                       </>
                     )}
 
-                    {bookingData?.venue.depositRequired && (
-                      <>
-                        <Separator />
-                        <div className="space-y-2">
-                          <div className="text-sm font-medium text-blue-600">
-                            Deposit Requirements
+                    {bookingData?.venue.depositRequired &&
+                      !["APPROVED_PAID", "PARTIAL"].includes(
+                        bookingData?.bookingStatus || ""
+                      ) && (
+                        <>
+                          <Separator />
+                          <div className="space-y-2">
+                            <div className="text-sm font-medium text-blue-600">
+                              Deposit Requirements
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span>Deposit Percentage:</span>
+                              <span className="font-semibold">
+                                {bookingData.venue.depositRequired.percentage}%
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span>Deposit Amount:</span>
+                              <span className="font-semibold text-blue-600">
+                                {bookingData.venue.depositRequired.amount} Rwf
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-600 mt-1">
+                              {bookingData.venue.depositRequired.description}
+                            </div>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Deposit Percentage:</span>
-                            <span className="font-semibold">
-                              {bookingData.venue.depositRequired.percentage}%
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Deposit Amount:</span>
-                            <span className="font-semibold text-blue-600">
-                              {bookingData.venue.depositRequired.amount} Rwf
-                            </span>
-                          </div>
-                          <div className="text-xs text-gray-600 mt-1">
-                            {bookingData.venue.depositRequired.description}
-                          </div>
-                        </div>
-                      </>
-                    )}
+                        </>
+                      )}
 
                     {bookingData?.venue.paymentCompletionRequired && (
                       <>
                         <Separator />
                         <div className="space-y-2">
                           <div className="text-sm font-medium text-orange-600">
-                           Full Payment Deadline
+                            Full Payment Deadline
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Complete Payment:</span>
@@ -1428,17 +1459,34 @@ export default function PayVenueBooking() {
                               })}
                             </span>
                           </div>
-                          {bookingData.venue.paymentCompletionRequired.bookingTimeout && (
-                            <div className="flex justify-between text-sm">
-                              <span>Booking Timeout:</span>
-                              <span className="font-semibold text-red-600">
-                                {bookingData.venue.paymentCompletionRequired.bookingTimeout} minutes
-                              </span>
+                          {bookingData.venue.paymentCompletionRequired
+                            .bookingTimeout &&
+                            !["APPROVED_PAID", "PARTIAL"].includes(
+                              bookingData?.bookingStatus || ""
+                            ) && (
+                              <div className="flex justify-between text-sm">
+                                <span>Booking Timeout:</span>
+                                <span className="font-semibold text-red-600">
+                                  {
+                                    bookingData.venue.paymentCompletionRequired
+                                      .bookingTimeout
+                                  }{" "}
+                                  minutes
+                                </span>
+                              </div>
+                            )}
+                          {!["APPROVED_PAID", "PARTIAL"].includes(
+                            bookingData?.bookingStatus || ""
+                          ) && (
+                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                              ⚠️ <strong>Important:</strong> You must make at
+                              least one payment within{" "}
+                              {bookingData.venue.paymentCompletionRequired
+                                .bookingTimeout || 130}{" "}
+                              minutes, otherwise your booking will be
+                              automatically canceled.
                             </div>
                           )}
-                          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                            ⚠️ <strong>Important:</strong> You must make at least one payment within {bookingData.venue.paymentCompletionRequired.bookingTimeout || 130} minutes, otherwise your booking will be automatically canceled.
-                          </div>
                         </div>
                       </>
                     )}
@@ -1451,7 +1499,6 @@ export default function PayVenueBooking() {
                   </div>
 
                   <div className="text-sm text-gray-500 space-y-1">
-                   
                     <div className="flex items-center gap-1">
                       <Shield className="h-3 w-3" />
                       <span>Secure payment processing</span>
@@ -1483,8 +1530,6 @@ export default function PayVenueBooking() {
                         base rate
                       </span>
                     </div>
-                   
-                    
                   </CardContent>
                 </Card>
               </Card>

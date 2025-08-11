@@ -985,7 +985,7 @@ const EventDetailsPage: React.FC = () => {
           </div>
 
           {/* Main Content */}
-          <div className="bg-white rounded-lg shadow-sm p-8">
+          <div className="bg-white rounded-lg shadow-md p-8  border-2 border-blue-200">
             {renderStepContent()}
 
             {/* Navigation */}
