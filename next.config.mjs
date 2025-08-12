@@ -10,6 +10,7 @@ const nextConfig = {
     unoptimized: true,
   },
   transpilePackages: ['date-fns'], // Add this line to transpile date-fns
+  output: 'standalone',
 }
 
 export default nextConfig
