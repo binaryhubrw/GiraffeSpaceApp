@@ -130,8 +130,8 @@ export default function CreateTicketForm() {
   });
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([
     {
-      startTime: "",
-      endTime: "",
+      startTime: "09:00",
+      endTime: "17:00",
       name: "",
       isCustomName: false,
       description: "",
@@ -146,7 +146,7 @@ export default function CreateTicketForm() {
       benefits: [createEmptyBenefit()],
       discountTiers: [],
       isRefundable: true,
-      refundPolicy: "",
+      refundPolicy: "Standard refund policy applies",
       transferable: true,
       requiresApproval: false,
       ageRestriction: "NO_RESTRICTION",
@@ -247,6 +247,12 @@ export default function CreateTicketForm() {
       ticket.benefits[benefitIndex] = { ...benefit, [field]: value };
       return next;
     });
+
+    // Clear error for this field
+    const errorKey = `ticket-${ticketIndex}-benefit-${benefitIndex}-${field}`;
+    if (errors[errorKey]) {
+      setErrors((prev) => ({ ...prev, [errorKey]: "" }));
+    }
   };
 
   const addBenefit = (ticketIndex: number) => {
@@ -299,6 +305,12 @@ export default function CreateTicketForm() {
             }
       )
     );
+
+    // Clear error for this field
+    const errorKey = `ticket-${ticketIndex}-discount-${discountIndex}-${field}`;
+    if (errors[errorKey]) {
+      setErrors((prev) => ({ ...prev, [errorKey]: "" }));
+    }
   };
 
   const removeDiscountTier = (ticketIndex: number, discountIndex: number) => {
@@ -326,32 +338,31 @@ export default function CreateTicketForm() {
       : "";
     const defaultBookingDate = eventData?.bookingDates[0]?.date || "";
 
-    setTicketTypes([
-      ...ticketTypes,
-      {
-        startTime: "",
-        endTime: "",
-        name: "",
-        isCustomName: false,
-        description: "",
-        price: 0,
-        currency: "RWF",
-        quantity: 100,
-        maxPerPerson: 5,
-        saleStartDate: defaultSaleStart,
-        saleEndDate: defaultSaleEnd,
-        isActive: true,
-        bookingDate: defaultBookingDate, // Set default booking date
-        benefits: [createEmptyBenefit()],
-        discountTiers: [],
-        isRefundable: true,
-        refundPolicy: "",
-        transferable: true,
-        requiresApproval: false,
-        ageRestriction: "NO_RESTRICTION",
-        specialInstructions: "",
-      },
-    ]);
+    const newTicket: TicketType = {
+      startTime: "09:00",
+      endTime: "17:00",
+      name: "",
+      isCustomName: false,
+      description: "",
+      price: 0,
+      currency: "RWF",
+      quantity: 100,
+      maxPerPerson: 5,
+      saleStartDate: defaultSaleStart,
+      saleEndDate: defaultSaleEnd,
+      isActive: true,
+      bookingDate: defaultBookingDate, // Set default booking date
+      benefits: [createEmptyBenefit()],
+      discountTiers: [],
+      isRefundable: true,
+      refundPolicy: "Standard refund policy applies",
+      transferable: true,
+      requiresApproval: false,
+      ageRestriction: "NO_RESTRICTION",
+      specialInstructions: "",
+    };
+    
+    setTicketTypes([...ticketTypes, newTicket]);
   };
 
   const removeTicketType = (index: number) => {
@@ -442,27 +453,92 @@ export default function CreateTicketForm() {
     setSubmitting(true);
 
     try {
-      // Format ticket data according to API expectations
-      const formattedTickets = ticketTypes.map((ticket) => ({
-        name: ticket.name,
-        price: ticket.price,
-        quantityAvailable: ticket.quantity,
-        currency: ticket.currency,
-        description: ticket.description,
-        saleStartsAt: new Date(
-          ticket.saleStartDate + "T09:00:00Z"
-        ).toISOString(),
-        saleEndsAt: new Date(ticket.saleEndDate + "T17:00:00Z").toISOString(),
-        isPubliclyAvailable: ticket.isActive,
-        maxPerPerson: ticket.maxPerPerson,
-        isActive: ticket.isActive,
-        validForDate: ticket.bookingDate, // Add the selected booking date
-        isRefundable: ticket.isRefundable,
-        transferable: ticket.transferable,
-        ageRestriction: ticket.ageRestriction,
-        specialInstructions: ticket.specialInstructions || undefined,
-        status: isDraft ? "DRAFT" : "ACTIVE",
-      }));
+      // Format ticket data according to the required JSON body structure
+      const formattedTickets = ticketTypes.map((ticket, index) => {
+        // Format customer benefits from the benefits array
+        const customerBenefits = ticket.benefits
+          .filter((benefit) => benefit.title.trim() !== "" || benefit.description.trim() !== "")
+          .map((benefit) => ({
+            title: benefit.title,
+            description: benefit.description,
+          }));
+
+        // Ensure we always have at least one benefit if the user has added any
+        const finalCustomerBenefits = customerBenefits.length > 0 ? customerBenefits : [
+          {
+            title: "General Access",
+            description: "Access to the main event area"
+          }
+        ];
+
+        // Format discount from the first discount tier (if any)
+        const discount = ticket.discountTiers.length > 0 && ticket.discountTiers[0].name.trim() !== "" 
+          ? {
+              discountName: ticket.discountTiers[0].name,
+              percentage: ticket.discountTiers[0].percentage,
+              // Ensure discount start date doesn't exceed event date
+              startDate: (() => {
+                const discountStartDate = new Date(ticket.discountTiers[0].startDate + "T00:00:00Z");
+                const eventDate = new Date(ticket.bookingDate + "T00:00:00Z");
+                // If discount start date would exceed event date, set it to event date at 00:00:00
+                if (discountStartDate > eventDate) {
+                  return new Date(ticket.bookingDate + "T00:00:00Z").toISOString();
+                }
+                return discountStartDate.toISOString();
+              })(),
+              // Ensure discount end date doesn't exceed event date
+              endDate: (() => {
+                const discountEndDate = new Date(ticket.discountTiers[0].endDate + "T23:59:59Z");
+                const eventDate = new Date(ticket.bookingDate + "T00:00:00Z");
+                // If discount end date would exceed event date, set it to event date at 23:59:59
+                if (discountEndDate > eventDate) {
+                  return new Date(ticket.bookingDate + "T23:59:59Z").toISOString();
+                }
+                return discountEndDate.toISOString();
+              })(),
+            }
+          : null;
+
+        const formattedTicket = {
+          name: ticket.name,
+          price: ticket.price,
+          quantityAvailable: ticket.quantity,
+          currency: ticket.currency,
+          description: ticket.description,
+          saleStartsAt: new Date(ticket.saleStartDate + "T09:00:00Z").toISOString(),
+          // Ensure sale end date doesn't exceed event date - send as plain date string
+          saleEndsAt: (() => {
+            const saleEndDate = new Date(ticket.saleEndDate + "T00:00:00Z");
+            const eventDate = new Date(ticket.bookingDate + "T00:00:00Z");
+            // If sale end date would exceed event date, set it to one day before event
+            if (saleEndDate >= eventDate) {
+              const adjustedDate = new Date(eventDate);
+              adjustedDate.setDate(adjustedDate.getDate() - 1);
+              return adjustedDate.toISOString().split('T')[0];
+            }
+            return ticket.saleEndDate;
+          })(),
+          maxPerPerson: ticket.maxPerPerson,
+          isActive: ticket.isActive,
+          validForDate: ticket.bookingDate,
+          startTime: ticket.startTime || "09:00",
+          endTime: ticket.endTime || "17:00",
+          customerBenefits: finalCustomerBenefits,
+          discount: discount,
+          isRefundable: ticket.isRefundable,
+          refundPolicy: ticket.refundPolicy || "No refund policy specified",
+          transferable: true,
+          ageRestriction: ticket.ageRestriction,
+          specialInstructions: ticket.specialInstructions || "No special instructions",
+          status: isDraft ? "DRAFT" : "ACTIVE",
+        };
+
+        // Log the formatted ticket for debugging
+        console.log(`Formatted ticket ${index + 1}:`, formattedTicket);
+        console.log(`Original ticket ${index + 1}:`, ticket);
+        
+        return formattedTicket;
+      });
 
       console.log("Creating tickets with formatted data:", formattedTickets);
 
@@ -479,15 +555,52 @@ export default function CreateTicketForm() {
         );
         setSuccess(true);
       } else {
-        throw new Error(response.message || "Failed to create tickets");
+        // Handle logical errors (success: false with 200 status)
+        if (response.details && Array.isArray(response.details) && response.details.length > 0) {
+          const detailedMessages = response.details
+            .filter((detail: any) => !detail.success)
+            .map((detail: any) => detail.message)
+            .join('\n')
+          
+          if (detailedMessages) {
+            toast.error(detailedMessages)
+          } else {
+            toast.error(response.message || "Failed to create tickets")
+          }
+        } else {
+          toast.error(response.message || "Failed to create tickets")
+        }
+        return // Prevent the error from being re-thrown and caught by catch block
       }
     } catch (err: any) {
-      console.error("Error creating tickets:", err);
-      const errorMessage =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Failed to create tickets. Please try again.";
-      toast.error(errorMessage);
+      console.error("Error creating tickets:", err)
+      
+      let errorMessage = "Failed to create tickets. Please try again."
+      
+      if (err?.response?.data) {
+        const responseData = err.response.data
+        
+        // If we have details array with error messages, use those
+        if (responseData.details && Array.isArray(responseData.details) && responseData.details.length > 0) {
+          const detailedMessages = responseData.details
+            .filter((detail: any) => !detail.success)
+            .map((detail: any) => detail.message)
+            .join('\n')
+          
+          if (detailedMessages) {
+            errorMessage = detailedMessages
+          } else if (responseData.message) {
+            errorMessage = responseData.message
+          }
+        } else if (responseData.message) {
+          errorMessage = responseData.message
+        }
+      } else if (err?.message) {
+        errorMessage = err.message
+      }
+      
+      console.log("Displaying error message:", errorMessage)
+      toast.error(errorMessage)
     } finally {
       setSubmitting(false);
     }
@@ -774,8 +887,17 @@ export default function CreateTicketForm() {
                                     )
                                   }
                                   placeholder="Benefit title"
-                                  className="mt-1"
+                                  className={`mt-1 ${
+                                    errors[`ticket-${index}-benefit-${benefitIndex}-title`]
+                                      ? "border-red-500"
+                                      : ""
+                                  }`}
                                 />
+                                {errors[`ticket-${index}-benefit-${benefitIndex}-title`] && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors[`ticket-${index}-benefit-${benefitIndex}-title`]}
+                                  </p>
+                                )}
                               </div>
                               <div className="flex items-end gap-2">
                                 <div className="flex-1">
@@ -791,8 +913,17 @@ export default function CreateTicketForm() {
                                       )
                                     }
                                     placeholder="Benefit description"
-                                    className="mt-1"
+                                    className={`mt-1 ${
+                                      errors[`ticket-${index}-benefit-${benefitIndex}-description`]
+                                        ? "border-red-500"
+                                        : ""
+                                    }`}
                                   />
+                                  {errors[`ticket-${index}-benefit-${benefitIndex}-description`] && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                      {errors[`ticket-${index}-benefit-${benefitIndex}-description`]}
+                                    </p>
+                                  )}
                                 </div>
                                 <Button
                                   variant="outline"
@@ -1008,8 +1139,17 @@ export default function CreateTicketForm() {
                                     )
                                   }
                                   placeholder="e.g., Early Bird"
-                                  className="mt-1"
+                                  className={`mt-1 ${
+                                    errors[`ticket-${index}-discount-${discountIndex}-name`]
+                                      ? "border-red-500"
+                                      : ""
+                                  }`}
                                 />
+                                {errors[`ticket-${index}-discount-${discountIndex}-name`] && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors[`ticket-${index}-discount-${discountIndex}-name`]}
+                                  </p>
+                                )}
                               </div>
                               <div>
                                 <Label className="text-sm">
@@ -1064,8 +1204,17 @@ export default function CreateTicketForm() {
                                       e.target.value
                                     )
                                   }
-                                  className="mt-1"
+                                  className={`mt-1 ${
+                                    errors[`ticket-${index}-discount-${discountIndex}-startDate`]
+                                      ? "border-red-500"
+                                      : ""
+                                  }`}
                                 />
+                                {errors[`ticket-${index}-discount-${discountIndex}-startDate`] && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors[`ticket-${index}-discount-${discountIndex}-startDate`]}
+                                  </p>
+                                )}
                               </div>
                               <div>
                                 <Label className="text-sm">End Date</Label>
@@ -1385,9 +1534,6 @@ export default function CreateTicketForm() {
                           {ticket.isRefundable && (
                             <Badge variant="outline">Refundable</Badge>
                           )}
-                          {ticket.transferable && (
-                            <Badge variant="outline">Transferable</Badge>
-                          )}
                         </div>
                       </div>
                       <div className="text-right">
@@ -1499,6 +1645,13 @@ export default function CreateTicketForm() {
               ))}
 
               <div className="flex gap-4">
+                <Button
+                  onClick={prevStep}
+                  variant="outline"
+                  className="flex-1 h-12 bg-transparent"
+                >
+                  ← Go Back & Edit
+                </Button>
                 <Button
                   onClick={() => handleSubmit(true)}
                   variant="outline"

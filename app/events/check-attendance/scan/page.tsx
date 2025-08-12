@@ -800,7 +800,7 @@ export default function ScanPage() {
                     </div>
                   </>
                 )}
-              </TabsContent>
+/events/${eventId}/create-ticketals              </TabsContent>
 
                                            <TabsContent value="barcode" className="space-y-4 pt-4">
                 {!invitationData && (
