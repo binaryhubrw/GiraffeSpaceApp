@@ -964,14 +964,15 @@ export default function PayVenueBooking() {
                       {bookingData?.venue.depositRequired && (
                         <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                           <p className="text-sm text-blue-800">
-                            <strong>Note:</strong> A deposit of{" "}
+                            <strong>Note:</strong> To confirm your booking, a minimum deposit of {" "}
                             {bookingData.venue.depositRequired.amount} Rwf (
-                            {bookingData.venue.depositRequired.percentage}%) is
-                            required to confirm your booking. The remaining
-                            amount must be paid{" "}
+                            {bookingData.venue.depositRequired.percentage}%) is required. You may pay the full amount or any amount above the deposit now.
+
+                            The remaining balance must be paid at least{" "}
                             {bookingData.venue.paymentCompletionRequired
                               ?.daysBeforeEvent || 2}{" "}
                             days before the event.
+
                           </p>
                         </div>
                       )}
@@ -1139,7 +1140,7 @@ export default function PayVenueBooking() {
                       onClick={nextStep}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
-                      Procced with payment
+                      Proceed with payment
                     </Button>
                   ) : (
                     <Button
