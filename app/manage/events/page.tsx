@@ -4,11 +4,13 @@ import { Header } from "@/components/header"
 import Footer from "@/components/footer"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Calendar, Plus, Filter, ChevronDown, Users, MapPin, Clock } from "lucide-react"
 import Link from "next/link"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import ApiService from "@/api/apiConfig"
+import { parseISO, isAfter } from "date-fns"
 
 // Sample event data with updated status values
 const sampleEvents = [
@@ -57,6 +59,9 @@ export default function ManageEventsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false)
   const [showBookingCheckDialog, setShowBookingCheckDialog] = useState(false)
+  const [events, setEvents] = useState<any[]>([])
+  const [loading, setLoading] = useState<boolean>(false)
+  const [err, setErr] = useState<string | null>(null)
 
   // Redirect if not logged in
   useEffect(() => {
@@ -65,21 +70,61 @@ export default function ManageEventsPage() {
     }
   }, [isLoggedIn, router])
 
+  // Load events for stats
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true)
+        setErr(null)
+        const res = await ApiService.getAllEvents()
+        if (res?.success && Array.isArray(res.data)) {
+          setEvents(res.data)
+        } else {
+          setEvents([])
+        }
+      } catch (e: any) {
+        setErr(e?.message || "Failed to load events")
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
   // Filter events based on status
   const filteredEvents =
     statusFilter === "all" ? sampleEvents : sampleEvents.filter((event) => event.status === statusFilter.toLowerCase())
 
   // Stats for the dashboard
-  const stats = {
-    totalEvents: 24,
-    totalEventsChange: "+12%",
-    totalAttendees: 1892,
-    totalAttendeesChange: "+5%",
-    venuesUsed: 12,
-    venuesUsedChange: "+2",
-    upcomingEvents: 8,
-    upcomingEventsPeriod: "Next 30 days",
-  }
+  const stats = useMemo(() => {
+    const totalEvents = events.length
+    const totalAttendees = events.reduce((sum, ev) => sum + (Number(ev?.expectedGuests) || 0), 0)
+    const venueIds = new Set<string>()
+    events.forEach(ev => {
+      (ev?.eventVenues || []).forEach((v: any) => {
+        if (v?.venueId) venueIds.add(v.venueId)
+        else if (v?.venue?.venueId) venueIds.add(v.venue.venueId)
+      })
+    })
+    const now = new Date()
+    const upcomingEvents = events.filter(ev => {
+      const dates = (ev?.bookingDates || []).map((d: any) => d?.date).filter(Boolean)
+      if (dates.length === 0) return false
+      try {
+        return dates.some((d: string) => isAfter(parseISO(d), now))
+      } catch { return false }
+    }).length
+    return {
+      totalEvents,
+      totalEventsChange: "",
+      totalAttendees,
+      totalAttendeesChange: "",
+      venuesUsed: venueIds.size,
+      venuesUsedChange: "",
+      upcomingEvents,
+      upcomingEventsPeriod: "Next 30 days",
+    }
+  }, [events])
 
   const handleCreateEventClick = () => {
     setShowBookingCheckDialog(true)
@@ -124,7 +169,7 @@ export default function ManageEventsPage() {
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Total Events</p>
                   <h2 className="text-3xl font-bold">{stats.totalEvents}</h2>
-                  <p className="text-gray-600 text-sm">{stats.totalEventsChange}</p>
+                  {stats.totalEventsChange && <p className="text-gray-600 text-sm">{stats.totalEventsChange}</p>}
                 </div>
                 <Calendar className="h-5 w-5 text-gray-400" />
               </div>
@@ -135,7 +180,7 @@ export default function ManageEventsPage() {
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Total Attendees</p>
                   <h2 className="text-3xl font-bold">{stats.totalAttendees}</h2>
-                  <p className="text-gray-600 text-sm">{stats.totalAttendeesChange}</p>
+                  {stats.totalAttendeesChange && <p className="text-gray-600 text-sm">{stats.totalAttendeesChange}</p>}
                 </div>
                 <Users className="h-5 w-5 text-gray-400" />
               </div>
@@ -146,7 +191,7 @@ export default function ManageEventsPage() {
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Venues Used</p>
                   <h2 className="text-3xl font-bold">{stats.venuesUsed}</h2>
-                  <p className="text-gray-600 text-sm">{stats.venuesUsedChange}</p>
+                  {stats.venuesUsedChange && <p className="text-gray-600 text-sm">{stats.venuesUsedChange}</p>}
                 </div>
                 <MapPin className="h-5 w-5 text-gray-400" />
               </div>
