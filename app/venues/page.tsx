@@ -240,7 +240,7 @@ export default function VenuesPage() {
               )}
             </div>
 
-            <Button href="/manage/venues/create">Create New Venue</Button>
+           
           </div>
         </div>
 
