@@ -39,6 +39,7 @@ import { useSearchParams } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { useUserOrganizations } from "@/hooks/useUserOrganizations"
 import { useBooking } from "@/contexts/booking-context"
+import Link from "next/link"
 
 interface Guest {
   guestName: string
@@ -67,9 +68,8 @@ const visibilityScopes = ["PUBLIC", "PRIVATE", "RESTRICTED"]
 
 
 const steps = [
-  { id: 1, title: "Basic Info", icon: Info },
-  { id: 2, title: "Venue & Date", icon: MapPin },
-  { id: 3, title: "Review", icon: Eye },
+  { id: 1, title: "Basic Information", icon: Info },
+  { id: 2, title: "Review & Send", icon: Send },
 ]
 
 export default function CreateEventForm() {
@@ -199,7 +199,7 @@ export default function CreateEventForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isPrivateEvent = false // Always false now
-  const totalSteps = isPrivateEvent ? 3 : 3 // Skip details step for private events
+  const totalSteps = isPrivateEvent ? 2 : 2 // Skip details step for private events
   const progress = (currentStep / totalSteps) * 100
 
   const handleInputChange = (field: keyof EventFormData, value: any) => {
@@ -255,8 +255,6 @@ export default function CreateEventForm() {
       case 2:
         if (!formData.venueId) newErrors.venueId = "Venue selection is required"
         if (!formData.dates.some((date) => date.trim())) newErrors.dates = "At least one date is required"
-        break
-      case 3:
         if (!formData.eventPhoto) newErrors.eventPhoto = "Event photo is required"
         if (!formData.maxAttendees) newErrors.maxAttendees = "Max attendees is required"
         if (!formData.guests.some((guest) => guest.guestName.trim()))
@@ -433,12 +431,14 @@ export default function CreateEventForm() {
         return (
           <div className="space-y-8">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">Selected venue and booked date/hour</h2>
-              <p className="text-gray-600"> If you confirm click next</p>
+              <h2 className="text-2xl font-bold text-gray-900">Review & Send</h2>
+              <p className="text-gray-600">Review your event details and create your booking</p>
             </div>
+
+            {/* Venue and Date Confirmation Section */}
             <div className="space-y-6">
               <div>
-                <Label className="text-base font-medium">Venue</Label>
+                <Label className="text-base font-medium">Selected Venue</Label>
                 {venueError ? (
                   <div className="mt-2 h-12 flex items-center px-3 bg-red-100 rounded border border-red-200 text-base text-red-600">{venueError}</div>
                 ) : prefilledVenue ? (
@@ -486,27 +486,14 @@ export default function CreateEventForm() {
                 {errors.dates && <p className="text-sm text-red-500 mt-1">{errors.dates}</p>}
               </div>
             </div>
-          </div>
-        )
 
-      case 3:
-        return (
-          <div className="space-y-8">
-            <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">Review your event</h2>
-              <p className="text-gray-600">Make sure everything looks good before publishing</p>
-            </div>
-
+            {/* Event Review Card */}
             <Card className="border-2">
               <CardContent className="p-0">
-                {formData.eventPhoto && (
+                {formData.eventPhoto && typeof formData.eventPhoto !== "string" && (
                   <div className="relative h-48">
                     <Image
-                      src={
-                        typeof formData.eventPhoto === "string"
-                          ? formData.eventPhoto
-                          : URL.createObjectURL(formData.eventPhoto)
-                      }
+                      src={URL.createObjectURL(formData.eventPhoto)}
                       alt={formData.eventTitle}
                       fill
                       className="object-cover rounded-t-lg"
@@ -526,43 +513,43 @@ export default function CreateEventForm() {
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-gray-500" />
                         <span>
-                          {selectedVenue.name}, {selectedVenue.location}
+                          {selectedVenue?.name}, {selectedVenue?.location}
                         </span>
                       </div>
                     )}
 
-                                         <div className="flex items-start gap-2">
-                       <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
-                       <div className="flex flex-col">
-                         <span className="text-sm text-gray-500">Event Dates:</span>
-                         {formData.dates.filter((date) => date).map((date, index) => {
-                           const dateTimes = selectedTimes[date] || [];
-                           return (
-                             <div key={index} className="mb-2">
-                               <span className="text-sm font-medium">
-                                 {new Date(date).toLocaleDateString('en-US', { 
-                                   weekday: 'long', 
-                                   year: 'numeric', 
-                                   month: 'long', 
-                                   day: 'numeric' 
-                                 })}
-                               </span>
-                               {dateTimes.length > 0 && (
-                                 <div className="mt-1">
-                                   <div className="flex flex-wrap gap-1">
-                                     {dateTimes.map((time, timeIndex) => (
-                                       <Badge key={timeIndex} variant="secondary" className="text-xs">
-                                         {time}
-                                       </Badge>
-                                     ))}
-                                   </div>
-                                 </div>
-                               )}
-                             </div>
-                           );
-                         })}
-                       </div>
-                     </div>
+                    <div className="flex items-start gap-2">
+                      <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-500">Event Dates:</span>
+                        {formData.dates.filter((date) => date).map((date, index) => {
+                          const dateTimes = selectedTimes[date] || [];
+                          return (
+                            <div key={index} className="mb-2">
+                              <span className="text-sm font-medium">
+                                {new Date(date).toLocaleDateString('en-US', { 
+                                  weekday: 'long', 
+                                  year: 'numeric', 
+                                  month: 'long', 
+                                  day: 'numeric' 
+                                })}
+                              </span>
+                              {dateTimes.length > 0 && (
+                                <div className="mt-1">
+                                  <div className="flex flex-wrap gap-1">
+                                    {dateTimes.map((time, timeIndex) => (
+                                      <Badge key={timeIndex} variant="secondary" className="text-xs">
+                                        {time}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
 
                     {formData.maxAttendees && (
                       <div className="flex items-center gap-2">
@@ -612,16 +599,14 @@ export default function CreateEventForm() {
               </CardContent>
             </Card>
 
+            {/* Action Buttons */}
             <div className="flex gap-4">
-              <Button
-                onClick={() => handleSubmit(true)}
-                variant="outline"
-                className="flex-1 h-12 bg-transparent"
-                disabled={isSubmitting}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Save as Draft
-              </Button>
+             <Link href='/venues' className="flex-1 h-12">
+                <Button variant="outline" className="w-full h-full">
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>     
+                </Link>
               <Button onClick={() => handleSubmit(false)} className="flex-1 h-12" disabled={isSubmitting}>
                 <Send className="h-4 w-4 mr-2" />
                 {isSubmitting ? "Creating Booking..." : "Create Booking"}
@@ -643,8 +628,8 @@ export default function CreateEventForm() {
         {/* Header */}
         <div className="text-center mb-8">
           {/* Update page title and subtitle */}
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Venue Booking</h1>
-          <p className="text-gray-600">Follow the steps below to create your booking</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Venue Booking</h1>
+          <p className="text-gray-600">Follow these simple steps to set up your booking:</p>
         </div>
 
         {/* Progress Steps */}
@@ -719,11 +704,6 @@ export default function CreateEventForm() {
               <ChevronRight className="h-4 w-4 ml-2" />
             </Button>
           ) : null}
-            {currentStep === totalSteps && (
-              <Button onClick={() => handleSubmit(false)} className="h-12 px-6" disabled={isSubmitting}>
-                {isSubmitting ? "Creating Booking..." : "Create Booking"}
-              </Button>
-            )}
           </div>
         </div>
       </div>
