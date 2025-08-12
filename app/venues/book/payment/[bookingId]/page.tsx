@@ -990,7 +990,7 @@ export default function PayVenueBooking() {
                       <p className="text-sm text-gray-600 mt-1">
                         {bookingData?.paymentSummary ? (
                           <>
-                            Total amount: {bookingData.pricing.totalAmount} Rwf
+                            Full amount to be paid: {bookingData.pricing.totalAmount} Rwf
                             <br />
                             Remaining amount:{" "}
                             {bookingData.paymentSummary.remainingAmount} Rwf
@@ -998,24 +998,7 @@ export default function PayVenueBooking() {
                         ) : (
                           `Total amount due: ${bookingData?.pricing.totalAmount} Rwf`
                         )}
-                        {bookingData?.venue.depositRequired && (
-                          <>
-                            <br />
-                            {!["APPROVED_PAID", "PARTIAL"].includes(
-                              bookingData?.bookingStatus || ""
-                            ) && (
-                              <span className="text-blue-600 font-medium">
-                                Deposit required:{" "}
-                                {bookingData.venue.depositRequired.amount} Rwf (
-                                {bookingData.venue.depositRequired.percentage}%)
-                              </span>
-                            )}
-                            <br />
-                            <span className="text-green-600 font-medium">
-                              ✓ Pre-filled with deposit amount
-                            </span>
-                          </>
-                        )}
+                       
                       </p>
                       {errors.amountPaid && (
                         <p className="text-sm text-red-500 mt-1">
