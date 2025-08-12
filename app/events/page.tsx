@@ -7,6 +7,7 @@ import Footer from "@/components/footer"
 import { EventCard } from "@/components/event-card"
 import ApiService from "@/api/apiConfig"
 import { Button } from "@/components/button"
+import Link from "next/link"
 
 export default function EventsPage() {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false)
@@ -113,7 +114,7 @@ export default function EventsPage() {
 
       <main className="flex-1">
         {/* Header Section with Animations */}
-        <div className="bg-purple-50 py-16 overflow-hidden">
+        <div className="bg-blue-50 py-16 overflow-hidden">
           <div className="container mx-auto px-16 max-w-7xl text-center">
             <h1
               className={`text-4xl font-bold mb-4 transform transition-all duration-1000 ease-out ${

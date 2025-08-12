@@ -169,7 +169,7 @@ export default function VenuesPage() {
 
       <main className="flex-1">
         {/* Header Section with Animations */}
-        <div className="bg-purple-50 py-16 overflow-hidden">
+        <div className="bg-blue-50 py-16 overflow-hidden">
           <div className="container mx-auto px-16 max-w-7xl text-center">
             <h1
               className={`text-4xl font-bold mb-4 transform transition-all duration-1000 ease-out ${
@@ -263,19 +263,19 @@ export default function VenuesPage() {
               )}
             </div>
           ) : filteredVenues.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 shadow-md gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3  gap-8">
               {filteredVenues.map((venue, index) => (
                 <Link
                   key={venue.venueId}
                   href={`/venues/${venue.venueId}`}
-                  className={`bg-white rounded-lg overflow-hidden shadow transform transition-all duration-700 ease-out hover:shadow-lg hover:-translate-y-1 ${
+                  className={`bg-white border-2 border-blue-200 rounded-lg overflow-hidden shadow transform transition-all duration-700 ease-out hover:shadow-lg hover:-translate-y-1 ${
                     isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
                   }`}
                   style={{
                     transitionDelay: `${600 + index * 100}ms`,
                   }}
                 >
-                  <div className="h-48 relative overflow-hidden">
+                  <div className="h-48 relative overflow-hidden b">
                     <Image
                       src={venue.mainPhotoUrl || "/placeholder.svg"}
                       alt={venue.venueName}
@@ -292,11 +292,11 @@ export default function VenuesPage() {
                     </h3>
                     <div className="space-y-2 text-sm text-gray-600 mb-4">
                       <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                        <MapPin className="h-4 w-4 mr-2 text-blue-600" />
                         <span>{venue.venueLocation}</span>
                       </div>
                       <div className="flex items-center">
-                        <Users className="h-4 w-4 mr-2 text-gray-400" />
+                        <Users className="h-4 w-4 mr-2 text-purple-600" />
                         <span>Capacity: {venue.capacity}</span>
                       </div>
                       {venue.organization && (

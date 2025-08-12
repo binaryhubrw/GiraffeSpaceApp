@@ -502,13 +502,6 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                     </Button>
                   </div>
 
-        message: err?.message,
-        response: err?.response,
-        status: err?.response?.status,
-        data: err?.response?.data
-      });
-      toast.error("Failed to register for the event. Please try again.");
-      setError("Failed to register for the event. Please try again.");
                   {/* Submit Button */}
                   <div className="pt-4">
                     <Button onClick={handleSubmit} className="w-full h-12" disabled={submitting}>
