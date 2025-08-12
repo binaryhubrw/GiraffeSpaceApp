@@ -3,7 +3,7 @@
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Check, X, Eye, XCircle, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, X, Eye, XCircle, Search, ChevronLeft, ChevronRight, Download, Calendar, HelpCircle, Settings } from "lucide-react";
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
 import ApiService from "@/api/apiConfig";
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { format, isToday, isThisWeek, isSameMonth, parseISO } from "date-fns"; // Added parseISO for date parsing and other date functions
+import { format, isToday, isThisWeek, isSameMonth, parseISO } from "date-fns";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +30,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface Payer {
   userId: string
@@ -122,6 +124,21 @@ export default function BookingRequestsPage() {
   const [bookingToCancelId, setBookingToCancelId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
+  const [exportStartDate, setExportStartDate] = useState("");
+  const [exportEndDate, setExportEndDate] = useState("");
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([
+    "#",
+    "Booking No.",
+    "Event",
+    "Venue",
+    "Event Date",
+    "Total Paid",
+    "Remaining",
+    "Booking Status",
+    "Payment Status",
+    "Requester"
+  ]);
+  const [showColumnSelector, setShowColumnSelector] = useState(false);
 
   // Helper to normalize date string to YYYY-MM-DD
   function normalizeDateString(dateStr: string) {
@@ -215,6 +232,21 @@ export default function BookingRequestsPage() {
   useEffect(() => {
     if (user?.userId) fetchBookings();
   }, [user?.userId]);
+
+  // Close column selector when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showColumnSelector && !target.closest('.column-selector')) {
+        setShowColumnSelector(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showColumnSelector]);
 
   // Handle cancellation directly from the table
   const handleCancelBooking = (bookingId: string) => {
@@ -326,6 +358,186 @@ export default function BookingRequestsPage() {
   const totalPages = Math.max(1, Math.ceil(filteredBookings.length / ITEMS_PER_PAGE));
   const paginated = filteredBookings.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
+  // Export filtered bookings to CSV
+  const handleExportReport = () => {
+    // Apply date filters to the export data
+    let exportData = filteredBookings;
+    
+    if (exportStartDate || exportEndDate) {
+      exportData = filteredBookings.filter((booking) => {
+        const bookingDate = booking.bookingDates?.[0]?.date;
+        if (!bookingDate) return false;
+        
+        const date = new Date(bookingDate);
+        const startDate = exportStartDate ? new Date(exportStartDate) : null;
+        const endDate = exportEndDate ? new Date(exportEndDate) : null;
+        
+        if (startDate && endDate) {
+          return date >= startDate && date <= endDate;
+        } else if (startDate) {
+          return date >= startDate;
+        } else if (endDate) {
+          return date <= endDate;
+        }
+        return true;
+      });
+    }
+    
+    // Helper function to format date for export
+    const formatDateForExport = (dateString: string) => {
+      if (!dateString) return "N/A";
+      try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return "Invalid Date";
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          weekday: 'short'
+        });
+      } catch {
+        return "Invalid Date";
+      }
+    };
+
+    // Helper function to format currency for export
+    const formatCurrencyForExport = (amount: number) => {
+      if (amount === 0) return "Frw 0";
+      return `Frw ${amount.toLocaleString('en-US', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      })}`;
+    };
+
+    // Helper function to get readable status
+    const getReadableStatus = (status: string) => {
+      const statusMap: { [key: string]: string } = {
+        'HOLDING': 'Pending',
+        'APPROVED_PAID': 'Fully Paid',
+        'APPROVED_NOT_PAID': 'Approved - Unpaid',
+        'PARTIAL': 'Partially Paid',
+        'CANCELLED': 'Cancelled',
+        'REJECTED': 'Rejected',
+        'PAID': 'Paid'
+      };
+      return statusMap[status] || status || 'Unknown';
+    };
+
+    // Helper function to get readable payment status
+    const getReadablePaymentStatus = (status: string) => {
+      const paymentStatusMap: { [key: string]: string } = {
+        'PAID': 'Paid',
+        'PENDING': 'Pending',
+        'FAILED': 'Failed',
+        'PARTIAL': 'Partially Paid'
+      };
+      return paymentStatusMap[status] || status || 'Unknown';
+    };
+    
+    // Available columns for export
+    const availableColumns = [
+      "#",
+      "Booking No.",
+      "Event",
+      "Venue",
+      "Event Date",
+      "Time",
+      "Total Paid",
+      "Remaining",
+      "Booking Status",
+      "Payment Status",
+      "Requester",
+      "Contact Info",
+      "Created Date"
+    ];
+
+    // Filter headers based on selected columns
+    const headers = availableColumns.filter(col => selectedColumns.includes(col));
+
+    // Function to get data for a specific column
+    const getColumnData = (booking: any, idx: number, column: string) => {
+      switch (column) {
+        case "#":
+          return idx + 1;
+        case "Booking No.":
+          return toReadableBookingNo(booking.bookingId, idx + 1);
+        case "Event":
+          return booking.eventDetails?.eventName || "N/A";
+        case "Venue":
+          return booking.venue?.venueName || "N/A";
+        case "Event Date":
+          return formatDateForExport(booking.bookingDates?.[0]?.date || "");
+        case "Time":
+          return booking.bookingDates?.[0]?.hours ? 
+            `${booking.bookingDates[0].hours[0] || 0}:00 - ${(booking.bookingDates[0].hours[0] || 0) + (booking.venue?.totalHours || 1)}:00` : 
+            "N/A";
+        case "Total Paid":
+          return formatCurrencyForExport(booking.paymentSummary?.totalPaid ?? 0);
+        case "Remaining":
+          return formatCurrencyForExport(booking.paymentSummary?.remainingAmount ?? 0);
+        case "Booking Status":
+          return getReadableStatus(booking.bookingStatus || "");
+        case "Payment Status":
+          return getReadablePaymentStatus(booking.paymentSummary?.paymentStatus || "");
+        case "Requester":
+          return booking.requester?.fullName || "N/A";
+        case "Contact Info":
+          return booking.requester?.phoneNumber || booking.requester?.email || "N/A";
+        case "Created Date":
+          return formatDateForExport(booking.createdAt || "");
+        default:
+          return "N/A";
+      }
+    };
+
+    const toReadableBookingNo = (id: string | undefined, fallbackIndex: number) => {
+      if (!id) return String(fallbackIndex).padStart(5, '0');
+      const digits = id.replace(/\D/g, "");
+      if (digits.length >= 6) return digits.slice(-6); // last 6 digits
+      if (digits.length > 0) return digits.padStart(6, '0');
+      return String(fallbackIndex).padStart(5, '0');
+    };
+    const rows = exportData.map((b, idx) => 
+      headers.map(column => getColumnData(b, idx, column))
+    );
+
+    // Add summary row
+    const totalPaid = exportData.reduce((sum, b) => sum + (b.paymentSummary?.totalPaid ?? 0), 0);
+    const totalRemaining = exportData.reduce((sum, b) => sum + (b.paymentSummary?.remainingAmount ?? 0), 0);
+    const summaryRow = headers.map(column => {
+      if (column === "Total Paid") {
+        return `TOTAL: ${formatCurrencyForExport(totalPaid)}`;
+      } else if (column === "Remaining") {
+        return `TOTAL: ${formatCurrencyForExport(totalRemaining)}`;
+      } else {
+        return "";
+      }
+    });
+
+    const csv = [headers, ...rows]
+      .map((r) => r.map((f) => `"${String(f).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    // Add summary row to CSV
+    const csvWithSummary = csv + "\n" + summaryRow.map((f) => `"${String(f).replace(/"/g, '""')}"`).join(",");
+
+    const blob = new Blob([csvWithSummary], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    const dateRange = exportStartDate || exportEndDate ? 
+      `-${exportStartDate || 'all'}-to-${exportEndDate || 'all'}` : '';
+    a.download = `GiraffeSpace-Bookings-${timestamp}${dateRange}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    // Show success message with export details
+    toast.success(`Exported ${exportData.length} bookings to CSV${exportStartDate || exportEndDate ? ' with date filters' : ''}`);
+  };
+
   // Status filter options - Now directly mapping to backend bookingStatus
   const statusFilterOptions = [
     { value: "all", label: "All Statuses" },
@@ -342,13 +554,192 @@ export default function BookingRequestsPage() {
 
         <main className="max-w-8xl flex-1">
           <div className="p-8">
+            {/* Page Header */}
             <div className="mb-6">
-              <h1 className="text-2xl font-bold">Booking Requests</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Booking Requests</h1>
               <p className="text-gray-600">Manage and approve booking requests for your venues</p>
             </div>
 
+            {/* Export Section */}
+            <div className="bg-white rounded-lg border p-6 mb-6">
+              <div className="flex flex-col sm:flex-row gap-6 items-end justify-between">
+                {/* Date Filters - Left Side */}
+                <div className="flex flex-col sm:flex-row gap-4 items-end">
+                  {/* Date Filters */}
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="export-start-date" className="text-sm text-gray-600">
+                        From Date
+                      </Label>
+                      <Input
+                        id="export-start-date"
+                        type="date"
+                        value={exportStartDate}
+                        onChange={(e) => setExportStartDate(e.target.value)}
+                        className="w-36"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label htmlFor="export-end-date" className="text-sm text-gray-600">
+                        To Date
+                      </Label>
+                      <Input
+                        id="export-end-date"
+                        type="date"
+                        value={exportEndDate}
+                        onChange={(e) => setExportEndDate(e.target.value)}
+                        className="w-36"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Label className="text-sm text-gray-600 opacity-0">
+                        Clear
+                      </Label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setExportStartDate("");
+                          setExportEndDate("");
+                        }}
+                        className="w-36 h-10 text-gray-600 hover:text-gray-800"
+                        disabled={!exportStartDate && !exportEndDate}
+                      >
+                        Clear Filters
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Export Button and Info - Right Side */}
+                <div className="flex flex-col items-end gap-2">
+                   {/* Column Selector Button */}
+                   <div className="relative flex items-center gap-2 mb-2">
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => setShowColumnSelector(!showColumnSelector)}
+                       className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+                     >
+                       <Settings className="h-4 w-4" />
+                       Select Columns
+                     </Button>
+                     
+                     {/* Column Selection Modal */}
+                     {showColumnSelector && (
+                       <div className="absolute left-0 top-full mt-2 bg-white border rounded-lg shadow-lg p-4 z-10 min-w-[300px] column-selector">
+                         <div className="mb-3">
+                           <h4 className="font-medium text-gray-900 mb-2">Select columns to export:</h4>
+                           <div className="text-xs text-gray-600 mb-3">
+                             {selectedColumns.length} of 13 columns selected
+                           </div>
+                         </div>
+                        
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {[
+                            "#",
+                            "Booking No.",
+                            "Event",
+                            "Venue",
+                            "Event Date",
+                            "Time",
+                            "Total Paid",
+                            "Remaining",
+                            "Booking Status",
+                            "Payment Status",
+                            "Requester",
+                            "Contact Info",
+                            "Created Date"
+                          ].map((column) => (
+                            <label key={column} className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={selectedColumns.includes(column)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedColumns([...selectedColumns, column]);
+                                  } else {
+                                    setSelectedColumns(selectedColumns.filter(col => col !== column));
+                                  }
+                                }}
+                                className="rounded border-gray-300"
+                              />
+                              <span className="text-gray-700">{column}</span>
+                            </label>
+                          ))}
+                        </div>
+                        
+                        <div className="flex gap-2 mt-4 pt-3 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedColumns([
+                              "#",
+                              "Booking No.",
+                              "Event",
+                              "Venue",
+                              "Event Date",
+                              "Time",
+                              "Total Paid",
+                              "Remaining",
+                              "Booking Status",
+                              "Payment Status",
+                              "Requester",
+                              "Contact Info",
+                              "Created Date"
+                            ])}
+                            className="text-xs"
+                          >
+                            Select All
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedColumns([])}
+                            className="text-xs"
+                          >
+                            Clear All
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => setShowColumnSelector(false)}
+                            className="text-xs"
+                          >
+                            Done
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button 
+                    onClick={handleExportReport} 
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2"
+                    disabled={filteredBookings.length === 0 || selectedColumns.length === 0}
+                  >
+                    <Download className="h-4 w-4" />
+                    Export CSV
+                  </Button>
+                  {/* <div className="text-xs text-gray-600 text-center">
+                    <div className="font-medium">
+                      {exportStartDate || exportEndDate ? 'Filtered Export' : 'Full Export'}
+                    </div>
+                    <div className="text-xs">
+                      {exportStartDate || exportEndDate ? 
+                        `${exportStartDate ? `From: ${new Date(exportStartDate).toLocaleDateString()}` : ''} ${exportEndDate ? `To: ${new Date(exportEndDate).toLocaleDateString()}` : ''}`.trim() :
+                        'All bookings'
+                      }
+                    </div>
+                    <div className="text-xs font-medium text-blue-600">
+                      {filteredBookings.length} bookings available
+                    </div>
+                  </div> */}
+                </div>
+              </div>
+            </div>
+
             {/* Search, Status, and Date Filters */}
-            <div className="bg-card p-4 rounded-lg border mb-6">
+            <div className="bg-white p-6 rounded-lg border mb-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -374,6 +765,18 @@ export default function BookingRequestsPage() {
                   </SelectContent>
                 </Select>
 
+                {/* Payment Filter */}
+                <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by payment" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Payments</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 {/* Date Filter */}
                 <Select value={dateFilter} onValueChange={setDateFilter}>
@@ -389,9 +792,6 @@ export default function BookingRequestsPage() {
                   </SelectContent>
                 </Select>
 
-                <div className="text-sm text-muted-foreground flex items-center">
-                  Showing {filteredBookings.length} booking{filteredBookings.length !== 1 ? 's' : ''}
-                </div>
               </div>
 
               {/* Custom Date Input */}
@@ -405,10 +805,17 @@ export default function BookingRequestsPage() {
                   />
                 </div>
               )}
+
+              {/* Results Count */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="text-sm text-gray-600">
+                  Showing {filteredBookings.length} booking{filteredBookings.length !== 1 ? 's' : ''}
+                </div>
+              </div>
             </div>
 
             {/* Bookings Table */}
-            <div className="bg-card rounded-lg border overflow-hidden bg-white">
+            <div className="bg-white rounded-lg border overflow-hidden">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
