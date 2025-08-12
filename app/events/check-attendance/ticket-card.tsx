@@ -253,9 +253,9 @@ export default function TicketCard({ invitationData, scannedTicketCode, onClose 
           <div className="bg-white p-4 rounded-lg border">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-                <User className="h-4 w-4" />
-                Attendee Information
-              </h4>
+              <User className="h-4 w-4" />
+              Attendee Information
+            </h4>
               <Button
                 variant="ghost"
                 size="sm"
@@ -420,23 +420,23 @@ export default function TicketCard({ invitationData, scannedTicketCode, onClose 
                         <h4 className="font-semibold text-green-900">Attendance Confirmed</h4>
                         <p className="text-green-700 text-sm">{attendanceResult.message}</p>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+          </div>
+        </CardContent>
+      </Card>
               ) : (
                 <Card className="border-2 border-red-200 bg-red-50">
                   <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
                       <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
                         <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                      </div>
+          </div>
                       <div>
                         <h4 className="font-semibold text-red-900">Attendance Failed</h4>
                         <p className="text-red-700 text-sm">{attendanceResult.message}</p>
-                      </div>
-                    </div>
+          </div>
+            </div>
                   </CardContent>
                 </Card>
               )}
@@ -573,6 +573,6 @@ export default function TicketCard({ invitationData, scannedTicketCode, onClose 
     )
   }
 
-     // Fallback - no data
-   return null
+  // Fallback - no data
+  return null
 }

@@ -1,21 +1,15 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import {
   Calendar,
   Plus,
@@ -30,104 +24,123 @@ import {
   Settings,
   Info,
   Percent,
-} from "lucide-react";
-import Image from "next/image";
-import ApiService from "@/api/apiConfig";
-import { toast } from "sonner";
+} from "lucide-react"
+import Image from "next/image"
+import ApiService from "@/api/apiConfig"
+import { toast } from "sonner"
 
 interface EventData {
-  eventId: string;
-  eventName: string;
-  eventType: string;
-  eventPhoto: string;
-  bookingDates: Array<{ date: string }>;
-  maxAttendees: number;
-  eventStatus: string;
+  eventId: string
+  eventName: string
+  eventType: string
+  eventPhoto: string
+  bookingDates: Array<{ date: string }>
+  maxAttendees: number
+  eventStatus: string
   venues: Array<{
-    venueName: string;
-    venueLocation: string;
-    capacity: number;
-  }>;
+    venueName: string
+    venueLocation: string
+    capacity: number
+  }>
 }
 
 interface Benefit {
-  id: string;
-  title: string;
-  description: string;
+  id: string
+  title: string
+  description: string
 }
 
 interface DiscountTier {
-  id: string;
-  name: string;
-  percentage: number;
-  startDate: string;
-  endDate: string;
+  id: string
+  name: string
+  percentage: number
+  startDate: string
+  endDate: string
 }
 
 interface TicketType {
-  startTime: string;
-  endTime: string;
-  id?: string;
-  name: string;
-  isCustomName?: boolean;
-  description: string;
-  price: number;
-  currency: string;
-  quantity: number;
-  maxPerPerson: number;
-  saleStartDate: string;
-  saleEndDate: string;
-  isActive: boolean;
-  bookingDate: string;
-  benefits: Benefit[];
-  discountTiers: DiscountTier[];
-  isRefundable: boolean;
-  refundPolicy: string;
-  transferable: boolean;
-  requiresApproval: boolean;
-  ageRestriction: string;
-  specialInstructions: string;
+  startTime: string
+  endTime: string
+  id?: string
+  name: string
+  isCustomName?: boolean
+  description: string
+  price: number
+  currency: string
+  quantity: number
+  maxPerPerson: number
+  saleStartDate: string
+  saleEndDate: string
+  isActive: boolean
+  bookingDate: string
+  benefits: Benefit[]
+  discountTiers: DiscountTier[]
+  isRefundable: boolean
+  refundPolicy: string
+  transferable: boolean
+  requiresApproval: boolean
+  ageRestriction: string
+  specialInstructions: string
 }
 
 const currencies = [
   { code: "USD", symbol: "$", name: "US Dollar" },
   { code: "RWF", symbol: "RWF", name: "Rwandan Franc" },
   { code: "EUR", symbol: "€", name: "Euro" },
-];
+]
 
-const ageRestrictions = ["NO_RESTRICTION", "18_PLUS"];
+const ageRestrictions = ["NO_RESTRICTION", "18_PLUS"]
 
 const steps = [
   { id: 1, title: "Basic Info", icon: Info },
   { id: 2, title: "Pricing & Sales", icon: DollarSign },
   { id: 3, title: "Settings", icon: Settings },
   { id: 4, title: "Review", icon: Eye },
-];
+]
 
 export default function CreateTicketForm() {
-  const params = useParams();
-  const eventId = params.id as string;
+  const params = useParams()
+  const eventId = params.id as string
 
-  const [eventData, setEventData] = useState<EventData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [success, setSuccess] = useState(false);
+  // Helper function to get the event date for validation
+  const getEventDate = () => {
+    return eventData?.bookingDates?.[0]?.date || ""
+  }
+
+  // Helper function to get the maximum allowed date (one day before event)
+  const getMaxSaleEndDate = (bookingDate: string) => {
+    if (!bookingDate) return ""
+    const eventDate = new Date(bookingDate)
+    eventDate.setDate(eventDate.getDate() - 1)
+    return eventDate.toISOString().split("T")[0]
+  }
+
+  // Helper function to get the maximum allowed discount date (event date)
+  const getMaxDiscountDate = (bookingDate: string) => {
+    if (!bookingDate) return ""
+    return bookingDate
+  }
+
+  const [eventData, setEventData] = useState<EventData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1)
+  const [success, setSuccess] = useState(false)
 
   // Form state
-  const generateId = () => Math.random().toString(36).slice(2, 10);
+  const generateId = () => Math.random().toString(36).slice(2, 10)
   const createEmptyBenefit = (): Benefit => ({
     id: generateId(),
     title: "",
     description: "",
-  });
+  })
   const createEmptyDiscountTier = (): DiscountTier => ({
     id: generateId(),
     name: "",
     percentage: 0,
     startDate: "",
     endDate: "",
-  });
+  })
   const [ticketTypes, setTicketTypes] = useState<TicketType[]>([
     {
       startTime: "",
@@ -152,22 +165,22 @@ export default function CreateTicketForm() {
       ageRestriction: "NO_RESTRICTION",
       specialInstructions: "",
     },
-  ]);
+  ])
 
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const fetchEventData = async () => {
       try {
-        setLoading(true);
-        console.log("Fetching event data for ID:", eventId);
+        setLoading(true)
+        console.log("Fetching event data for ID:", eventId)
 
         // Call the actual API instead of using mock data
-        const response = await ApiService.getEventById(eventId);
-        console.log("API Response:", response);
+        const response = await ApiService.getEventById(eventId)
+        console.log("API Response:", response)
 
         if (response.success && response.data) {
-          const event = response.data;
+          const event = response.data
           setEventData({
             eventId: event.eventId,
             eventName: event.eventName,
@@ -179,18 +192,17 @@ export default function CreateTicketForm() {
             venues:
               event.venueBookings?.map((booking: any) => ({
                 venueName: booking.venue?.venueName || "Unknown Venue",
-                venueLocation:
-                  booking.venue?.venueLocation || "Unknown Location",
+                venueLocation: booking.venue?.venueLocation || "Unknown Location",
                 capacity: booking.venue?.capacity || 0,
               })) || [],
-          });
+          })
 
           // Set default sale dates based on event dates
           if (event.bookingDates && event.bookingDates.length > 0) {
-            const eventStartDate = event.bookingDates[0].date;
-            const saleStartDate = new Date();
-            const saleEndDate = new Date(eventStartDate);
-            saleEndDate.setDate(saleEndDate.getDate() - 1); // End sales 1 day before event
+            const eventStartDate = event.bookingDates[0].date
+            const saleStartDate = new Date()
+            const saleEndDate = new Date(eventStartDate)
+            saleEndDate.setDate(saleEndDate.getDate() - 1) // End sales 1 day before event
 
             setTicketTypes((prev) =>
               prev.map((ticket) => ({
@@ -198,72 +210,100 @@ export default function CreateTicketForm() {
                 saleStartDate: saleStartDate.toISOString().split("T")[0],
                 saleEndDate: saleEndDate.toISOString().split("T")[0],
                 bookingDate: event.bookingDates[0].date, // Set default booking date
-              }))
-            );
+              })),
+            )
           }
         } else {
-          console.error("Failed to fetch event data:", response);
-          toast.error("Failed to load event details");
+          console.error("Failed to fetch event data:", response)
+          toast.error("Failed to load event details")
         }
       } catch (err) {
-        console.error("Error fetching event data:", err);
-        toast.error("Error loading event details");
+        console.error("Error fetching event data:", err)
+        toast.error("Error loading event details")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
     if (eventId) {
-      fetchEventData();
+      fetchEventData()
     }
-  }, [eventId]);
+  }, [eventId])
 
-  const handleTicketChange = (
-    index: number,
-    field: keyof TicketType,
-    value: any
-  ) => {
-    const newTickets = [...ticketTypes];
-    newTickets[index] = { ...newTickets[index], [field]: value };
-    setTicketTypes(newTickets);
+  const handleTicketChange = (index: number, field: keyof TicketType, value: any) => {
+    const newTickets = [...ticketTypes]
+    newTickets[index] = { ...newTickets[index], [field]: value }
+
+    // If booking date is changed, validate and adjust discount dates
+    if (field === "bookingDate" && value) {
+      const ticket = newTickets[index]
+      let hasChanges = false
+
+      // Check and adjust discount dates if they exceed the new booking date
+      ticket.discountTiers.forEach((discount, discountIndex) => {
+        if (discount.startDate && discount.startDate > value) {
+          newTickets[index].discountTiers[discountIndex].startDate = value
+          hasChanges = true
+        }
+        if (discount.endDate && discount.endDate > value) {
+          newTickets[index].discountTiers[discountIndex].endDate = value
+          hasChanges = true
+        }
+      })
+
+      // Check and adjust sale end date if it exceeds the new booking date
+      if (ticket.saleEndDate && ticket.saleEndDate >= value) {
+        const adjustedDate = new Date(value)
+        adjustedDate.setDate(adjustedDate.getDate() - 1)
+        newTickets[index].saleEndDate = adjustedDate.toISOString().split("T")[0]
+        hasChanges = true
+      }
+
+      if (hasChanges) {
+        toast.info("Some dates have been automatically adjusted to match the new event date.")
+      }
+    }
+
+    setTicketTypes(newTickets)
 
     // Clear error for this field
-    const errorKey = `ticket-${index}-${field}`;
+    const errorKey = `ticket-${index}-${field}`
     if (errors[errorKey]) {
-      setErrors((prev) => ({ ...prev, [errorKey]: "" }));
+      setErrors((prev) => ({ ...prev, [errorKey]: "" }))
     }
-  };
+  }
 
-  const updateBenefit = (
-    ticketIndex: number,
-    benefitIndex: number,
-    field: keyof Benefit,
-    value: string
-  ) => {
+  const updateBenefit = (ticketIndex: number, benefitIndex: number, field: keyof Benefit, value: string) => {
     setTicketTypes((prev) => {
-      const next = [...prev];
-      const ticket = next[ticketIndex];
-      const benefit = ticket.benefits[benefitIndex];
-      ticket.benefits[benefitIndex] = { ...benefit, [field]: value };
-      return next;
-    });
-  };
+      const next = [...prev]
+      const ticket = next[ticketIndex]
+      const benefit = ticket.benefits[benefitIndex]
+      ticket.benefits[benefitIndex] = { ...benefit, [field]: value }
+      return next
+    })
+
+    // Clear error for this field
+    const errorKey = `ticket-${ticketIndex}-benefit-${benefitIndex}-${field}`
+    if (errors[errorKey]) {
+      setErrors((prev) => ({ ...prev, [errorKey]: "" }))
+    }
+  }
 
   const addBenefit = (ticketIndex: number) => {
     setTicketTypes((prev) => {
-      const next = [...prev];
-      next[ticketIndex].benefits.push(createEmptyBenefit());
-      return next;
-    });
-  };
+      const next = [...prev]
+      next[ticketIndex].benefits.push(createEmptyBenefit())
+      return next
+    })
+  }
 
   const removeBenefit = (ticketIndex: number, benefitIndex: number) => {
-    const newTickets = [...ticketTypes];
+    const newTickets = [...ticketTypes]
     if (newTickets[ticketIndex].benefits.length > 1) {
-      newTickets[ticketIndex].benefits.splice(benefitIndex, 1);
-      setTicketTypes(newTickets);
+      newTickets[ticketIndex].benefits.splice(benefitIndex, 1)
+      setTicketTypes(newTickets)
     }
-  };
+  }
 
   const addDiscountTier = (ticketIndex: number) => {
     setTicketTypes((prev) =>
@@ -271,35 +311,44 @@ export default function CreateTicketForm() {
         i === ticketIndex
           ? {
               ...ticket,
-              discountTiers: [
-                ...ticket.discountTiers,
-                createEmptyDiscountTier(),
-              ],
+              discountTiers: [...ticket.discountTiers, createEmptyDiscountTier()],
             }
-          : ticket
-      )
-    );
-  };
+          : ticket,
+      ),
+    )
+  }
 
   const updateDiscountTier = (
     ticketIndex: number,
     discountIndex: number,
     field: keyof DiscountTier,
-    value: string | number
+    value: string | number,
   ) => {
-    setTicketTypes((prev) =>
-      prev.map((ticket, i) =>
-        i !== ticketIndex
-          ? ticket
-          : {
-              ...ticket,
-              discountTiers: ticket.discountTiers.map((tier, di) =>
-                di === discountIndex ? { ...tier, [field]: value as never } : tier
-              ),
-            }
-      )
-    );
-  };
+    setTicketTypes((prev) => {
+      const next = [...prev]
+      const ticket = next[ticketIndex]
+      const discount = ticket.discountTiers[discountIndex]
+
+      if ((field === "startDate" || field === "endDate") && ticket.bookingDate && value) {
+        const discountDate = new Date(value as string)
+        const bookingDate = new Date(ticket.bookingDate)
+
+        if (discountDate > bookingDate) {
+          toast.error(`Discount ${field === "startDate" ? "start" : "end"} date cannot exceed the event booking date`)
+          return prev // Don't update if validation fails
+        }
+      }
+
+      ticket.discountTiers[discountIndex] = { ...discount, [field]: value }
+      return next
+    })
+
+    // Clear error for this field
+    const errorKey = `ticket-${ticketIndex}-discount-${discountIndex}-${field}`
+    if (errors[errorKey]) {
+      setErrors((prev) => ({ ...prev, [errorKey]: "" }))
+    }
+  }
 
   const removeDiscountTier = (ticketIndex: number, discountIndex: number) => {
     setTicketTypes((prev) =>
@@ -309,189 +358,316 @@ export default function CreateTicketForm() {
           : {
               ...ticket,
               discountTiers: ticket.discountTiers.filter((_, di) => di !== discountIndex),
-            }
-      )
-    );
-  };
+            },
+      ),
+    )
+  }
 
   const addTicketType = () => {
-    const defaultSaleStart = new Date().toISOString().split("T")[0];
+    const defaultSaleStart = new Date().toISOString().split("T")[0]
     const defaultSaleEnd = eventData?.bookingDates[0]
-      ? new Date(
-          new Date(eventData.bookingDates[0].date).getTime() -
-            24 * 60 * 60 * 1000
-        )
-          .toISOString()
-          .split("T")[0]
-      : "";
-    const defaultBookingDate = eventData?.bookingDates[0]?.date || "";
+      ? new Date(new Date(eventData.bookingDates[0].date).getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+      : ""
+    const defaultBookingDate = eventData?.bookingDates[0]?.date || ""
 
-    setTicketTypes([
-      ...ticketTypes,
-      {
-        startTime: "",
-        endTime: "",
-        name: "",
-        isCustomName: false,
-        description: "",
-        price: 0,
-        currency: "RWF",
-        quantity: 100,
-        maxPerPerson: 5,
-        saleStartDate: defaultSaleStart,
-        saleEndDate: defaultSaleEnd,
-        isActive: true,
-        bookingDate: defaultBookingDate, // Set default booking date
-        benefits: [createEmptyBenefit()],
-        discountTiers: [],
-        isRefundable: true,
-        refundPolicy: "",
-        transferable: true,
-        requiresApproval: false,
-        ageRestriction: "NO_RESTRICTION",
-        specialInstructions: "",
-      },
-    ]);
-  };
+    const newTicket: TicketType = {
+      startTime: "",
+      endTime: "",
+      name: "",
+      isCustomName: false,
+      description: "",
+      price: 0,
+      currency: "RWF",
+      quantity: 100,
+      maxPerPerson: 5,
+      saleStartDate: defaultSaleStart,
+      saleEndDate: defaultSaleEnd,
+      isActive: true,
+      bookingDate: defaultBookingDate, // Set default booking date
+      benefits: [createEmptyBenefit()],
+      discountTiers: [],
+      isRefundable: true,
+      refundPolicy: "",
+      transferable: true,
+      requiresApproval: false,
+      ageRestriction: "NO_RESTRICTION",
+      specialInstructions: "",
+    }
+
+    setTicketTypes([...ticketTypes, newTicket])
+  }
 
   const removeTicketType = (index: number) => {
     if (ticketTypes.length > 1) {
-      const newTickets = ticketTypes.filter((_, i) => i !== index);
-      setTicketTypes(newTickets);
+      const newTickets = ticketTypes.filter((_, i) => i !== index)
+      setTicketTypes(newTickets)
     }
-  };
+  }
 
   const validateCurrentStep = () => {
-    const newErrors: Record<string, string> = {};
+    const newErrors: Record<string, string> = {}
 
     ticketTypes.forEach((ticket, index) => {
       switch (currentStep) {
         case 1:
           if (!ticket.name.trim()) {
-            newErrors[`ticket-${index}-name`] = "Ticket name is required";
+            newErrors[`ticket-${index}-name`] = "Ticket name is required"
           }
           if (!ticket.description.trim() || ticket.description.trim().length < 5) {
-            newErrors[`ticket-${index}-description`] =
-              "Please add a short description (min 5 characters)";
+            newErrors[`ticket-${index}-description`] = "Please add a short description (min 5 characters)"
           }
           if ((eventData?.bookingDates?.length ?? 0) > 0 && !ticket.bookingDate) {
-            newErrors[`ticket-${index}-bookingDate`] = "Event date is required";
+            newErrors[`ticket-${index}-bookingDate`] = "Event date is required"
           }
           if (!ticket.startTime) {
-            newErrors[`ticket-${index}-startTime`] = "Start time is required";
+            newErrors[`ticket-${index}-startTime`] = "Start time is required"
           }
           if (!ticket.endTime) {
-            newErrors[`ticket-${index}-endTime`] = "End time is required";
+            newErrors[`ticket-${index}-endTime`] = "End time is required"
           }
-          break;
+          break
         case 2:
           if (ticket.price < 0) {
-            newErrors[`ticket-${index}-price`] = "Price cannot be negative";
+            newErrors[`ticket-${index}-price`] = "Price cannot be negative"
           }
           if (ticket.quantity <= 0) {
-            newErrors[`ticket-${index}-quantity`] =
-              "Quantity must be greater than 0";
+            newErrors[`ticket-${index}-quantity`] = "Quantity must be greater than 0"
           }
           if (ticket.maxPerPerson <= 0) {
-            newErrors[`ticket-${index}-maxPerPerson`] =
-              "Max per person must be greater than 0";
+            newErrors[`ticket-${index}-maxPerPerson`] = "Max per person must be greater than 0"
           }
           if (!ticket.saleStartDate) {
-            newErrors[`ticket-${index}-saleStartDate`] =
-              "Sale start date is required";
+            newErrors[`ticket-${index}-saleStartDate`] = "Sale start date is required"
           }
           if (!ticket.saleEndDate) {
-            newErrors[`ticket-${index}-saleEndDate`] =
-              "Sale end date is required";
+            newErrors[`ticket-${index}-saleEndDate`] = "Sale end date is required"
           }
-          if (
-            ticket.saleStartDate &&
-            ticket.saleEndDate &&
-            ticket.saleStartDate >= ticket.saleEndDate
-          ) {
-            newErrors[`ticket-${index}-saleEndDate`] =
-              "Sale end date must be after start date";
+          if (ticket.saleStartDate && ticket.saleEndDate && ticket.saleStartDate >= ticket.saleEndDate) {
+            newErrors[`ticket-${index}-saleEndDate`] = "Sale end date must be after start date"
           }
-          break;
+
+          // Validate sale dates against event date
+          if (ticket.saleEndDate && ticket.bookingDate && ticket.saleEndDate >= ticket.bookingDate) {
+            newErrors[`ticket-${index}-saleEndDate`] = "Sale end date must be before the event date"
+          }
+
+          break
         case 3:
           if (ticket.isRefundable && !ticket.refundPolicy.trim()) {
-            newErrors[`ticket-${index}-refundPolicy`] =
-              "Refund policy is required for refundable tickets";
+            newErrors[`ticket-${index}-refundPolicy`] = "Refund policy is required for refundable tickets"
           }
-          break;
-      }
-    });
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+          // Validate benefits if they have content
+          ticket.benefits.forEach((benefit, benefitIndex) => {
+            if (benefit.title.trim() !== "" || benefit.description.trim() !== "") {
+              if (!benefit.title.trim()) {
+                newErrors[`ticket-${index}-benefit-${benefitIndex}-title`] = "Benefit title is required"
+              }
+              if (!benefit.description.trim()) {
+                newErrors[`ticket-${index}-benefit-${benefitIndex}-description`] = "Benefit description is required"
+              }
+            }
+          })
+
+          // Validate discount tiers if they have content
+          ticket.discountTiers.forEach((discount, discountIndex) => {
+            if (discount.name.trim() !== "" || discount.percentage > 0) {
+              if (!discount.name.trim()) {
+                newErrors[`ticket-${index}-discount-${discountIndex}-name`] = "Discount name is required"
+              }
+              if (discount.percentage <= 0 || discount.percentage > 100) {
+                newErrors[`ticket-${index}-discount-${discountIndex}-percentage`] =
+                  "Percentage must be between 1 and 100"
+              }
+              if (!discount.startDate) {
+                newErrors[`ticket-${index}-discount-${discountIndex}-startDate`] = "Start date is required"
+              }
+              if (!discount.endDate) {
+                newErrors[`ticket-${index}-discount-${discountIndex}-endDate`] = "End date is required"
+              }
+              if (discount.startDate && discount.endDate && discount.startDate >= discount.endDate) {
+                newErrors[`ticket-${index}-discount-${discountIndex}-endDate`] = "End date must be after start date"
+              }
+
+              // Validate discount dates against event date
+              if (discount.startDate && ticket.bookingDate && discount.startDate > ticket.bookingDate) {
+                newErrors[`ticket-${index}-discount-${discountIndex}-startDate`] =
+                  "Discount start date cannot exceed the event date"
+              }
+              if (discount.endDate && ticket.bookingDate && discount.endDate > ticket.bookingDate) {
+                newErrors[`ticket-${index}-discount-${discountIndex}-endDate`] =
+                  "Discount end date cannot exceed the event date"
+              }
+            }
+          })
+          break
+      }
+    })
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const nextStep = () => {
     if (validateCurrentStep()) {
-      setCurrentStep((prev) => Math.min(prev + 1, 4));
+      setCurrentStep((prev) => Math.min(prev + 1, 4))
     }
-  };
+  }
 
   const prevStep = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
-  };
+    setCurrentStep((prev) => Math.max(prev - 1, 1))
+  }
 
   const handleSubmit = async (isDraft: boolean) => {
-    if (!validateCurrentStep()) return;
+    if (!validateCurrentStep()) return
 
-    setSubmitting(true);
+    setSubmitting(true)
 
     try {
-      // Format ticket data according to API expectations
-      const formattedTickets = ticketTypes.map((ticket) => ({
-        name: ticket.name,
-        price: ticket.price,
-        quantityAvailable: ticket.quantity,
-        currency: ticket.currency,
-        description: ticket.description,
-        saleStartsAt: new Date(
-          ticket.saleStartDate + "T09:00:00Z"
-        ).toISOString(),
-        saleEndsAt: new Date(ticket.saleEndDate + "T17:00:00Z").toISOString(),
-        isPubliclyAvailable: ticket.isActive,
-        maxPerPerson: ticket.maxPerPerson,
-        isActive: ticket.isActive,
-        validForDate: ticket.bookingDate, // Add the selected booking date
-        isRefundable: ticket.isRefundable,
-        transferable: ticket.transferable,
-        ageRestriction: ticket.ageRestriction,
-        specialInstructions: ticket.specialInstructions || undefined,
-        status: isDraft ? "DRAFT" : "ACTIVE",
-      }));
+      // Format ticket data according to the required JSON body structure
+      const formattedTickets = ticketTypes.map((ticket) => {
+        // Format customer benefits from the benefits array
+        const customerBenefits = ticket.benefits
+          .filter((benefit) => benefit.title.trim() !== "" || benefit.description.trim() !== "")
+          .map((benefit) => ({
+            title: benefit.title,
+            description: benefit.description,
+          }))
 
-      console.log("Creating tickets with formatted data:", formattedTickets);
+        // Format discount from the first discount tier (if any)
+        const discount =
+          ticket.discountTiers.length > 0 && 
+          (ticket.discountTiers[0].name.trim() !== "" || ticket.discountTiers[0].percentage > 0)
+            ? {
+                discountName: ticket.discountTiers[0].name || `Discount ${ticket.discountTiers[0].percentage}%`,
+                percentage: ticket.discountTiers[0].percentage,
+                startDate: (() => {
+                  const discountStartDate = new Date(ticket.discountTiers[0].startDate + "T00:00:00Z")
+                  const eventDate = new Date(ticket.bookingDate + "T00:00:00Z")
+                  // If discount start date would exceed event date, set it to event date at 00:00:00
+                  if (discountStartDate > eventDate) {
+                    return new Date(ticket.bookingDate + "T00:00:00Z").toISOString()
+                  }
+                  return discountStartDate.toISOString()
+                })(),
+                // Ensure discount end date doesn't exceed event date
+                endDate: (() => {
+                  const discountEndDate = new Date(ticket.discountTiers[0].endDate + "T23:59:59Z")
+                  const eventDate = new Date(ticket.bookingDate + "T23:59:59Z")
+                  // If discount end date would exceed event date, set it to event date at 23:59:59
+                  if (discountEndDate > eventDate) {
+                    return new Date(ticket.bookingDate + "T23:59:59Z").toISOString()
+                  }
+                  return discountEndDate.toISOString()
+                })(),
+              }
+            : undefined
+
+        const formattedTicket = {
+          name: ticket.name,
+          price: ticket.price,
+          quantityAvailable: ticket.quantity,
+          currency: ticket.currency,
+          description: ticket.description,
+          saleStartsAt: new Date(ticket.saleStartDate + "T09:00:00Z").toISOString(),
+          saleEndsAt: (() => {
+            const saleEndDate = new Date(ticket.saleEndDate + "T23:59:59Z")
+            const eventDate = new Date(ticket.bookingDate + "T00:00:00Z")
+            // If sale end date would exceed event date, set it to one day before event
+            if (saleEndDate >= eventDate) {
+              const adjustedDate = new Date(eventDate)
+              adjustedDate.setDate(adjustedDate.getDate() - 1)
+              return new Date(adjustedDate.toISOString().split("T")[0] + "T23:59:59Z").toISOString()
+            }
+            return saleEndDate.toISOString()
+          })(),
+          maxPerPerson: ticket.maxPerPerson,
+          isActive: ticket.isActive,
+          validForDate: ticket.bookingDate,
+          startTime: ticket.startTime,
+          endTime: ticket.endTime,
+          ...(customerBenefits.length > 0 && { customerBenefits }),
+          ...(discount && { discount }),
+          isRefundable: ticket.isRefundable,
+          ...(ticket.refundPolicy && ticket.refundPolicy.trim() !== "" && { refundPolicy: ticket.refundPolicy }),
+          transferable: ticket.transferable,
+          ageRestriction: ticket.ageRestriction,
+          ...(ticket.specialInstructions &&
+            ticket.specialInstructions.trim() !== "" && { specialInstructions: ticket.specialInstructions }),
+          status: isDraft ? "DRAFT" : "ACTIVE",
+        }
+
+        return formattedTicket
+      })
+
+      console.log("Creating tickets with formatted data:", formattedTickets)
 
       // Call the actual API
-      const response = await ApiService.createEventTicket(
-        eventId,
-        formattedTickets
-      );
-      console.log("created event Response:", response);
+      console.log("About to call API with eventId:", eventId)
+      console.log("About to call API with formattedTickets:", formattedTickets)
+      
+      const response = await ApiService.createEventTicket(eventId, formattedTickets)
+      console.log("created event Response:", response)
+
 
       if (response.success) {
-        toast.success(
-          `Tickets ${isDraft ? "saved as draft" : "created"} successfully!`
-        );
-        setSuccess(true);
+        toast.success(`Tickets ${isDraft ? "saved as draft" : "created"} successfully!`)
+        setSuccess(true)
       } else {
-        throw new Error(response.message || "Failed to create tickets");
+      
+        
+        // Test if we can show the detailed error message directly
+        if (response.details && Array.isArray(response.details) && response.details.length > 0) {
+          const detailedMessages = response.details
+            .filter((detail: any) => !detail.success)
+            .map((detail: any) => detail.message)
+            .join('\n')
+          
+          console.log("Direct detailed messages:", detailedMessages)
+          toast.error(detailedMessages || response.message || "Failed to create tickets")
+          setSubmitting(false)
+          return
+        }
+        
+        const error = new Error(response.message || "Failed to create tickets")
+        ;(error as any).response = { data: response }
+        throw error
       }
     } catch (err: any) {
-      console.error("Error creating tickets:", err);
-      const errorMessage =
-        err?.response?.data?.message ||
-        err?.message ||
-        "Failed to create tickets. Please try again.";
-      toast.error(errorMessage);
+      console.error("Error creating tickets:", err)
+      
+      // Simple and direct error message extraction
+      let errorMessage = "Failed to create tickets. Please try again."
+      
+      // For AxiosError with response data
+      if (err?.response?.data) {
+        const responseData = err.response.data
+        
+        // If we have details array with error messages, use those
+        if (responseData.details && Array.isArray(responseData.details) && responseData.details.length > 0) {
+          const detailedMessages = responseData.details
+            .filter((detail: any) => !detail.success)
+            .map((detail: any) => detail.message)
+            .join('\n')
+          
+          if (detailedMessages) {
+            errorMessage = detailedMessages
+          } else if (responseData.message) {
+            errorMessage = responseData.message
+          }
+        } else if (responseData.message) {
+          errorMessage = responseData.message
+        }
+      } else if (err?.message) {
+        errorMessage = err.message
+      }
+      
+      console.log("Displaying error message:", errorMessage)
+      toast.error(errorMessage)
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -501,7 +677,7 @@ export default function CreateTicketForm() {
           <p className="text-gray-600">Loading event details...</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (!eventId) {
@@ -512,7 +688,7 @@ export default function CreateTicketForm() {
           <Button onClick={() => window.history.back()}>Go Back</Button>
         </div>
       </div>
-    );
+    )
   }
 
   if (!eventData) {
@@ -523,7 +699,7 @@ export default function CreateTicketForm() {
           <Button onClick={() => window.history.back()}>Go Back</Button>
         </div>
       </div>
-    );
+    )
   }
 
   if (success) {
@@ -534,9 +710,7 @@ export default function CreateTicketForm() {
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto">
               <Check className="h-8 w-8 text-blue-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Tickets Created Successfully!
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-900">Tickets Created Successfully!</h2>
             <p className="text-gray-600">
               You have successfully created {ticketTypes.length} ticket type
               {ticketTypes.length > 1 ? "s" : ""} for {eventData?.eventName}.
@@ -545,18 +719,14 @@ export default function CreateTicketForm() {
               <Button className="w-full" onClick={() => window.history.back()}>
                 Back to Event
               </Button>
-              <Button
-                variant="outline"
-                className="w-full bg-transparent"
-                onClick={() => setSuccess(false)}
-              >
+              <Button variant="outline" className="w-full bg-transparent" onClick={() => setSuccess(false)}>
                 Create More Tickets
               </Button>
             </div>
           </CardContent>
         </Card>
       </div>
-    );
+    )
   }
 
   const renderStepContent = () => {
@@ -565,12 +735,8 @@ export default function CreateTicketForm() {
         return (
           <div className="space-y-8">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Basic Ticket Information
-              </h2>
-              <p className="text-gray-600">
-                Set up the basic details for your ticket types
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900">Basic Ticket Information</h2>
+              <p className="text-gray-600">Set up the basic details for your ticket types</p>
             </div>
 
             <div className="space-y-6">
@@ -578,15 +744,9 @@ export default function CreateTicketForm() {
                 <Card key={index} className="border-2">
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">
-                        Ticket Type {index + 1}
-                      </CardTitle>
+                      <CardTitle className="text-lg">Ticket Type {index + 1}</CardTitle>
                       {ticketTypes.length > 1 && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => removeTicketType(index)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => removeTicketType(index)}>
                           <X className="h-4 w-4" />
                         </Button>
                       )}
@@ -597,14 +757,14 @@ export default function CreateTicketForm() {
                       <Label htmlFor={`name-${index}`}>Ticket Name *</Label>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
                         <Select
-                          value={ticket.isCustomName ? "CUSTOM" : (ticket.name || "")}
+                          value={ticket.isCustomName ? "CUSTOM" : ticket.name || ""}
                           onValueChange={(val) => {
                             if (val === "CUSTOM") {
-                              handleTicketChange(index, "isCustomName", true);
+                              handleTicketChange(index, "isCustomName", true)
                               // Don't clear existing name so user can refine it
                             } else {
-                              handleTicketChange(index, "isCustomName", false);
-                              handleTicketChange(index, "name", val);
+                              handleTicketChange(index, "isCustomName", false)
+                              handleTicketChange(index, "name", val)
                             }
                           }}
                         >
@@ -656,107 +816,69 @@ export default function CreateTicketForm() {
                     {/* Booking Date Selector */}
                     {eventData && eventData.bookingDates.length > 0 && (
                       <div>
-                        <Label htmlFor={`bookingDate-${index}`}>
-                          Event Date *
-                        </Label>
+                        <Label htmlFor={`bookingDate-${index}`}>Event Date *</Label>
                         <Select
                           value={ticket.bookingDate}
-                          onValueChange={(value) =>
-                            handleTicketChange(index, "bookingDate", value)
-                          }
+                          onValueChange={(value) => handleTicketChange(index, "bookingDate", value)}
                         >
                           <SelectTrigger
-                            className={`mt-1 ${
-                              errors[`ticket-${index}-bookingDate`]
-                                ? "border-red-500"
-                                : ""
-                            }`}
+                            className={`mt-1 ${errors[`ticket-${index}-bookingDate`] ? "border-red-500" : ""}`}
                           >
                             <SelectValue placeholder="Select event date..." />
                           </SelectTrigger>
                           <SelectContent>
                             {eventData.bookingDates.map((bookingDate) => (
-                              <SelectItem
-                                key={bookingDate.date}
-                                value={bookingDate.date}
-                              >
-                                {new Date(bookingDate.date).toLocaleDateString(
-                                  "en-US",
-                                  {
-                                    weekday: "long",
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                  }
-                                )}
+                              <SelectItem key={bookingDate.date} value={bookingDate.date}>
+                                {new Date(bookingDate.date).toLocaleDateString("en-US", {
+                                  weekday: "long",
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                })}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                         {errors[`ticket-${index}-bookingDate`] && (
-                          <p className="text-sm text-red-500 mt-1">
-                            {errors[`ticket-${index}-bookingDate`]}
-                          </p>
+                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-bookingDate`]}</p>
                         )}
-                        <p className="text-xs text-gray-500 mt-1">
-                          Select which event date this ticket is valid for
-                        </p>
+                        <p className="text-xs text-gray-500 mt-1">Select which event date this ticket is valid for</p>
                       </div>
                     )}
                     <div className="flex gap-3">
                       <div className="flex-1 w-full">
-                      <Label htmlFor={`startTime-${index}`}>Start Time *</Label>
-                      <Input
-                        id={`startTime-${index}`}
-                        type="time"
-                        value={ticket.startTime}
-                        onChange={(e) =>
-                          handleTicketChange(index, "startTime", e.target.value)
-                        }
-                        className={`mt-1 ${
-                          errors[`ticket-${index}-startTime`]
-                            ? "border-red-500"
-                            : ""
-                        }`}
-                      />
-                      {errors[`ticket-${index}-startTime`] && (
-                        <p className="text-sm text-red-500 mt-1">
-                          {errors[`ticket-${index}-startTime`]}
-                        </p>
-                      )}
+                        <Label htmlFor={`startTime-${index}`}>Start Time *</Label>
+                        <Input
+                          id={`startTime-${index}`}
+                          type="time"
+                          value={ticket.startTime}
+                          onChange={(e) => handleTicketChange(index, "startTime", e.target.value)}
+                          className={`mt-1 ${errors[`ticket-${index}-startTime`] ? "border-red-500" : ""}`}
+                        />
+                        {errors[`ticket-${index}-startTime`] && (
+                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-startTime`]}</p>
+                        )}
+                      </div>
+
+                      <div className="flex-1 w-full">
+                        <Label htmlFor={`endTime-${index}`}>End Time *</Label>
+                        <Input
+                          id={`endTime-${index}`}
+                          type="time"
+                          value={ticket.endTime}
+                          onChange={(e) => handleTicketChange(index, "endTime", e.target.value)}
+                          className={`mt-1 ${errors[`ticket-${index}-endTime`] ? "border-red-500" : ""}`}
+                        />
+                        {errors[`ticket-${index}-endTime`] && (
+                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-endTime`]}</p>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex-1 w-full">
-                      <Label htmlFor={`endTime-${index}`}>End Time *</Label>
-                      <Input
-                        id={`endTime-${index}`}
-                        type="time"
-                        value={ticket.endTime}
-                        onChange={(e) =>
-                          handleTicketChange(index, "endTime", e.target.value)
-                        }
-                        className={`mt-1 ${
-                          errors[`ticket-${index}-endTime`]
-                            ? "border-red-500"
-                            : ""
-                        }`}
-                      />
-                      {errors[`ticket-${index}-endTime`] && (
-                        <p className="text-sm text-red-500 mt-1">
-                          {errors[`ticket-${index}-endTime`]}
-                        </p>
-                      )}
-                    </div>
-                    </div>
-                   
                     {/* Custom Benefits */}
                     <div>
-                      <Label className="text-base font-semibold">
-                        Custom Benefits
-                      </Label>
-                      <p className="text-sm text-gray-600 mb-3">
-                        Add custom benefits specific to this ticket type
-                      </p>
+                      <Label className="text-base font-semibold">Custom Benefits</Label>
+                      <p className="text-sm text-gray-600 mb-3">Add custom benefits specific to this ticket type</p>
                       <div className="space-y-3">
                         {ticket.benefits.map((benefit, benefitIndex) => (
                           <Card key={benefit.id} className="p-4">
@@ -765,42 +887,38 @@ export default function CreateTicketForm() {
                                 <Label className="text-sm">Title</Label>
                                 <Input
                                   value={benefit.title}
-                                  onChange={(e) =>
-                                    updateBenefit(
-                                      index,
-                                      benefitIndex,
-                                      "title",
-                                      e.target.value
-                                    )
-                                  }
+                                  onChange={(e) => updateBenefit(index, benefitIndex, "title", e.target.value)}
                                   placeholder="Benefit title"
-                                  className="mt-1"
+                                  className={`mt-1 ${
+                                    errors[`ticket-${index}-benefit-${benefitIndex}-title`] ? "border-red-500" : ""
+                                  }`}
                                 />
+                                {errors[`ticket-${index}-benefit-${benefitIndex}-title`] && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors[`ticket-${index}-benefit-${benefitIndex}-title`]}
+                                  </p>
+                                )}
                               </div>
                               <div className="flex items-end gap-2">
                                 <div className="flex-1">
                                   <Label className="text-sm">Description</Label>
                                   <Input
                                     value={benefit.description}
-                                    onChange={(e) =>
-                                      updateBenefit(
-                                        index,
-                                        benefitIndex,
-                                        "description",
-                                        e.target.value
-                                      )
-                                    }
+                                    onChange={(e) => updateBenefit(index, benefitIndex, "description", e.target.value)}
                                     placeholder="Benefit description"
-                                    className="mt-1"
+                                    className={`mt-1 ${
+                                      errors[`ticket-${index}-benefit-${benefitIndex}-description`]
+                                        ? "border-red-500"
+                                        : ""
+                                    }`}
                                   />
+                                  {errors[`ticket-${index}-benefit-${benefitIndex}-description`] && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                      {errors[`ticket-${index}-benefit-${benefitIndex}-description`]}
+                                    </p>
+                                  )}
                                 </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    removeBenefit(index, benefitIndex)
-                                  }
-                                >
+                                <Button variant="outline" size="sm" onClick={() => removeBenefit(index, benefitIndex)}>
                                   <X className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -832,27 +950,21 @@ export default function CreateTicketForm() {
               </Button>
             </div>
           </div>
-        );
+        )
 
       case 2:
         return (
           <div className="space-y-8">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Pricing & Sales Period
-              </h2>
-              <p className="text-gray-600">
-                Set pricing and availability for your tickets
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900">Pricing & Sales Period</h2>
+              <p className="text-gray-600">Set pricing and availability for your tickets</p>
             </div>
 
             <div className="space-y-6">
               {ticketTypes.map((ticket, index) => (
                 <Card key={index} className="border-2">
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-lg">
-                      {ticket.name || `Ticket Type ${index + 1}`}
-                    </CardTitle>
+                    <CardTitle className="text-lg">{ticket.name || `Ticket Type ${index + 1}`}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Pricing Section */}
@@ -862,19 +974,14 @@ export default function CreateTicketForm() {
                         <div className="flex items-center gap-2 mt-1">
                           <Select
                             value={ticket.currency}
-                            onValueChange={(value) =>
-                              handleTicketChange(index, "currency", value)
-                            }
+                            onValueChange={(value) => handleTicketChange(index, "currency", value)}
                           >
                             <SelectTrigger className="w-20">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               {currencies.map((currency) => (
-                                <SelectItem
-                                  key={currency.code}
-                                  value={currency.code}
-                                >
+                                <SelectItem key={currency.code} value={currency.code}>
                                   {currency.symbol}
                                 </SelectItem>
                               ))}
@@ -886,83 +993,45 @@ export default function CreateTicketForm() {
                             min="0"
                             step="0.01"
                             value={ticket.price}
-                            onChange={(e) =>
-                              handleTicketChange(
-                                index,
-                                "price",
-                                Number.parseFloat(e.target.value) || 0
-                              )
-                            }
+                            onChange={(e) => handleTicketChange(index, "price", Number.parseFloat(e.target.value) || 0)}
                             placeholder="0.00"
-                            className={`flex-1 ${
-                              errors[`ticket-${index}-price`]
-                                ? "border-red-500"
-                                : ""
-                            }`}
+                            className={`flex-1 ${errors[`ticket-${index}-price`] ? "border-red-500" : ""}`}
                           />
                         </div>
                         {errors[`ticket-${index}-price`] && (
-                          <p className="text-sm text-red-500 mt-1">
-                            {errors[`ticket-${index}-price`]}
-                          </p>
+                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-price`]}</p>
                         )}
                       </div>
 
                       <div>
-                        <Label htmlFor={`quantity-${index}`}>
-                          Available Quantity *
-                        </Label>
+                        <Label htmlFor={`quantity-${index}`}>Available Quantity *</Label>
                         <Input
                           id={`quantity-${index}`}
                           type="number"
                           min="1"
                           value={ticket.quantity}
-                          onChange={(e) =>
-                            handleTicketChange(
-                              index,
-                              "quantity",
-                              Number.parseInt(e.target.value) || 0
-                            )
-                          }
-                          className={`mt-1 ${
-                            errors[`ticket-${index}-quantity`]
-                              ? "border-red-500"
-                              : ""
-                          }`}
+                          onChange={(e) => handleTicketChange(index, "quantity", Number.parseInt(e.target.value) || 0)}
+                          className={`mt-1 ${errors[`ticket-${index}-quantity`] ? "border-red-500" : ""}`}
                         />
                         {errors[`ticket-${index}-quantity`] && (
-                          <p className="text-sm text-red-500 mt-1">
-                            {errors[`ticket-${index}-quantity`]}
-                          </p>
+                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-quantity`]}</p>
                         )}
                       </div>
 
                       <div>
-                        <Label htmlFor={`maxPerPerson-${index}`}>
-                          Max Per Person *
-                        </Label>
+                        <Label htmlFor={`maxPerPerson-${index}`}>Max Per Person *</Label>
                         <Input
                           id={`maxPerPerson-${index}`}
                           type="number"
                           min="1"
                           value={ticket.maxPerPerson}
                           onChange={(e) =>
-                            handleTicketChange(
-                              index,
-                              "maxPerPerson",
-                              Number.parseInt(e.target.value) || 0
-                            )
+                            handleTicketChange(index, "maxPerPerson", Number.parseInt(e.target.value) || 0)
                           }
-                          className={`mt-1 ${
-                            errors[`ticket-${index}-maxPerPerson`]
-                              ? "border-red-500"
-                              : ""
-                          }`}
+                          className={`mt-1 ${errors[`ticket-${index}-maxPerPerson`] ? "border-red-500" : ""}`}
                         />
                         {errors[`ticket-${index}-maxPerPerson`] && (
-                          <p className="text-sm text-red-500 mt-1">
-                            {errors[`ticket-${index}-maxPerPerson`]}
-                          </p>
+                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-maxPerPerson`]}</p>
                         )}
                       </div>
                     </div>
@@ -971,12 +1040,9 @@ export default function CreateTicketForm() {
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <div>
-                          <Label className="text-base font-semibold">
-                            Discount Tiers
-                          </Label>
+                          <Label className="text-base font-semibold">Discount Tiers</Label>
                           <p className="text-sm text-gray-600">
-                            Create time-based discounts (e.g., Early Bird, Last
-                            Minute)
+                            Create time-based discounts (e.g., Early Bird, Last Minute)
                           </p>
                         </div>
                         <Button
@@ -999,22 +1065,20 @@ export default function CreateTicketForm() {
                                 <Label className="text-sm">Discount Name</Label>
                                 <Input
                                   value={discount.name}
-                                  onChange={(e) =>
-                                    updateDiscountTier(
-                                      index,
-                                      discountIndex,
-                                      "name",
-                                      e.target.value
-                                    )
-                                  }
+                                  onChange={(e) => updateDiscountTier(index, discountIndex, "name", e.target.value)}
                                   placeholder="e.g., Early Bird"
-                                  className="mt-1"
+                                  className={`mt-1 ${
+                                    errors[`ticket-${index}-discount-${discountIndex}-name`] ? "border-red-500" : ""
+                                  }`}
                                 />
+                                {errors[`ticket-${index}-discount-${discountIndex}-name`] && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors[`ticket-${index}-discount-${discountIndex}-name`]}
+                                  </p>
+                                )}
                               </div>
                               <div>
-                                <Label className="text-sm">
-                                  Percentage (%)
-                                </Label>
+                                <Label className="text-sm">Percentage (%)</Label>
                                 <div className="flex items-center gap-1 mt-1">
                                   <Input
                                     type="number"
@@ -1026,28 +1090,20 @@ export default function CreateTicketForm() {
                                         index,
                                         discountIndex,
                                         "percentage",
-                                        Number.parseInt(e.target.value) || 0
+                                        Number.parseInt(e.target.value) || 0,
                                       )
                                     }
                                     className={`${
-                                      errors[
-                                        `ticket-${index}-discount-${discountIndex}-percentage`
-                                      ]
+                                      errors[`ticket-${index}-discount-${discountIndex}-percentage`]
                                         ? "border-red-500"
                                         : ""
                                     }`}
                                   />
                                   <Percent className="h-4 w-4 text-gray-400" />
                                 </div>
-                                {errors[
-                                  `ticket-${index}-discount-${discountIndex}-percentage`
-                                ] && (
+                                {errors[`ticket-${index}-discount-${discountIndex}-percentage`] && (
                                   <p className="text-xs text-red-500 mt-1">
-                                    {
-                                      errors[
-                                        `ticket-${index}-discount-${discountIndex}-percentage`
-                                      ]
-                                    }
+                                    {errors[`ticket-${index}-discount-${discountIndex}-percentage`]}
                                   </p>
                                 )}
                               </div>
@@ -1057,56 +1113,46 @@ export default function CreateTicketForm() {
                                   type="date"
                                   value={discount.startDate}
                                   onChange={(e) =>
-                                    updateDiscountTier(
-                                      index,
-                                      discountIndex,
-                                      "startDate",
-                                      e.target.value
-                                    )
+                                    updateDiscountTier(index, discountIndex, "startDate", e.target.value)
                                   }
-                                  className="mt-1"
+                                  min={new Date().toISOString().split("T")[0]}
+                                  max={getMaxDiscountDate(ticket.bookingDate)}
+                                  className={`mt-1 ${
+                                    errors[`ticket-${index}-discount-${discountIndex}-startDate`]
+                                      ? "border-red-500"
+                                      : ""
+                                  }`}
                                 />
+                                {errors[`ticket-${index}-discount-${discountIndex}-startDate`] && (
+                                  <p className="text-xs text-red-500 mt-1">
+                                    {errors[`ticket-${index}-discount-${discountIndex}-startDate`]}
+                                  </p>
+                                )}
+                                <p className="text-xs text-gray-500 mt-1">Cannot exceed event date</p>
                               </div>
                               <div>
                                 <Label className="text-sm">End Date</Label>
                                 <Input
                                   type="date"
                                   value={discount.endDate}
-                                  onChange={(e) =>
-                                    updateDiscountTier(
-                                      index,
-                                      discountIndex,
-                                      "endDate",
-                                      e.target.value
-                                    )
-                                  }
+                                  onChange={(e) => updateDiscountTier(index, discountIndex, "endDate", e.target.value)}
+                                  max={getMaxDiscountDate(ticket.bookingDate)}
                                   className={`mt-1 ${
-                                    errors[
-                                      `ticket-${index}-discount-${discountIndex}-endDate`
-                                    ]
-                                      ? "border-red-500"
-                                      : ""
+                                    errors[`ticket-${index}-discount-${discountIndex}-endDate`] ? "border-red-500" : ""
                                   }`}
                                 />
-                                {errors[
-                                  `ticket-${index}-discount-${discountIndex}-endDate`
-                                ] && (
+                                {errors[`ticket-${index}-discount-${discountIndex}-endDate`] && (
                                   <p className="text-xs text-red-500 mt-1">
-                                    {
-                                      errors[
-                                        `ticket-${index}-discount-${discountIndex}-endDate`
-                                      ]
-                                    }
+                                    {errors[`ticket-${index}-discount-${discountIndex}-endDate`]}
                                   </p>
                                 )}
+                                <p className="text-xs text-gray-500 mt-1">Cannot exceed event date</p>
                               </div>
                               <div className="flex items-end">
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() =>
-                                    removeDiscountTier(index, discountIndex)
-                                  }
+                                  onClick={() => removeDiscountTier(index, discountIndex)}
                                   className="w-full bg-transparent"
                                 >
                                   <X className="h-4 w-4" />
@@ -1117,29 +1163,12 @@ export default function CreateTicketForm() {
                             {discount.percentage > 0 && ticket.price > 0 && (
                               <div className="mt-2 p-2 bg-green-50 rounded text-sm">
                                 <span className="text-green-700 font-medium">
-                                  Discounted Price:{" "}
-                                  {
-                                    currencies.find(
-                                      (c) => c.code === ticket.currency
-                                    )?.symbol
-                                  }
-                                  {(
-                                    ticket.price *
-                                    (1 - discount.percentage / 100)
-                                  ).toFixed(2)}
+                                  Discounted Price: {currencies.find((c) => c.code === ticket.currency)?.symbol}
+                                  {(ticket.price * (1 - discount.percentage / 100)).toFixed(2)}
                                 </span>
                                 <span className="text-green-600 ml-2">
-                                  (Save{" "}
-                                  {
-                                    currencies.find(
-                                      (c) => c.code === ticket.currency
-                                    )?.symbol
-                                  }
-                                  {(
-                                    ticket.price *
-                                    (discount.percentage / 100)
-                                  ).toFixed(2)}
-                                  )
+                                  (Save {currencies.find((c) => c.code === ticket.currency)?.symbol}
+                                  {(ticket.price * (discount.percentage / 100)).toFixed(2)})
                                 </span>
                               </div>
                             )}
@@ -1151,76 +1180,45 @@ export default function CreateTicketForm() {
                     {/* Sales Period */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor={`saleStartDate-${index}`}>
-                          Sale Start Date *
-                        </Label>
+                        <Label htmlFor={`saleStartDate-${index}`}>Sale Start Date *</Label>
                         <Input
                           id={`saleStartDate-${index}`}
                           type="date"
                           value={ticket.saleStartDate}
-                          onChange={(e) =>
-                            handleTicketChange(
-                              index,
-                              "saleStartDate",
-                              e.target.value
-                            )
-                          }
-                          className={`mt-1 ${
-                            errors[`ticket-${index}-saleStartDate`]
-                              ? "border-red-500"
-                              : ""
-                          }`}
+                          onChange={(e) => handleTicketChange(index, "saleStartDate", e.target.value)}
+                          min={new Date().toISOString().split("T")[0]}
+                          className={`mt-1 ${errors[`ticket-${index}-saleStartDate`] ? "border-red-500" : ""}`}
                         />
                         {errors[`ticket-${index}-saleStartDate`] && (
-                          <p className="text-sm text-red-500 mt-1">
-                            {errors[`ticket-${index}-saleStartDate`]}
-                          </p>
+                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-saleStartDate`]}</p>
                         )}
                       </div>
 
                       <div>
-                        <Label htmlFor={`saleEndDate-${index}`}>
-                          Sale End Date *
-                        </Label>
+                        <Label htmlFor={`saleEndDate-${index}`}>Sale End Date *</Label>
                         <Input
                           id={`saleEndDate-${index}`}
                           type="date"
                           value={ticket.saleEndDate}
-                          onChange={(e) =>
-                            handleTicketChange(
-                              index,
-                              "saleEndDate",
-                              e.target.value
-                            )
-                          }
-                          className={`mt-1 ${
-                            errors[`ticket-${index}-saleEndDate`]
-                              ? "border-red-500"
-                              : ""
-                          }`}
+                          onChange={(e) => handleTicketChange(index, "saleEndDate", e.target.value)}
+                          max={getMaxSaleEndDate(ticket.bookingDate)}
+                          className={`mt-1 ${errors[`ticket-${index}-saleEndDate`] ? "border-red-500" : ""}`}
                         />
                         {errors[`ticket-${index}-saleEndDate`] && (
-                          <p className="text-sm text-red-500 mt-1">
-                            {errors[`ticket-${index}-saleEndDate`]}
-                          </p>
+                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-saleEndDate`]}</p>
                         )}
+                        <p className="text-xs text-gray-500 mt-1">Must be before the event date</p>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div>
-                        <Label className="text-sm font-medium">
-                          Active Status
-                        </Label>
-                        <p className="text-xs text-gray-600">
-                          Enable ticket sales immediately
-                        </p>
+                        <Label className="text-sm font-medium">Active Status</Label>
+                        <p className="text-xs text-gray-600">Enable ticket sales immediately</p>
                       </div>
                       <Switch
                         checked={ticket.isActive}
-                        onCheckedChange={(checked) =>
-                          handleTicketChange(index, "isActive", checked)
-                        }
+                        onCheckedChange={(checked) => handleTicketChange(index, "isActive", checked)}
                       />
                     </div>
                   </CardContent>
@@ -1228,69 +1226,61 @@ export default function CreateTicketForm() {
               ))}
             </div>
           </div>
-        );
+        )
 
       case 3:
         return (
           <div className="space-y-8">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Ticket Settings
-              </h2>
-              <p className="text-gray-600">
-                Configure additional settings and policies
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900">Ticket Settings</h2>
+              <p className="text-gray-600">Configure additional settings and policies</p>
             </div>
 
             <div className="space-y-6">
               {ticketTypes.map((ticket, index) => (
                 <Card key={index} className="border-2">
                   <CardHeader className="pb-4">
-                    <CardTitle className="text-lg">
-                      {ticket.name || `Ticket Type ${index + 1}`}
-                    </CardTitle>
+                    <CardTitle className="text-lg">{ticket.name || `Ticket Type ${index + 1}`}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-4">
                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div>
-                            <Label className="text-sm font-medium">
-                              Refundable
-                            </Label>
-                            <p className="text-xs text-gray-600">
-                              Allow ticket refunds
-                            </p>
+                            <Label className="text-sm font-medium">Refundable</Label>
+                            <p className="text-xs text-gray-600">Allow ticket refunds</p>
                           </div>
                           <Switch
                             checked={ticket.isRefundable}
-                            onCheckedChange={(checked) =>
-                              handleTicketChange(index, "isRefundable", checked)
-                            }
+                            onCheckedChange={(checked) => handleTicketChange(index, "isRefundable", checked)}
+                          />
+                        </div>
+
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <Label className="text-sm font-medium">Transferable</Label>
+                            <p className="text-xs text-gray-600">Allow ticket transfers to other people</p>
+                          </div>
+                          <Switch
+                            checked={ticket.transferable}
+                            onCheckedChange={(checked) => handleTicketChange(index, "transferable", checked)}
                           />
                         </div>
                       </div>
 
                       <div className="space-y-4">
                         <div>
-                          <Label htmlFor={`ageRestriction-${index}`}>
-                            Age Restriction
-                          </Label>
+                          <Label htmlFor={`ageRestriction-${index}`}>Age Restriction</Label>
                           <Select
                             value={ticket.ageRestriction}
-                            onValueChange={(value) =>
-                              handleTicketChange(index, "ageRestriction", value)
-                            }
+                            onValueChange={(value) => handleTicketChange(index, "ageRestriction", value)}
                           >
                             <SelectTrigger className="mt-1">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                               {ageRestrictions.map((restriction) => (
-                                <SelectItem
-                                  key={restriction}
-                                  value={restriction}
-                                >
+                                <SelectItem key={restriction} value={restriction}>
                                   {restriction.replace(/_/g, " ")}
                                 </SelectItem>
                               ))}
@@ -1302,49 +1292,27 @@ export default function CreateTicketForm() {
 
                     {ticket.isRefundable && (
                       <div>
-                        <Label htmlFor={`refundPolicy-${index}`}>
-                          Refund Policy *
-                        </Label>
+                        <Label htmlFor={`refundPolicy-${index}`}>Refund Policy *</Label>
                         <Textarea
                           id={`refundPolicy-${index}`}
                           value={ticket.refundPolicy}
-                          onChange={(e) =>
-                            handleTicketChange(
-                              index,
-                              "refundPolicy",
-                              e.target.value
-                            )
-                          }
+                          onChange={(e) => handleTicketChange(index, "refundPolicy", e.target.value)}
                           placeholder="Describe your refund policy..."
                           rows={3}
-                          className={`mt-1 ${
-                            errors[`ticket-${index}-refundPolicy`]
-                              ? "border-red-500"
-                              : ""
-                          }`}
+                          className={`mt-1 ${errors[`ticket-${index}-refundPolicy`] ? "border-red-500" : ""}`}
                         />
                         {errors[`ticket-${index}-refundPolicy`] && (
-                          <p className="text-sm text-red-500 mt-1">
-                            {errors[`ticket-${index}-refundPolicy`]}
-                          </p>
+                          <p className="text-sm text-red-500 mt-1">{errors[`ticket-${index}-refundPolicy`]}</p>
                         )}
                       </div>
                     )}
 
                     <div>
-                      <Label htmlFor={`specialInstructions-${index}`}>
-                        Special Instructions
-                      </Label>
+                      <Label htmlFor={`specialInstructions-${index}`}>Special Instructions</Label>
                       <Textarea
                         id={`specialInstructions-${index}`}
                         value={ticket.specialInstructions}
-                        onChange={(e) =>
-                          handleTicketChange(
-                            index,
-                            "specialInstructions",
-                            e.target.value
-                          )
-                        }
+                        onChange={(e) => handleTicketChange(index, "specialInstructions", e.target.value)}
                         placeholder="Any special instructions for ticket holders..."
                         rows={3}
                         className="mt-1"
@@ -1355,18 +1323,14 @@ export default function CreateTicketForm() {
               ))}
             </div>
           </div>
-        );
+        )
 
       case 4:
         return (
           <div className="space-y-8">
             <div className="text-center space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Review Ticket Types
-              </h2>
-              <p className="text-gray-600">
-                Review all ticket types before creating
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900">Review Ticket Types</h2>
+              <p className="text-gray-600">Review all ticket types before creating</p>
             </div>
 
             <div className="space-y-6">
@@ -1377,25 +1341,16 @@ export default function CreateTicketForm() {
                       <div>
                         <h3 className="text-xl font-bold">{ticket.name}</h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <Badge
-                            variant={ticket.isActive ? "default" : "secondary"}
-                          >
+                          <Badge variant={ticket.isActive ? "default" : "secondary"}>
                             {ticket.isActive ? "Active" : "Inactive"}
                           </Badge>
-                          {ticket.isRefundable && (
-                            <Badge variant="outline">Refundable</Badge>
-                          )}
-                          {ticket.transferable && (
-                            <Badge variant="outline">Transferable</Badge>
-                          )}
+                          {ticket.isRefundable && <Badge variant="outline">Refundable</Badge>}
+                          {ticket.transferable && <Badge variant="outline">Transferable</Badge>}
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold text-green-600">
-                          {
-                            currencies.find((c) => c.code === ticket.currency)
-                              ?.symbol
-                          }
+                          {currencies.find((c) => c.code === ticket.currency)?.symbol}
                           {ticket.price}
                         </div>
                         <div className="text-sm text-gray-500">per ticket</div>
@@ -1407,40 +1362,26 @@ export default function CreateTicketForm() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">
-                            Available Quantity:
-                          </span>
+                          <span className="text-gray-500">Available Quantity:</span>
                           <span className="font-medium">{ticket.quantity}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">Max Per Person:</span>
-                          <span className="font-medium">
-                            {ticket.maxPerPerson}
-                          </span>
+                          <span className="font-medium">{ticket.maxPerPerson}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">
-                            Age Restriction:
-                          </span>
-                          <span className="font-medium">
-                            {ticket.ageRestriction.replace(/_/g, " ")}
-                          </span>
+                          <span className="text-gray-500">Age Restriction:</span>
+                          <span className="font-medium">{ticket.ageRestriction.replace(/_/g, " ")}</span>
                         </div>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">Sale Start:</span>
-                          <span className="font-medium">
-                            {new Date(
-                              ticket.saleStartDate
-                            ).toLocaleDateString()}
-                          </span>
+                          <span className="font-medium">{new Date(ticket.saleStartDate).toLocaleDateString()}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">Sale End:</span>
-                          <span className="font-medium">
-                            {new Date(ticket.saleEndDate).toLocaleDateString()}
-                          </span>
+                          <span className="font-medium">{new Date(ticket.saleEndDate).toLocaleDateString()}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-500">Currency:</span>
@@ -1449,35 +1390,23 @@ export default function CreateTicketForm() {
                       </div>
                     </div>
 
-                    {ticket.benefits.some(
-                      (b: Benefit) =>
-                        b.title.trim() !== "" || b.description.trim() !== ""
-                    ) && (
+                    {ticket.benefits.some((b: Benefit) => b.title.trim() !== "" || b.description.trim() !== "") && (
                       <div className="mb-4">
                         <h4 className="font-medium mb-2">Benefits:</h4>
                         <ul className="space-y-1">
-                          {ticket.benefits.map(
-                            (benefit: Benefit, benefitIndex: number) => {
-                              const hasContent =
-                                benefit.title.trim() !== "" ||
-                                benefit.description.trim() !== "";
-                              if (!hasContent) return null;
-                              return (
-                                <li
-                                  key={benefitIndex}
-                                  className="flex items-center gap-2 text-sm"
-                                >
-                                  <Check className="h-3 w-3 text-blue-500" />
-                                  <span>
-                                    {benefit.title}
-                                    {benefit.description
-                                      ? `: ${benefit.description}`
-                                      : ""}
-                                  </span>
-                                </li>
-                              );
-                            }
-                          )}
+                          {ticket.benefits.map((benefit: Benefit, benefitIndex: number) => {
+                            const hasContent = benefit.title.trim() !== "" || benefit.description.trim() !== ""
+                            if (!hasContent) return null
+                            return (
+                              <li key={benefitIndex} className="flex items-center gap-2 text-sm">
+                                <Check className="h-3 w-3 text-blue-500" />
+                                <span>
+                                  {benefit.title}
+                                  {benefit.description ? `: ${benefit.description}` : ""}
+                                </span>
+                              </li>
+                            )
+                          })}
                         </ul>
                       </div>
                     )}
@@ -1486,12 +1415,8 @@ export default function CreateTicketForm() {
 
                     {ticket.specialInstructions && (
                       <div className="p-3 bg-blue-50 rounded-lg">
-                        <h4 className="font-medium text-blue-900 mb-1">
-                          Special Instructions:
-                        </h4>
-                        <p className="text-sm text-blue-800">
-                          {ticket.specialInstructions}
-                        </p>
+                        <h4 className="font-medium text-blue-900 mb-1">Special Instructions:</h4>
+                        <p className="text-sm text-blue-800">{ticket.specialInstructions}</p>
                       </div>
                     )}
                   </CardContent>
@@ -1508,11 +1433,7 @@ export default function CreateTicketForm() {
                   <Save className="h-4 w-4 mr-2" />
                   Save as Draft
                 </Button>
-                <Button
-                  onClick={() => handleSubmit(false)}
-                  className="flex-1 h-12"
-                  disabled={submitting}
-                >
+                <Button onClick={() => handleSubmit(false)} className="flex-1 h-12" disabled={submitting}>
                   {submitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1528,12 +1449,12 @@ export default function CreateTicketForm() {
               </div>
             </div>
           </div>
-        );
+        )
 
       default:
-        return null;
+        return null
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
@@ -1541,18 +1462,12 @@ export default function CreateTicketForm() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-between mb-4">
-            <Button
-              variant="outline"
-              onClick={() => window.history.back()}
-              className="bg-transparent"
-            >
+            <Button variant="outline" onClick={() => window.history.back()} className="bg-transparent">
               ← Back to Event
             </Button>
             <div></div> {/* Spacer */}
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Create Event Tickets
-          </h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Event Tickets</h1>
           <p className="text-gray-600">Set up ticket types for your event</p>
         </div>
 
@@ -1564,7 +1479,8 @@ export default function CreateTicketForm() {
                 <Image
                   src={
                     eventData.eventPhoto ||
-                    "/placeholder.svg?height=160&width=800&query=event banner"
+                    "/placeholder.svg?height=160&width=800&query=event banner" ||
+                    "/placeholder.svg"
                   }
                   alt={eventData.eventName}
                   fill
@@ -1573,17 +1489,11 @@ export default function CreateTicketForm() {
                 <div className="absolute inset-0 bg-black/40 rounded-t-lg" />
                 <div className="absolute inset-0 flex items-end p-4">
                   <div className="text-white">
-                    <h2 className="text-xl md:text-2xl font-bold capitalize">
-                      {eventData.eventName}
-                    </h2>
+                    <h2 className="text-xl md:text-2xl font-bold capitalize">{eventData.eventName}</h2>
                     <div className="flex flex-wrap items-center gap-4 mt-2 text-sm">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        <span>
-                          {new Date(
-                            eventData.bookingDates[0].date
-                          ).toLocaleDateString()}
-                        </span>
+                        <span>{new Date(eventData.bookingDates[0].date).toLocaleDateString()}</span>
                       </div>
                       {eventData.venues[0] && (
                         <div className="flex items-center gap-1">
@@ -1591,10 +1501,7 @@ export default function CreateTicketForm() {
                           <span>{eventData.venues[0].venueName}</span>
                         </div>
                       )}
-                      <Badge
-                        variant="outline"
-                        className="bg-white/20 text-white border-white/30"
-                      >
+                      <Badge variant="outline" className="bg-white/20 text-white border-white/30">
                         {eventData.eventType}
                       </Badge>
                     </div>
@@ -1615,23 +1522,15 @@ export default function CreateTicketForm() {
                     id === currentStep
                       ? "bg-blue-500 border-blue-500 text-white"
                       : id < currentStep
-                      ? "bg-blue-500 border-blue-500 text-white"
-                      : "border-gray-300 text-gray-500"
+                        ? "bg-blue-500 border-blue-500 text-white"
+                        : "border-gray-300 text-gray-500"
                   }`}
                 >
-                  {id < currentStep ? (
-                    <Check className="h-5 w-5" />
-                  ) : (
-                    <Icon className="h-5 w-5" />
-                  )}
+                  {id < currentStep ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
                 </div>
                 <span
                   className={`ml-2 text-sm font-medium ${
-                    id === currentStep
-                      ? "text-blue-600"
-                      : id < currentStep
-                      ? "text-blue-600"
-                      : "text-gray-500"
+                    id === currentStep ? "text-blue-600" : id < currentStep ? "text-blue-600" : "text-gray-500"
                   }`}
                 >
                   {title}
@@ -1649,23 +1548,15 @@ export default function CreateTicketForm() {
         {/* Navigation */}
         {currentStep < 4 && (
           <div className="flex justify-between">
-            <Button
-              variant="outline"
-              onClick={prevStep}
-              disabled={currentStep === 1}
-              className="bg-transparent"
-            >
+            <Button variant="outline" onClick={prevStep} disabled={currentStep === 1} className="bg-transparent">
               Previous
             </Button>
-            <Button
-              onClick={nextStep}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
+            <Button onClick={nextStep} className="bg-blue-600 hover:bg-blue-700">
               Next
             </Button>
           </div>
         )}
       </div>
     </div>
-  );
+  )
 }

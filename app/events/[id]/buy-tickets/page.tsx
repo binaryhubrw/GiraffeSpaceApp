@@ -7,8 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Calendar,
   MapPin,
@@ -23,19 +21,27 @@ import {
   Clock,
   Users,
   Star,
+  Gift,
+  Percent,
+  X,
 } from "lucide-react"
 import Image from "next/image"
 import ApiService from "@/api/apiConfig"
-import { Switch } from "@/components/ui/switch"
 import { useAttendee } from "@/context/AttendeeContext"
 import { useParams } from "next/navigation"
 import { Header } from "@/components/header"
-import Footer  from "@/components/footer"
 import Link from "next/link"
 import { toast } from "sonner"
+import { Textarea } from "@/components/ui/textarea"
 
 interface EventData {
-  eventVenues: any
+  eventVenues?: Array<{
+    venue?: {
+      venueName: string
+      venueLocation?: string
+      capacity?: number
+    }
+  }>
   eventId: string
   eventName: string
   eventType: string
@@ -47,7 +53,7 @@ interface EventData {
   isFeatured: boolean
   isEntryPaid: boolean
   visibilityScope: string
-  venues: Array<{
+  venues?: Array<{
     venueName: string
     venueLocation: string
     capacity: number
@@ -67,7 +73,7 @@ interface TicketType {
   saleEndsAt: string
   createdAt: string
   updatedAt: string
-  isPubliclyAvailable: boolean
+  isPubliclyAvailable?: boolean
   maxPerPerson: number
   isActive: boolean
   categoryDiscounts: {
@@ -83,6 +89,19 @@ interface TicketType {
   specialInstructions: string | null
   status: string
   validForDate: string | null
+  // Additional fields from API response
+  customerBenefits?: Array<{
+    title: string
+    description: string
+  }>
+  discount?: {
+    discountName: string
+    percentage: number
+    startDate: string
+    endDate: string
+  } | null
+  startTime?: string
+  endTime?: string
 }
 
 interface PaymentMethod {
@@ -95,10 +114,6 @@ interface PaymentMethod {
 interface BuyerInfo {
   recipientEmail: string
   attendeeNames: string[]
-}
-
-interface BuyTicketProps {
-  eventId: string
 }
 
 const paymentMethods: PaymentMethod[] = [
@@ -133,8 +148,10 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
     cvv: "",
     cardholderName: "",
   })
-  const [specialRequests, setSpecialRequests] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [specialRequests, setSpecialRequests] = useState<string>("")
+
+
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -157,7 +174,6 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
         if (ticketsResponse.success && ticketsResponse.data) {
           setTicketTypes(ticketsResponse.data)
         } else {
-          console.error("Failed to fetch tickets:", ticketsResponse)
           // Don't set error here as event might still be valid without tickets
         }
       } catch (err) {
@@ -190,13 +206,16 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
     if (!ticket) return
 
     const newQuantity = Math.max(0, Math.min(quantity, ticket.quantityAvailable, ticket.maxPerPerson))
-    setSelectedTickets((prev) => ({
-      ...prev,
-      [ticketId]: newQuantity,
-    }))
+    
+    // If selecting a new ticket type, clear all other selections
+    if (newQuantity > 0) {
+      setSelectedTickets({ [ticketId]: newQuantity })
+    } else {
+      setSelectedTickets({})
+    }
 
     // Update attendee names array based on total tickets
-    const newTotalTickets = Object.values({ ...selectedTickets, [ticketId]: newQuantity }).reduce((sum, qty) => sum + qty, 0)
+    const newTotalTickets = newQuantity
     setBuyerInfo(prev => ({
       ...prev,
       attendeeNames: Array.from({ length: newTotalTickets }, (_, i) => prev.attendeeNames[i] || '')
@@ -208,6 +227,23 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
   }
 
   const getTotalPrice = () => {
+    return Object.entries(selectedTickets).reduce((total, [ticketId, quantity]) => {
+      const ticket = ticketTypes.find((t) => t.ticketTypeId === ticketId)
+      if (!ticket) return total
+      
+      let ticketPrice = Number.parseFloat(ticket.price)
+      
+      // Apply discount if available and valid
+      if (ticket.discount && isDiscountValid(ticket.discount)) {
+        const discountAmount = (ticketPrice * ticket.discount.percentage) / 100
+        ticketPrice = ticketPrice - discountAmount
+      }
+      
+      return total + (ticketPrice * quantity)
+    }, 0)
+  }
+
+  const getOriginalTotalPrice = () => {
     return Object.entries(selectedTickets).reduce((total, [ticketId, quantity]) => {
       const ticket = ticketTypes.find((t) => t.ticketTypeId === ticketId)
       return total + (ticket ? Number.parseFloat(ticket.price) * quantity : 0)
@@ -227,6 +263,62 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
   const formatCurrency = (amount: number, currency: string) => {
     const symbol = currency === "USD" ? "$" : currency === "RWF" ? "RWF " : currency
     return `${symbol}${amount.toFixed(2)}`
+  }
+
+  // Helper function to check discount validity and return status
+  const getDiscountStatus = (discount: { startDate: string; endDate: string; discountName?: string; percentage?: number } | null | undefined) => {
+    if (!discount) return { isValid: false, status: 'no-discount' }
+    
+    const now = new Date()
+    
+    // Handle different date formats from API
+    let startDate: Date
+    let endDate: Date
+    
+    try {
+      startDate = new Date(discount.startDate)
+      endDate = new Date(discount.endDate)
+      
+      // Check if dates are valid
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return { isValid: false, status: 'invalid-dates' }
+      }
+    } catch (error) {
+      return { isValid: false, status: 'parse-error' }
+    }
+    
+    // Get current date components for comparison (year, month, day)
+    const nowYear = now.getFullYear()
+    const nowMonth = now.getMonth()
+    const nowDay = now.getDate()
+    
+    // Get discount date components
+    const startYear = startDate.getFullYear()
+    const startMonth = startDate.getMonth()
+    const startDay = startDate.getDate()
+    
+    const endYear = endDate.getFullYear()
+    const endMonth = endDate.getMonth()
+    const endDay = endDate.getDate()
+    
+    // Create date objects for comparison (without time)
+    const today = new Date(nowYear, nowMonth, nowDay)
+    const discountStart = new Date(startYear, startMonth, startDay)
+    const discountEnd = new Date(endYear, endMonth, endDay)
+    
+    // Determine discount status using timestamp comparison
+    if (today < discountStart) {
+      return { isValid: false, status: 'not-yet-valid' }
+    } else if (today > discountEnd) {
+      return { isValid: false, status: 'expired' }
+    } else {
+      return { isValid: true, status: 'valid' }
+    }
+  }
+
+  // Helper function to check if discount is currently valid (for backward compatibility)
+  const isDiscountValid = (discount: { startDate: string; endDate: string; discountName?: string; percentage?: number } | null | undefined) => {
+    return getDiscountStatus(discount).isValid
   }
 
   const validateStep = (step: number) => {
@@ -334,9 +426,11 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
       } else {
         throw new Error(response.message || "Failed to purchase tickets")
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Purchase error:", err)
-      const errorMessage = err?.response?.data?.message || err?.message || "Purchase failed. Please try again."
+      const errorMessage = err instanceof Error ? err.message : 
+                          (err as any)?.response?.data?.message || 
+                          "Purchase failed. Please try again."
       toast.error(errorMessage)
       setError(errorMessage)
     } finally {
@@ -418,6 +512,8 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
               <p className="text-gray-600">Choose the ticket type and quantity</p>
             </div>
 
+
+
             <div className="space-y-4">
               {loading ? (
                 <Card className="border-2 border-gray-200">
@@ -444,7 +540,7 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                   )}
 
                   {ticketTypes
-                    .filter(ticket => ticket.isActive && ticket.isPubliclyAvailable)
+                    .filter(ticket => ticket.isActive)
                     .map((ticket) => (
                       <Card key={ticket.ticketTypeId} className="border-2 hover:border-blue-300 transition-colors">
                   <CardContent className="p-6">
@@ -452,10 +548,116 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <h3 className="text-lg font-semibold">{ticket.name}</h3>
-                                {ticket.isPubliclyAvailable && <Badge className="bg-blue-500">Available</Badge>}
-                                {!ticket.isPubliclyAvailable && <Badge className="bg-red-500">Sold Out</Badge>}
+                          <Badge className="bg-blue-500">Available</Badge>
                         </div>
                         <p className="text-gray-600 mb-3">{ticket.description}</p>
+                        
+                        {/* Customer Benefits */}
+                        {ticket.customerBenefits && ticket.customerBenefits.length > 0 && (
+                          <div className="mb-3">
+                            <div className="flex items-center gap-2 text-sm text-green-600 mb-2">
+                              <Gift className="h-3 w-3" />
+                              <span className="font-medium">Included Benefits:</span>
+                            </div>
+                            <ul className="space-y-1 ml-5">
+                              {ticket.customerBenefits.map((benefit, index) => (
+                                <li key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                                  <Check className="h-3 w-3 text-green-500" />
+                                  <span>
+                                    {benefit.title}
+                                    {benefit.description && `: ${benefit.description}`}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Discount Information */}
+                        {(() => {
+                          const discountStatus = ticket.discount ? getDiscountStatus(ticket.discount) : { isValid: false, status: 'no-discount' }
+                          return ticket.discount && discountStatus.isValid
+                        })() && ticket.discount && (
+                          <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="flex items-center gap-2 text-sm text-green-700 mb-1">
+                              <Percent className="h-3 w-3" />
+                              <span className="font-medium">{ticket.discount.discountName}</span>
+                              <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-300">
+                                {ticket.discount.percentage}% off
+                              </Badge>
+                            </div>
+                            <div className="text-xs text-green-600">
+                              <div className="mb-1">
+                                <strong>Today's Date:</strong> {new Date().toLocaleDateString()}
+                              </div>
+                              <div>
+                                <strong>Valid Period:</strong> {new Date(ticket.discount.startDate).toLocaleDateString()} - {new Date(ticket.discount.endDate).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Show discount info with appropriate status */}
+                        {ticket.discount && (() => {
+                          const status = getDiscountStatus(ticket.discount)
+                          if (status.isValid) return null // Already shown above
+                          
+                          let bgColor = 'bg-yellow-50'
+                          let borderColor = 'border-yellow-200'
+                          let textColor = 'text-yellow-700'
+                          let badgeBg = 'bg-yellow-100'
+                          let badgeText = 'text-yellow-700'
+                          let badgeBorder = 'border-yellow-300'
+                          let icon = <AlertCircle className="h-3 w-3" />
+                          let message = 'Discount Available'
+                          
+                          if (status.status === 'not-yet-valid') {
+                            bgColor = 'bg-blue-50'
+                            borderColor = 'border-blue-200'
+                            textColor = 'text-blue-700'
+                            badgeBg = 'bg-blue-100'
+                            badgeText = 'text-blue-700'
+                            badgeBorder = 'border-blue-300'
+                            icon = <Clock className="h-3 w-3" />
+                            message = 'Discount Coming Soon'
+                          } else if (status.status === 'expired') {
+                            bgColor = 'bg-gray-50'
+                            borderColor = 'border-gray-200'
+                            textColor = 'text-gray-700'
+                            badgeBg = 'bg-gray-100'
+                            badgeText = 'text-gray-700'
+                            badgeBorder = 'border-gray-300'
+                            icon = <X className="h-3 w-3" />
+                            message = 'Discount Expired'
+                          }
+                          
+                          return (
+                            <div className={`mb-3 p-2 ${bgColor} border ${borderColor} rounded-lg`}>
+                              <div className={`flex items-center gap-2 text-sm ${textColor} mb-1`}>
+                                {icon}
+                                <span className="font-medium">{message}</span>
+                                <Badge variant="outline" className={`text-xs ${badgeBg} ${badgeText} ${badgeBorder}`}>
+                                  {ticket.discount.percentage}% off
+                                </Badge>
+                              </div>
+                              <div className={`text-xs ${textColor.replace('700', '600')}`}>
+                                <div className="mb-1">
+                                  <strong>Today's Date:</strong> {new Date().toLocaleDateString()}
+                                </div>
+                                <div>
+                                  <strong>Discount Period:</strong> {new Date(ticket.discount.startDate).toLocaleDateString()} - {new Date(ticket.discount.endDate).toLocaleDateString()}
+                                </div>
+                                {status.status === 'not-yet-valid' && (
+                                  <span className="block mt-1">Available from {new Date(ticket.discount.startDate).toLocaleDateString()}</span>
+                                )}
+                                {status.status === 'expired' && (
+                                  <span className="block mt-1">Expired on {new Date(ticket.discount.endDate).toLocaleDateString()}</span>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })()}
+
                         <div className="space-y-1">
                                 {ticket.specialInstructions && (
                                   <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -487,6 +689,12 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                                     <span>Refundable</span>
                                   </div>
                                 )}
+                                {ticket.transferable && (
+                                  <div className="flex items-center gap-2 text-sm text-blue-600">
+                                    <Check className="h-3 w-3" />
+                                    <span>Transferable</span>
+                                  </div>
+                                )}
                         </div>
                         <div className="mt-3 flex items-center gap-4 text-sm text-gray-500">
                                 <span>Available: {ticket.quantityAvailable}</span>
@@ -516,10 +724,20 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                                     </span>
                                   </div>
                                   <div className="flex justify-between">
+                                    <span className="text-gray-600">Event Time:</span>
+                                    <span className="font-medium">
+                                      {ticket.startTime && ticket.endTime ? `${ticket.startTime} - ${ticket.endTime}` : 'Not specified'}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between">
                                     <span className="text-gray-600">Sale Period:</span>
                                     <span className="font-medium text-xs">
                                       {new Date(ticket.saleStartsAt).toLocaleDateString()} - {new Date(ticket.saleEndsAt).toLocaleDateString()}
                                     </span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Status:</span>
+                                    <span className="font-medium capitalize">{ticket.status.toLowerCase()}</span>
                                   </div>
                                 </div>
                                 
@@ -590,7 +808,7 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                 </Card>
               ))}
 
-                    {ticketTypes.filter(ticket => ticket.isActive && ticket.isPubliclyAvailable).length === 0 && (
+                    {ticketTypes.filter(ticket => ticket.isActive).length === 0 && (
                       <Card className="border-2 border-gray-200">
                         <CardContent className="p-6 text-center">
                           <Ticket className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -994,43 +1212,86 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
                       const ticket = ticketTypes.find((t) => t.ticketTypeId === ticketId)
                       if (!ticket) return null
 
-                      return (
-                        <div key={ticketId} className="flex justify-between items-center">
-                          <div>
-                            <div className="font-medium">{ticket.name}</div>
-                            <div className="text-sm text-gray-500">
-                              {formatCurrency(Number.parseFloat(ticket.price), ticket.currency)} × {quantity}
-                            </div>
-                            {ticket.categoryDiscounts && Object.keys(ticket.categoryDiscounts).length > 0 && (
-                              <div className="text-xs text-blue-600 mt-1">
-                                <span className="font-medium">Discounts: </span>
-                                {Object.entries(ticket.categoryDiscounts).map(([category, discount], index) => (
-                                  <span key={category}>
-                                    {index > 0 && ", "}
-                                    {category.replace(/_/g, " ")} ({discount.percent}% off)
-                                  </span>
-                                ))}
-                          </div>
-                            )}
-                          </div>
-                          <div className="font-semibold">
-                            {formatCurrency(Number.parseFloat(ticket.price) * quantity, ticket.currency)}
-                          </div>
-                        </div>
-                      )
+                                             return (
+                         <div key={ticketId} className="flex justify-between items-center">
+                           <div>
+                             <div className="font-medium">{ticket.name}</div>
+                             <div className="text-sm text-gray-500">
+                               {formatCurrency(Number.parseFloat(ticket.price), ticket.currency)} × {quantity}
+                             </div>
+                             {ticket.categoryDiscounts && Object.keys(ticket.categoryDiscounts).length > 0 && (
+                               <div className="text-xs text-blue-600 mt-1">
+                                 <span className="font-medium">Category Discounts: </span>
+                                 {Object.entries(ticket.categoryDiscounts).map(([category, discount], index) => (
+                                   <span key={category}>
+                                     {index > 0 && ", "}
+                                     {category.replace(/_/g, " ")} ({discount.percent}% off)
+                                   </span>
+                                 ))}
+                               </div>
+                             )}
+                             {(() => {
+                               const discountStatus = ticket.discount ? getDiscountStatus(ticket.discount) : { isValid: false, status: 'no-discount' }
+                               return ticket.discount && discountStatus.isValid
+                             })() && ticket.discount && (
+                               <div className="text-xs text-green-600 mt-1">
+                                 <span className="font-medium">Time-based Discount: </span>
+                                 {ticket.discount.discountName} ({ticket.discount.percentage}% off)
+                               </div>
+                             )}
+                           </div>
+                           <div className="text-right">
+                             {(() => {
+                               const discountStatus = ticket.discount ? getDiscountStatus(ticket.discount) : { isValid: false, status: 'no-discount' }
+                               return ticket.discount && discountStatus.isValid
+                             })() && ticket.discount ? (
+                               <div>
+                                 <div className="text-sm text-gray-400 line-through">
+                                   {formatCurrency(Number.parseFloat(ticket.price) * quantity, ticket.currency)}
+                                 </div>
+                                 <div className="font-semibold text-green-600">
+                                   {formatCurrency((Number.parseFloat(ticket.price) * (1 - ticket.discount.percentage / 100)) * quantity, ticket.currency)}
+                                 </div>
+                               </div>
+                             ) : (
+                               <div className="font-semibold">
+                                 {formatCurrency(Number.parseFloat(ticket.price) * quantity, ticket.currency)}
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                       )
                     })}
 
-                  {getTotalTickets() > 0 && (
-                    <>
-                      <Separator />
-                      <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                        <span className="text-lg font-medium">Total Amount:</span>
-                        <p className="text-2xl font-bold text-blue-600">
-                          {formatCurrency(getTotalPrice(), getSelectedTicketCurrency())}
-                        </p>
-                      </div>
-                    </>
-                  )}
+                                     {getTotalTickets() > 0 && (
+                     <>
+                       <Separator />
+                       <div className="p-4 bg-gray-50 rounded-lg space-y-2">
+                         {getOriginalTotalPrice() > getTotalPrice() && (
+                           <div className="flex justify-between items-center">
+                             <span className="text-sm text-gray-600">Original Total:</span>
+                             <span className="text-sm text-gray-400 line-through">
+                               {formatCurrency(getOriginalTotalPrice(), getSelectedTicketCurrency())}
+                             </span>
+                           </div>
+                         )}
+                         {getOriginalTotalPrice() > getTotalPrice() && (
+                           <div className="flex justify-between items-center">
+                             <span className="text-sm text-green-600">Discount Savings:</span>
+                             <span className="text-sm font-medium text-green-600">
+                               -{formatCurrency(getOriginalTotalPrice() - getTotalPrice(), getSelectedTicketCurrency())}
+                             </span>
+                           </div>
+                         )}
+                         <div className="flex justify-between items-center pt-2 border-t">
+                           <span className="text-lg font-medium">Total Amount:</span>
+                           <p className="text-2xl font-bold text-blue-600">
+                             {formatCurrency(getTotalPrice(), getSelectedTicketCurrency())}
+                           </p>
+                         </div>
+                       </div>
+                     </>
+                   )}
 
                   {getTotalTickets() > 0 && (
                     <>
@@ -1122,7 +1383,6 @@ export default function BuyTicketForm({ eventId: propEventId }: { eventId?: stri
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   )
 }

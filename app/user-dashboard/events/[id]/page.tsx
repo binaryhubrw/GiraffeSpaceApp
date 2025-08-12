@@ -229,16 +229,16 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               >
                 <Edit className="mr-2 h-4 w-4" /> Edit
               </Link>
-              <Button className=" h-12 bg-green-600 hover:bg-green-700">
+              <Button className=" h-12 bg-blue-400 hover:bg-blue-500">
                 Invite People
               </Button>
-              <Button className=" h-12 bg-gray-300 hover:bg-gray-400 text-black">
+              <Button className=" h-12 bg-blue-400 hover:bg-blue-500 ">
                 Add ticket Scanner
               </Button>
               {!event.isEntryPaid && (
                 <Link
                   href={`/events/check-invitation`}
-                  className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"
+                  className="bg-blue-400 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"
                 >
                   <CheckCircle className="mr-2 h-4 w-4" /> Check Invitation
                 </Link>
@@ -246,20 +246,12 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               {event.isEntryPaid && (
                 <Link
                   href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
-                  className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"
+                  className="bg-blue-400 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"
                 >
                   <Ticket className="mr-2 h-4 w-4" /> Create Ticket
                 </Link>
               )}
-              <button className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center">
-                <Share2 className="mr-2 h-4 w-4" /> Share
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"
-              >
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
-              </button>
+            
             </div>
 
             {/* Desktop Action Buttons */}
@@ -273,7 +265,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               {!event.isEntryPaid && (
                 <Link
                   href={`/events/check-attendance/insipector`}
-                  className="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
+                  className="bg-blue-400 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-md flex items-center"
                 >
                   <CheckCircle className="mr-2 h-5 w-5" /> Check Invitation
                 </Link>
