@@ -109,28 +109,28 @@ const paymentMethods: PaymentMethod[] = [
     type: "card",
     name: "Credit/Debit Card",
     icon: "💳",
-    description: "Pay instantly with your card",
+    description: "Pay instantly and securely with your card.    ",
   },
   {
     id: "mobile",
     type: "mobile",
     name: "Mobile Money",
     icon: "📱",
-    description: "MTN Mobile Money, Airtel Money",
+    description: "Pay instantly and securely with your card.",
   },
   {
     id: "bank",
     type: "bank",
     name: "Bank Transfer",
     icon: "🏦",
-    description: "Direct bank transfer",
+    description: "Make a direct bank transfer at your convenience.",
   },
   {
     id: "installment",
     type: "installment",
     name: "Installment Plan",
     icon: "📅",
-    description: "Pay in multiple installments",
+    description: "Spread your payment over multiple installments",
   },
 ];
 
@@ -531,10 +531,10 @@ export default function PayVenueBooking() {
           <div className="space-y-6">
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold text-gray-900">
-                Review Booking Details
+                 Booking Details
               </h2>
               <p className="text-gray-600">
-                Please review your venue booking before payment
+                Please carefully review your booking before proceeding to payment.
               </p>
             </div>
 
@@ -729,7 +729,7 @@ export default function PayVenueBooking() {
                 Payment Method
               </h2>
               <p className="text-gray-600">
-                Choose how you'd like to pay for the venue booking
+                Choose your preferred payment option for the booked venue.
               </p>
             </div>
 
@@ -958,8 +958,27 @@ export default function PayVenueBooking() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="amountPaid">Amount to Pay (Rwf) *</Label>
+                   
+                    <div className="p-4 mb-3 bg-blue-50 rounded-lg">
+                     
+                      {bookingData?.venue.depositRequired && (
+                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <p className="text-sm text-blue-800">
+                            <strong>Note:</strong> To confirm your booking, a minimum deposit of {" "}
+                            {bookingData.venue.depositRequired.amount} Rwf (
+                            {bookingData.venue.depositRequired.percentage}%) is required. You may pay the full amount or any amount above the deposit now.
+
+                            The remaining balance must be paid at least{" "}
+                            {bookingData.venue.paymentCompletionRequired
+                              ?.daysBeforeEvent || 2}{" "}
+                            days before the event.
+
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                     <div>
+                      <Label htmlFor="amountPaid">Amount you wish to Pay (Rwf) *</Label>
                       <Input
                         id="amountPaid"
                         type="number"
@@ -971,7 +990,7 @@ export default function PayVenueBooking() {
                       <p className="text-sm text-gray-600 mt-1">
                         {bookingData?.paymentSummary ? (
                           <>
-                            Total amount: {bookingData.pricing.totalAmount} Rwf
+                            Full amount to be paid: {bookingData.pricing.totalAmount} Rwf
                             <br />
                             Remaining amount:{" "}
                             {bookingData.paymentSummary.remainingAmount} Rwf
@@ -979,57 +998,12 @@ export default function PayVenueBooking() {
                         ) : (
                           `Total amount due: ${bookingData?.pricing.totalAmount} Rwf`
                         )}
-                        {bookingData?.venue.depositRequired && (
-                          <>
-                            <br />
-                            {!["APPROVED_PAID", "PARTIAL"].includes(
-                              bookingData?.bookingStatus || ""
-                            ) && (
-                              <span className="text-blue-600 font-medium">
-                                Deposit required:{" "}
-                                {bookingData.venue.depositRequired.amount} Rwf (
-                                {bookingData.venue.depositRequired.percentage}%)
-                              </span>
-                            )}
-                            <br />
-                            <span className="text-green-600 font-medium">
-                              ✓ Pre-filled with deposit amount
-                            </span>
-                          </>
-                        )}
+                       
                       </p>
                       {errors.amountPaid && (
                         <p className="text-sm text-red-500 mt-1">
                           {errors.amountPaid}
                         </p>
-                      )}
-                    </div>
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <h4 className="font-semibold mb-2">
-                        Supported Mobile Money Services:
-                      </h4>
-                      <ul className="text-sm text-gray-700 space-y-1">
-                        <li>• MTN Mobile Money</li>
-                        <li>• Airtel Money</li>
-                        <li>• M-Pesa</li>
-                      </ul>
-                      <p className="text-sm text-gray-600 mt-2">
-                        You will receive a prompt on your mobile device to
-                        complete the payment.
-                      </p>
-                      {bookingData?.venue.depositRequired && (
-                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <p className="text-sm text-blue-800">
-                            <strong>Note:</strong> A deposit of{" "}
-                            {bookingData.venue.depositRequired.amount} Rwf (
-                            {bookingData.venue.depositRequired.percentage}%) is
-                            required to confirm your booking. The remaining
-                            amount must be paid{" "}
-                            {bookingData.venue.paymentCompletionRequired
-                              ?.daysBeforeEvent || 2}{" "}
-                            days before the event.
-                          </p>
-                        </div>
                       )}
                     </div>
                   </CardContent>
@@ -1075,21 +1049,21 @@ export default function PayVenueBooking() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 bg-gradient-to-br from-purple-50 via-white to-blue-50">
+      <main className="flex-1 bg-gradient-to-br from-blue-50 via-white to-puple-50">
         <div className="container mx-auto px-4 py-8 max-w-6xl">
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Pay for Venue Booking
+              Pay for the Booked Venue
             </h1>
-            <p className="text-gray-600">Complete your venue booking payment</p>
+            <p className="text-gray-600">Complete your payment to confirm your venue reservation.</p>
           </div>
 
           {/* Progress Steps */}
           <div className="mb-8">
             <div className="flex items-center justify-center space-x-8   ">
               {[
-                { step: 1, title: "Review Booking", icon: FileText },
+                { step: 1, title: "Review", icon: FileText },
                 { step: 2, title: "Payment", icon: CreditCard },
                 { step: 3, title: "Confirmation", icon: Check },
               ].map(({ step, title, icon: Icon }) => (
@@ -1149,7 +1123,7 @@ export default function PayVenueBooking() {
                       onClick={nextStep}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
-                      Next
+                      Proceed with payment
                     </Button>
                   ) : (
                     <Button
@@ -1199,7 +1173,8 @@ export default function PayVenueBooking() {
                         <p className="text-xs text-red-600 mt-1">
                           You have{" "}
                           <strong>
-                            {Math.floor(timeRemaining / 60)}:
+                            {Math.floor(timeRemaining / 3600)}:
+                            {Math.floor((timeRemaining % 3600) / 60).toString().padStart(2, "0")}:
                             {(timeRemaining % 60).toString().padStart(2, "0")}
                           </strong>{" "}
                           remaining to make your first payment, or your booking
@@ -1256,10 +1231,7 @@ export default function PayVenueBooking() {
                     <Separator />
 
                     <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Base Amount:</span>
-                        <span>{bookingData?.pricing.baseAmount} Rwf</span>
-                      </div>
+                      
                       {bookingData &&
                         (bookingData.pricing.discountPercent || 0) > 0 && (
                           <div className="flex justify-between text-sm text-green-600">
