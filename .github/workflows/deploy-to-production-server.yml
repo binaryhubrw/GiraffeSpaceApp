@@ -1,0 +1,79 @@
+name: publish
+
+on:
+  push:
+    branches:
+      - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: programmerdatch/giraffespace-frontend:latest
+  BRANCH_NAME: production
+
+jobs:
+
+  check-secrets:
+    name: Check Required Secrets
+    runs-on: ubuntu-latest
+    outputs:
+      secrets_available: ${{ steps.check-secrets.outputs.available }}
+      branch_name: ${{ env.BRANCH_NAME }}
+    steps:
+      - name: Check for required secrets
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.PAT }}" ] || \
+             [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ] || \
+             [ -z "${{ secrets.SSH_HOST }}" ] || \
+             [ -z "${{ secrets.SSH_USER }}" ] || \
+             [ -z "${{ secrets.WORK_DIR }}" ] || \
+             [ -z "${{ env.BRANCH_NAME }}" ]; then
+            echo "::notice::One or more secrets or branch name are missing - skipping deployment"
+            echo "available=false" >> $GITHUB_OUTPUT
+          else
+            echo "::notice::All secrets and branch name available - proceeding with deployment"
+            echo "available=true" >> $GITHUB_OUTPUT
+          fi
+
+  build-image:
+    name: Build Docker Image
+    needs: check-secrets
+    if: needs.check-secrets.outputs.secrets_available == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install Dependencies
+      run: npm install
+
+    - name: Build Project
+      run: npm run build
+      
+    - name: Login
+      run: |
+        echo ${{ secrets.PAT }} | docker login ghcr.io -u programmerdatch --password-stdin
+    - name: Build and Publish
+      run: |
+        docker build . --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+  deploy-to-server:
+    if: github.ref == format('refs/heads/{0}', needs.check-secrets.outputs.branch_name) && needs.check-secrets.outputs.secrets_available == 'true'
+    needs: [check-secrets, build-image]
+    name: Deploy Image to Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Connect and Deploy
+        run: ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ${{ secrets.WORK_DIR }} && docker compose pull && docker compose up -d --force-recreate"
+
+      - name: Cleanup
+        run: rm -rf ~/.ssh
