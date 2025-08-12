@@ -12,6 +12,7 @@ import { toast } from "sonner" // Assuming sonner is configured
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import Footer from "@/components/footer"
+import { API_BASE_URL } from "@/lib/config"
 
 interface Ticket {
   registrationId: string
@@ -69,7 +70,7 @@ export default function TicketsSection() {
         if (!token) {
           throw new Error("Authentication token not found.")
         }
-        const response = await fetch(`https://giraffespacev2.onrender.com/api/v1/event/tickets/user/${user.userId}`, {
+        const response = await fetch(`${API_BASE_URL}/event/tickets/user/${user.userId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

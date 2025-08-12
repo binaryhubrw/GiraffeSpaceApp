@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation"
 import OrganizationForm from "@/components/OrganizationForm"
 import { Header } from "@/components/header"
 import Footer from "@/components/footer"
+import { API_BASE_URL } from "@/lib/config"
 
 interface Organization {
   organizationId: string
@@ -65,7 +66,7 @@ export default function UserOrganizationsPage() {
         throw new Error("No authentication token found")
       }
 
-      const response = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/user/${user.userId}`, {
+      const response = await fetch(`${API_BASE_URL}/organizations/user/${user.userId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",

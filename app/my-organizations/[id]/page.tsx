@@ -11,6 +11,7 @@ import ApiService from "@/api/apiConfig"
 import { toast } from "sonner"
 import OrganizationForm from "@/components/OrganizationForm"
 import { ImageIcon, Upload } from "lucide-react"
+import { API_BASE_URL } from "@/lib/config"
 
 interface Organization {
   organizationId: string
@@ -123,7 +124,7 @@ export default function UserOrgDetailPage() {
       // 1. Handle document removals
       if (docsToRemove.length > 0) {
         for (const docUrl of docsToRemove) {
-          const res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${id}/supporting-document/remove`, {
+          const res = await fetch(`${API_BASE_URL}/organizations/${id}/supporting-document/remove`, {
             method: "PATCH",
             headers: {
               "Authorization": `Bearer ${token}`,
@@ -160,7 +161,7 @@ export default function UserOrgDetailPage() {
       }
 
       if (hasChangesToDocuments) {
-        const res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${id}/supporting-document`, {
+        const res = await fetch(`${API_BASE_URL}/organizations/${id}/supporting-document`, {
           method: "PATCH",
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -472,7 +473,7 @@ export default function UserOrgDetailPage() {
                   const logoData = new FormData();
                   logoData.append("logo", selectedLogoFile);
 
-                  const res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${id}/logo`, {
+                  const res = await fetch(`${API_BASE_URL}/organizations/${id}/logo`, {
                     method: "PATCH",
                     headers: {
                       "Authorization": `Bearer ${token}`,

@@ -10,6 +10,7 @@ import { Button } from "@/components/button"
 import { useSearchParams } from 'next/navigation'
 import ApiService from "@/api/apiConfig"
 import { useAuth } from "@/contexts/auth-context"
+import { API_BASE_URL } from "@/lib/config"
 
 interface Amenity {
   id: string;
@@ -84,7 +85,7 @@ export default function VenuesPage() {
             setError('Failed to fetch organization venues')
           }
         } else {
-          const response = await fetch('https://giraffespacev2.onrender.com/api/v1/venue/public-venues/list')
+          const response = await fetch(`${API_BASE_URL}/venue/public-venues/list`)
           data = await response.json()
           if (data.success) {
             setVenues(data.data || [])

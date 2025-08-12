@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { API_BASE_URL } from "@/lib/config"
 
 interface Payer {
   userId: string
@@ -235,7 +236,7 @@ export default function BookingRequestsPage() {
       }
 
       const response = await fetch(
-        `https://giraffespacev2.onrender.com/api/v1/venue-bookings/${bookingToCancelId}/cancel-by-manager-without-slot-deletion`,
+        `${API_BASE_URL}/venue-bookings/${bookingToCancelId}/cancel-by-manager-without-slot-deletion`,
         {
           method: "PATCH",
           headers: {
