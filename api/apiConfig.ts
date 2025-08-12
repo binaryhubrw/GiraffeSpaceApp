@@ -1902,6 +1902,54 @@ class ApiService {
     }
   }
 
+  /**
+   * Fetch a single attendee's details for a given event by filtering all attendees client-side.
+   * Uses the /event/{eventId}/attendance/free endpoint and expects the response structure as provided.
+   *
+   * @param eventId - The ID of the event
+   * @param attendeeId - The ID of the attendee (freeRegistrationId)
+   * @returns {Promise<{ success: boolean; data?: any; message?: string }>} The attendee details or an error message
+   */
+  static async getAttendeeById(eventId: string, attendeeId: string): Promise<any> {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return { success: false, message: "No authentication token found" };
+    }
+    try {
+      // Only use the attendance/free endpoint
+      const allAttendeesUrl = `${this.BASE_URL}/event/${eventId}/attendance/free`;
+      const response = await axios.get(allAttendeesUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        withCredentials: true,
+      });
+      if (response?.data?.success && Array.isArray(response.data.data)) {
+        const attendees = response.data.data;
+        const foundAttendee = attendees.find((attendee: any) => 
+          attendee.freeRegistrationId === attendeeId
+        );
+        if (foundAttendee) {
+          return {
+            success: true,
+            data: foundAttendee
+          };
+        } else {
+          return {
+            success: false,
+            message: "Attendee not found in event registrations"
+          };
+        }
+      } else {
+        return { success: false, message: response?.data?.message || "Failed to fetch attendees" };
+      }
+    } catch (error: any) {
+      console.error(`Error fetching attendee ${attendeeId}:`, error);
+      return { success: false, message: error.message || "An error occurred while fetching attendee" };
+    }
+  }
+
   // NOTE: getFreeAttendanceByEventId removed as requested
 
   /******Add ticket check in staff****** */

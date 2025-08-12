@@ -20,6 +20,8 @@ import Link from "next/link"
 import { format, isToday, isThisWeek, isThisMonth, parseISO, isAfter, isBefore, isValid } from "date-fns"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import RefundForm from "@/components/RefundForm"
+import ApiService from "@/api/apiConfig"
+import { jwtDecode } from "jwt-decode"
 
 interface Payer {
   userId: string
@@ -113,24 +115,23 @@ export default function PaymentsPage() {
         return
       }
 
-      const response = await fetch(
-        "https://giraffespacev2.onrender.com/api/v1/venue-bookings/payments/manager/566439eb-33bf-4954-903d-986862dfaa5f/formatted",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      )
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      // Get the manager ID from the token or context
+      const decodedToken = jwtDecode(token) as any
+      const managerId = decodedToken.userId || decodedToken.id
+
+      if (!managerId) {
+        setError("Manager ID not found in token")
+        setLoading(false)
+        return
       }
-      const result: ApiResponse = await response.json()
+
+      const result = await ApiService.getFormattedManagerPayments(managerId)
 
       if (result.success && result.data) {
         setBookingsData(result.data || []); // Corrected: access data directly
         const formattedPayments: FormattedPayment[] = []
         
-        result.data.forEach((booking) => { // Corrected: iterate directly over result.data
+        result.data.forEach((booking: Booking) => { // Corrected: iterate directly over result.data
           // If a booking has no payments, we still want to represent it
           // especially for remainingAmount calculation. We'll create a "dummy" payment
           // for consistency in the table, pulling data from the booking itself.
@@ -153,7 +154,7 @@ export default function PaymentsPage() {
               statusDisplay: booking.remainingAmount > 0 ? "Partially Paid" : "Paid", // Display for UI
             })
           } else {
-            booking.payments.forEach((payment) => {
+            booking.payments.forEach((payment: ApiPayment) => {
               const paymentDateTime = parseISO(payment.paymentDate)
               formattedPayments.push({
                 id: payment.paymentId,
@@ -166,7 +167,7 @@ export default function PaymentsPage() {
                 method: payment.paymentMethod
                   .replace(/_/g, " ")
                   .toLowerCase()
-                  .replace(/\b\w/g, (char) => char.toUpperCase()), // Format "MOBILE_MONEY" to "Mobile Money"
+                  .replace(/\b\w/g, (char: string) => char.toUpperCase()), // Format "MOBILE_MONEY" to "Mobile Money"
                 status: payment.paymentStatus, // Directly use backend status
                 transactionId: payment.paymentReference || payment.paymentId,
                 remainingAmount: booking.remainingAmount, // Take remainingAmount from booking
@@ -388,6 +389,17 @@ export default function PaymentsPage() {
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+              {/* <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Status</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="PARTIAL">Partial</option>
+                <option value="FAILED">Failed</option>
+                <option value="Holdings">Holdings</option>
+              </select> */}
               <select
                 value={methodFilter}
                 onChange={(e) => setMethodFilter(e.target.value)}

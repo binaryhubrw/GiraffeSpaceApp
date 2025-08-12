@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/contexts/auth-context";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { Key, useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -64,6 +64,7 @@ import AttendancePage from "./event-attendance";
 export default function EventDetails({ params }: { params: { id: string } }) {
   const { isLoggedIn, user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { id } = useParams();
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -86,6 +87,14 @@ export default function EventDetails({ params }: { params: { id: string } }) {
     }, 100);
     return () => clearTimeout(timer);
   }, []);
+
+  // Set tab from query param if provided
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "attendees" || tab === "guests" || tab === "tickets") {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   // Fetch event data from API
   useEffect(() => {

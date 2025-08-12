@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import { format, parseISO } from "date-fns"
-import { Calendar, Users, Filter, Search } from 'lucide-react'
+import { Calendar, Users, Filter, Search, Eye } from 'lucide-react'
 import { useParams, useRouter } from 'next/navigation'
 
 import { Button } from "@/components/ui/button"
@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge"
 import ApiService from "@/api/apiConfig"
 import axios from "axios"
 import { FreeRegistration } from "@/data/users"
+import Link from "next/link"
 
 const ITEMS_PER_PAGE = 8
 
@@ -36,6 +37,22 @@ export default function AttendancePage() {
   const params = useParams()
   const eventId = params.id as string
   const FALLBACK_EVENT_ID = "c1883bb9-8a54-4dd3-a234-6add0e872d48"
+
+  // Helper to present user-friendly errors
+  const getFriendlyError = (err: string | null): string => {
+    if (!err) return "";
+    const lower = err.toLowerCase();
+    if (lower.includes("401") || lower.includes("unauthorized")) {
+      return "Your session has expired. Please log in again.";
+    }
+    if (lower.includes("404") || lower.includes("not found")) {
+      return "No attendance data available for this event yet.";
+    }
+    if (lower.includes("no response") || lower.includes("network")) {
+      return "We couldn't reach the server. Please check your internet connection and try again.";
+    }
+    return "Something went wrong while loading attendance. Please try again.";
+  };
 
   const [currentPage, setCurrentPage] = useState(1)
   const [dateFilter, setDateFilter] = useState("")
@@ -50,77 +67,60 @@ export default function AttendancePage() {
 
   useEffect(() => {
     const fetchEventData = async () => {
-      const tryFetch = async (idToUse: string, isFallback: boolean = false) => {
-        try {
-          setLoading(true);
-          setError(null);
-          if (isFallback) setWarning("");
-
-          console.log("Fetching data for event ID:", idToUse);
-          const eventResponse = await ApiService.getEventById(idToUse);
-          if (eventResponse.success) {
-            setEventDetails(eventResponse.data);
-          } else {
-            setError(eventResponse.message || "Failed to fetch event details");
-          }
-
-          console.log("Fetching attendance for event ID:", idToUse);
-          try {
-            const response = await axios.get(
-              `${ApiService.BASE_URL}/event/${idToUse}/attendance/free`,
-              { headers: ApiService.getHeader(), withCredentials: true }
-            )
-            if (response?.data?.success) {
-              setRegistrations(response.data.data)
-            } else {
-              setError(prev => prev
-                ? `${prev}, ${response?.data?.message || "Failed to fetch attendance"}`
-                : response?.data?.message || "Failed to fetch attendance"
-              )
-            }
-          } catch (attErr: any) {
-            if (attErr?.response?.status === 404 && !isFallback) {
-              await tryFetch(FALLBACK_EVENT_ID, true)
-              return
-            }
-            throw attErr
-          }
-        } catch (err: any) {
-          console.error("Error fetching data:", err);
-          if (err.response?.status === 404 && !isFallback) {
-            // Retry with fallback event ID
-            await tryFetch(FALLBACK_EVENT_ID, true);
-            return;
-          }
-
-          if (err.response) {
-            console.error("Response data:", err.response.data);
-            console.error("Response status:", err.response.status);
-            console.error("Response headers:", err.response.headers);
-            
-            if (err.response.status === 401) {
-              setError("Unauthorized - Please login again");
-              router.push("/login");
-            } else if (err.response.status === 404) {
-              setError("Event registrations not found - the event may not exist or you may not have permission");
-            } else {
-              setError(err.response.data?.message || "An unexpected error occurred");
-            }
-          } else if (err.request) {
-            console.error("No response received:", err.request);
-            setError("No response from server - check your network connection");
-          } else {
-            console.error("Request setup error:", err.message);
-            setError(err.message || "An unexpected error occurred");
-          }
-        } finally {
-          setLoading(false);
+      setLoading(true);
+      setError(null);
+      setWarning("");
+      try {
+        if (!eventId) return;
+        // Fetch event details
+        const eventResponse = await ApiService.getEventById(eventId);
+        if (eventResponse.success) {
+          setEventDetails(eventResponse.data);
+        } else {
+          setError(eventResponse.message || "Failed to fetch event details");
         }
+        // Fetch attendance for this event
+        const response = await axios.get(
+          `${ApiService.BASE_URL}/event/${eventId}/attendance/free`,
+          { headers: ApiService.getHeader(), withCredentials: true }
+        );
+        if (response?.data?.success) {
+          setRegistrations(response.data.data);
+        } else {
+          setError(response?.data?.message || "Failed to fetch attendance");
+        }
+      } catch (err: any) {
+        if (err.response && err.response.status === 404) {
+          // Fallback to registrations when no attendance (check-ins) exist yet
+          try {
+            const regRes = await axios.get(
+              `${ApiService.BASE_URL}/event/${eventId}/registrations/free`,
+              { headers: ApiService.getHeader(), withCredentials: true }
+            );
+            if (regRes?.data?.success) {
+              setRegistrations(regRes.data.data || []);
+              setError(null);
+              setWarning("No check-ins yet. Showing registrations for this event.");
+            } else {
+              setRegistrations([]);
+              setError(regRes?.data?.message || "No registrations found for this event.");
+            }
+          } catch (regErr: any) {
+            setRegistrations([]);
+            setError(regErr?.message || "No registrations found for this event.");
+          }
+        } else if (err.response && err.response.status === 401) {
+          setError("Unauthorized - Please login again");
+          router.push("/login");
+        } else if (err.request) {
+          setError("No response from server - check your network connection");
+        } else {
+          setError(err.message || "An unexpected error occurred");
+        }
+      } finally {
+        setLoading(false);
       }
-
-      await tryFetch(eventId);
     };
-  
     if (eventId) {
       fetchEventData();
     }
@@ -417,12 +417,13 @@ export default function AttendancePage() {
                   <TableHead>Check-in Time</TableHead>
                   <TableHead className="min-w-[300px]">Attended Dates</TableHead>
                   <TableHead className="text-center">Attendance</TableHead>
+                  <TableHead className="text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
                         <Calendar className="h-8 w-8 text-muted-foreground" />
                         <p className="text-muted-foreground">Loading attendance records...</p>
@@ -431,17 +432,16 @@ export default function AttendancePage() {
                   </TableRow>
                 ) : error ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-red-500">
+                    <TableCell colSpan={6} className="text-center py-8 text-red-500">
                       <div className="flex flex-col items-center gap-2">
                         <Calendar className="h-8 w-8 text-muted-foreground" />
-                        <p>{error}</p>
-                        <Button onClick={() => window.location.reload()}>Retry</Button>
+                        <p className="text-muted-foreground">No attendees found</p>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : paginatedData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8">
+                    <TableCell colSpan={6} className="text-center py-8">
                       <div className="flex flex-col items-center gap-2">
                         <Calendar className="h-8 w-8 text-muted-foreground" />
                         <p className="text-muted-foreground">No attendance records found</p>
@@ -513,6 +513,13 @@ export default function AttendancePage() {
                               {attendanceRate}%
                             </Badge>
                           </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Link href={`/user-dashboard/events/${eventId}/attender/${record.freeRegistrationId}`}>
+                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
                         </TableCell>
                       </TableRow>
                     )
