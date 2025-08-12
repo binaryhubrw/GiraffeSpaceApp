@@ -6,6 +6,7 @@ import { Building2, AlertCircle, X, FileText, ImageIcon, Upload, Mail, Phone, Ma
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/auth-context";
 import ApiService from "@/api/apiConfig";
+import { API_BASE_URL } from "@/lib/config";
 
 interface Organization {
   organizationName: string;
@@ -128,7 +129,7 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
         if (supportingDocuments) {
           Array.from(supportingDocuments).forEach(file => fd.append('supportingDocument', file));
         }
-        res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations`, {
+        res = await fetch(`${API_BASE_URL}/organizations`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -159,7 +160,7 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
           // Set status based on user role when creating
           ...(orgId ? {} : { status: user?.roles?.roleName === "ADMIN" ? "APPROVED" : "PENDING" }),
         };
-        res = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}`,
+        res = await fetch(`${API_BASE_URL}/organizations/${orgId}`,
           {
             method: "PUT",
             headers: {
@@ -186,7 +187,7 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
       if (logo && newOrgId) {
         const logoData = new FormData();
         logoData.append("logo", logo);
-        const logoRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${newOrgId}/logo`, {
+        const logoRes = await fetch(`${API_BASE_URL}/organizations/${newOrgId}/logo`, {
           method: "PATCH",
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -205,7 +206,7 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
         Array.from(supportingDocuments).forEach((file, index) => {
           docData.append("supportingDocument", file);
         });
-        const docRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${newOrgId}/supporting-document`, {
+        const docRes = await fetch(`${API_BASE_URL}/organizations/${newOrgId}/supporting-document`, {
           method: "PATCH",
           headers: {
             "Authorization": `Bearer ${token}`,
@@ -223,7 +224,7 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
       if (newOrgId) {
         // After editing, always fetch the latest org data
         if (orgId) {
-          const updatedOrgRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}`, {
+          const updatedOrgRes = await fetch(`${API_BASE_URL}/organizations/${orgId}`, {
             headers: {
               "Authorization": `Bearer ${token}`,
             },
@@ -232,7 +233,7 @@ export default function OrganizationForm({ onSuccess, onCancel, initialData }: O
             updatedOrgData = await updatedOrgRes.json();
           }
         } else {
-          const updatedOrgRes = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${newOrgId}`, {
+          const updatedOrgRes = await fetch(`${API_BASE_URL}/organizations/${newOrgId}`, {
             headers: {
               "Authorization": `Bearer ${token}`,
             },

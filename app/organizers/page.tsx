@@ -5,6 +5,7 @@ import { Search, Filter, Users, Calendar } from "lucide-react"
 import { Header } from "@/components/header"
 import Footer from "@/components/footer"
 import Link from "next/link"
+import { API_BASE_URL } from "@/lib/config"
 
 export default function OrganizersPage() {
   const [organizers, setOrganizers] = useState<any[]>([])
@@ -15,7 +16,7 @@ export default function OrganizersPage() {
   const [searchQuery, setSearchQuery] = useState("")
 
   useEffect(() => {
-    fetch("https://giraffespacev2.onrender.com/api/v1/organizations/public")
+          fetch(`${API_BASE_URL}/organizations/public`)
       .then(res => res.json())
       .then(data => {
         setOrganizers(data.data)

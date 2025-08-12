@@ -12,6 +12,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { useAuth } from "@/contexts/auth-context"
 import { format } from 'date-fns'; // Added for date formatting
+import { API_BASE_URL } from "@/lib/config"
 
 interface TicketTypeDetails {
   ticketTypeId: string
@@ -87,7 +88,7 @@ export default function TicketDetailPage() {
       setError(null)
       try {
         // Use the same endpoint as the parent page to fetch all user tickets
-        const response = await fetch(`https://giraffespacev2.onrender.com/api/v1/event/tickets/user/${user.userId}`, {
+        const response = await fetch(`${API_BASE_URL}/event/tickets/user/${user.userId}`, {
           headers: {
             Authorization: `Bearer ${user.token}`,
           },

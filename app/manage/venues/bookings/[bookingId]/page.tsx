@@ -20,6 +20,7 @@ import Footer from "@/components/footer"
 // Import date-fns utilities
 import { format, parseISO } from 'date-fns';
 import { useAuth } from "@/contexts/auth-context"; // Import useAuth
+import { API_BASE_URL } from "@/lib/config"
 
 // Define comprehensive interfaces based on the new JSON structure
 interface Requester {
@@ -192,7 +193,7 @@ export default function VenueBookingDetail() {
       }
 
       const response = await fetch(
-        `https://giraffespacev2.onrender.com/api/v1/venue-bookings/${bookingId}/cancel-by-manager-without-slot-deletion`,
+        `${API_BASE_URL}/venue-bookings/${bookingId}/cancel-by-manager-without-slot-deletion`,
         {
           method: "PATCH",
           headers: {

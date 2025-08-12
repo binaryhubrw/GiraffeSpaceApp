@@ -34,6 +34,7 @@ import { cn } from "@/lib/utils"
 import { Header } from "@/components/header"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "sonner"
+import { API_BASE_URL } from "@/lib/config"
 
 // Inline Badge component
 const Badge = ({
@@ -213,7 +214,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
     const fetchVenue = async () => {
       try {
         setLoading(true)
-        const response = await fetch(`https://giraffespacev2.onrender.com/api/v1/venue/public/${id}`)
+        const response = await fetch(`${API_BASE_URL}/venue/public/${id}`)
         const data = await response.json()
 
         if (data.success) {

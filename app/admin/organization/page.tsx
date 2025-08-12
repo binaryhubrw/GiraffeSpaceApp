@@ -35,6 +35,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import ApiService from "@/api/apiConfig"
 import OrganizationForm from "@/components/OrganizationForm";
+import { API_BASE_URL } from "@/lib/config"
 
 interface Organization {
   id: string;
@@ -112,7 +113,7 @@ export default function AdminOrganization() {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}/enable-status`,
+        `${API_BASE_URL}/organizations/${orgId}/enable-status`,
         {
           method: "PATCH",
           headers: {
@@ -141,7 +142,7 @@ export default function AdminOrganization() {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `https://giraffespacev2.onrender.com/api/v1/organizations/${orgId}/disable-status`,
+        `${API_BASE_URL}/organizations/${orgId}/disable-status`,
         {
           method: "PATCH",
           headers: {

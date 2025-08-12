@@ -2,6 +2,7 @@ import axios, { AxiosRequestHeaders, AxiosProgressEvent } from "axios";
 import { jwtDecode, JwtPayload } from "jwt-decode";
 import type { User, UserResult, UserApiResponse } from "@/data/users";
 import { StringToBoolean } from "class-variance-authority/types";
+import { API_BASE_URL } from "@/lib/config";
 interface UserFormData {
   [key: string]: any;
 }
@@ -27,7 +28,7 @@ interface Organization {
 class ApiService {
 
   /***** base url** */
-  static BASE_URL: string = "https://giraffespacev2.onrender.com/api/v1";
+  static BASE_URL: string = API_BASE_URL;
 
   static cache: Record<string, any> = {}; // Ensure this line is present
   static lastFetch: Record<string, number> = {};

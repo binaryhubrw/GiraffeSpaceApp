@@ -6,6 +6,7 @@ import { Header } from "@/components/header"
 import Footer from "@/components/footer"
 import { Users, Calendar, MapPin, Mail, Phone, Globe, ChevronLeft, ChevronDown, FileText, Shield } from "lucide-react"
 import Link from "next/link"
+import { API_BASE_URL } from "@/lib/config"
 
 export default function OrganizationDetailsPage() {
   const { id } = useParams()
@@ -25,7 +26,7 @@ export default function OrganizationDetailsPage() {
         }
 
         // Fetch a single organization by ID
-        const response = await fetch(`https://giraffespacev2.onrender.com/api/v1/organizations/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/organizations/${id}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
             "Content-Type": "application/json",

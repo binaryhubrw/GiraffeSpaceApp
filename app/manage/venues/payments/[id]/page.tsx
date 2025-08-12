@@ -10,6 +10,7 @@ import Link from "next/link"
 import { format, parseISO, isValid } from "date-fns" // Added isValid
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog" // Import Dialog components
 import RefundForm from "@/components/RefundForm" // Import RefundForm
+import { API_BASE_URL } from "@/lib/config"
 
 // Define types for the API response and formatted payments (full details for this page)
 interface Payer {
@@ -101,7 +102,7 @@ export default function PaymentDetailsPage() {
       setError(null)
       try {
         const response = await fetch(
-          "https://giraffespacev2.onrender.com/api/v1/venue-bookings/payments/manager/566439eb-33bf-4954-903d-986862dfaa5f/formatted",
+          `${API_BASE_URL}/venue-bookings/payments/manager/566439eb-33bf-4954-903d-986862dfaa5f/formatted`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

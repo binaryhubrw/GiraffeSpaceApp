@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_BASE_URL } from "@/lib/config"
 
 interface Payer {
   userId: string
@@ -267,7 +268,7 @@ export default function BookingRequestsPage() {
       }
 
       const response = await fetch(
-        `https://giraffespacev2.onrender.com/api/v1/venue-bookings/${bookingToCancelId}/cancel-by-manager-without-slot-deletion`,
+        `${API_BASE_URL}/venue-bookings/${bookingToCancelId}/cancel-by-manager-without-slot-deletion`,
         {
           method: "PATCH",
           headers: {

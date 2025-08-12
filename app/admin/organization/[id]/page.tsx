@@ -27,6 +27,7 @@ import { Dialog, DialogContent, DialogTrigger, DialogHeader, DialogTitle } from 
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
+import { API_BASE_URL } from "@/lib/config"
 
 interface User {
   userId: string
@@ -304,7 +305,7 @@ export default function OrganizationDetailPage() {
     try {
       const token = localStorage.getItem("token")
       const response = await fetch(
-        `https://giraffespacev2.onrender.com/api/v1/organizations/${organization.organizationId}/approve`,
+        `${API_BASE_URL}/organizations/${organization.organizationId}/approve`,
         {
           method: "PATCH",
           headers: {
@@ -333,7 +334,7 @@ export default function OrganizationDetailPage() {
     try {
       const token = localStorage.getItem("token")
       const response = await fetch(
-        `https://giraffespacev2.onrender.com/api/v1/organizations/${organization.organizationId}/reject`,
+        `${API_BASE_URL}/organizations/${organization.organizationId}/reject`,
         {
           method: "PATCH",
           headers: {
@@ -383,7 +384,7 @@ export default function OrganizationDetailPage() {
     try {
       const token = localStorage.getItem("token")
       const response = await fetch(
-        `https://giraffespacev2.onrender.com/api/v1/organizations/${organization.organizationId}/enable-status`,
+        `${API_BASE_URL}/organizations/${organization.organizationId}/enable-status`,
         {
           method: "PATCH",
           headers: {
@@ -412,7 +413,7 @@ export default function OrganizationDetailPage() {
     try {
       const token = localStorage.getItem("token")
       const response = await fetch(
-        `https://giraffespacev2.onrender.com/api/v1/organizations/${organization.organizationId}/disable-status`,
+        `${API_BASE_URL}/organizations/${organization.organizationId}/disable-status`,
         {
           method: "PATCH",
           headers: {
