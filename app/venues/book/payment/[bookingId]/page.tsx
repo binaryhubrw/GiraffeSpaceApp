@@ -977,7 +977,7 @@ export default function PayVenueBooking() {
                       )}
                     </div>
                      <div>
-                      <Label htmlFor="amountPaid">Amount to Pay (Rwf) *</Label>
+                      <Label htmlFor="amountPaid">Amount you wish to Pay (Rwf) *</Label>
                       <Input
                         id="amountPaid"
                         type="number"
@@ -1079,7 +1079,7 @@ export default function PayVenueBooking() {
           <div className="mb-8">
             <div className="flex items-center justify-center space-x-8   ">
               {[
-                { step: 1, title: "Review Booking", icon: FileText },
+                { step: 1, title: "Review", icon: FileText },
                 { step: 2, title: "Payment", icon: CreditCard },
                 { step: 3, title: "Confirmation", icon: Check },
               ].map(({ step, title, icon: Icon }) => (
@@ -1139,7 +1139,7 @@ export default function PayVenueBooking() {
                       onClick={nextStep}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
-                      Next
+                      Procced with payment
                     </Button>
                   ) : (
                     <Button
