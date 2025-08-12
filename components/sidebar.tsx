@@ -52,7 +52,7 @@ export function Sidebar() {
               }`}
             >
               <span className="flex items-center justify-center w-7 h-7"><Calendar className="h-6 w-6" /></span>
-              <span>Booking Requests</span>
+              <span>Venue Booking <br />Requests</span>
             </Link>
           </li>
             <li>

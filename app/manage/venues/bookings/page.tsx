@@ -557,8 +557,8 @@ export default function BookingRequestsPage() {
           <div className="p-8">
             {/* Page Header */}
             <div className="mb-6">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Booking Requests</h1>
-              <p className="text-gray-600">Manage and approve booking requests for your venues</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Venue Booking Requests</h1>
+              <p className="text-gray-600">Manage venue booking requests for your venues</p>
             </div>
 
             {/* Export Section */}
@@ -620,7 +620,7 @@ export default function BookingRequestsPage() {
                        variant="outline"
                        size="sm"
                        onClick={() => setShowColumnSelector(!showColumnSelector)}
-                       className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
+                       className="flex items-center gap-2 text-blue-600 border-blue-200 hover:text-blue-800 hover:border-blue-300"
                      >
                        <Settings className="h-4 w-4" />
                        Select Columns
@@ -628,7 +628,7 @@ export default function BookingRequestsPage() {
                      
                      {/* Column Selection Modal */}
                      {showColumnSelector && (
-                       <div className="absolute left-0 top-full mt-2 bg-white border rounded-lg shadow-lg p-4 z-10 min-w-[300px] column-selector">
+                       <div className="absolute right-0 top-full mt-2 bg-white border rounded-lg shadow-lg p-4 z-50 min-w-[300px] max-w-[350px] column-selector">
                          <div className="mb-3">
                            <h4 className="font-medium text-gray-900 mb-2">Select columns to export:</h4>
                            <div className="text-xs text-gray-600 mb-3">
