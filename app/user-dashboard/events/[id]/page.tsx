@@ -237,7 +237,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               </Button>
               {!event.isEntryPaid && (
                 <Link
-                  href={`/events/check-invitation`}
+                  href={`/events/check-invitation/insipector`}
                   className="bg-blue-400 hover:bg-blue-500 text-white font-medium py-2 px-4 rounded-md flex items-center justify-center"
                 >
                   <CheckCircle className="mr-2 h-4 w-4" /> Check Invitation
@@ -273,7 +273,7 @@ export default function EventDetails({ params }: { params: { id: string } }) {
               {event.isEntryPaid && (
                 <>
                   <Link
-                  href={`/user-dashboard/events/${event.eventId}/eventTicket/create`}
+                  href={`/events/check-ticket/insipector`}
                   className=" bg-blue-500  hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md flex items-center"
                 >
                   <ScanQrCode className="mr-2 h-5 w-5 text-purple-300" /> Check Ticket

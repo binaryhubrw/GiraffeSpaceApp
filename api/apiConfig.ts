@@ -1765,21 +1765,7 @@ class ApiService {
   }
 
 
-  /***** check invitation detail with qrcode***** */
-  // static async checkInvitationDetailWithQRCode(qrCodeData: string): Promise<any> {
-  //   try {
-  //     const response = await axios.post(`${this.BASE_URL}/event/free-check-in/details`, qrCodeData, {
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //       },
-  //       withCredentials: true,
-  //     });
-  //     return response.data;
-  //   } catch (error) {
-  //     console.error(`Error fetching invitation details for QR code:`, error);
-  //     throw error;
-  //   }
-  // }
+
 
   /***** update invitation details***** */
   static async updateInvitationDetails(registrationId: string,updateData: {

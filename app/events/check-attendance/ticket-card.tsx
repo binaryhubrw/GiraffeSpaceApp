@@ -70,12 +70,7 @@ export default function TicketCard({ invitationData, scannedTicketCode, onClose 
     fullName: invitationData?.fullName || "",
     phoneNumber: invitationData?.phoneNumber || "", 
     gender: invitationData?.gender || "",
-    address: {
-      province: "",
-      district: "",
-      sector: "",
-      country: ""
-    }
+    address: ""
   })
 
   // Attendance state
@@ -90,16 +85,22 @@ export default function TicketCard({ invitationData, scannedTicketCode, onClose 
 
   function openInvitationEdit() {
     if (!invitationData) return
+    
+    // Convert address object to string if it's an object
+    let addressString = ""
+    if (invitationData.address) {
+      if (typeof invitationData.address === 'string') {
+        addressString = invitationData.address
+      } else if (invitationData.address.province && invitationData.address.district && invitationData.address.sector) {
+        addressString = `${invitationData.address.province}, ${invitationData.address.district}, ${invitationData.address.sector}${invitationData.address.country ? `, ${invitationData.address.country}` : ''}`
+      }
+    }
+    
     setInvitationEditData({
       fullName: invitationData.fullName || "",
       phoneNumber: invitationData.phoneNumber || "",
       gender: invitationData.gender || "",
-      address: {
-        province: "",
-        district: "",
-        sector: "",
-        country: ""
-      }
+      address: addressString
     })
     setIsInvitationEditOpen(true)
   }
@@ -181,6 +182,7 @@ export default function TicketCard({ invitationData, scannedTicketCode, onClose 
     const trimmedName = invitationEditData.fullName.trim()
     const trimmedPhone = invitationEditData.phoneNumber.trim()
     const trimmedGender = invitationEditData.gender.trim()
+    const trimmedAddress = invitationEditData.address.trim()
     
     if (!trimmedName || !trimmedPhone || !trimmedGender) {
       toast.error("Missing information. Name, phone number, and gender are required.")
@@ -194,26 +196,37 @@ export default function TicketCard({ invitationData, scannedTicketCode, onClose 
         return
       }
 
+      // Parse address string into object format as required by API
+      const addressParts = trimmedAddress.split(',').map(part => part.trim())
+      const addressObject = {
+        province: addressParts[0] || "",
+        district: addressParts[1] || "",
+        sector: addressParts[2] || "",
+        country: addressParts[3] || "Rwanda"
+      }
+
       const requestBody = {
         sixDigitCode: sixDigitCode,
         fullName: trimmedName,
         phoneNumber: trimmedPhone,
         gender: trimmedGender,
-        address: invitationEditData.address
+        address: addressObject
       }
 
-             // Import ApiService dynamically to avoid circular dependencies
-       const ApiService = (await import("@/api/apiConfig")).default
-       const response = await ApiService.updateInvitationDetails(invitationData.freeRegistrationId, requestBody)
+      console.log("Updating invitation details with:", requestBody)
+
+      // Import ApiService dynamically to avoid circular dependencies
+      const ApiService = (await import("@/api/apiConfig")).default
+      const response = await ApiService.updateInvitationDetails(invitationData.freeRegistrationId, requestBody)
       
-             if (response.success) {
-         toast.success("Invitation details updated successfully!")
-         // Store the ticket code for attendance confirmation
-         setStoredTicketCode(invitationData.freeRegistrationId)
-         closeInvitationEdit()
-                   // Refresh the invitation data
-          window.location.reload()
-       } else {
+      if (response.success) {
+        toast.success("Invitation details updated successfully!")
+        // Store the ticket code for attendance confirmation
+        setStoredTicketCode(invitationData.freeRegistrationId)
+        closeInvitationEdit()
+        // Refresh the invitation data
+        window.location.reload()
+      } else {
         toast.error(response.message || "Failed to update invitation details.")
       }
     } catch (error: any) {
@@ -292,7 +305,14 @@ export default function TicketCard({ invitationData, scannedTicketCode, onClose 
               {invitationData.address && (
                 <div className="flex items-center gap-2 text-gray-700">
                   <MapPinIcon className="h-4 w-4" />
-                  <span className="font-medium text-black">{invitationData.address}</span>
+                  <span className="font-medium text-black">
+                    {typeof invitationData.address === 'string' 
+                      ? invitationData.address 
+                      : invitationData.address.province && invitationData.address.district && invitationData.address.sector
+                        ? `${invitationData.address.province}, ${invitationData.address.district}, ${invitationData.address.sector}${invitationData.address.country ? `, ${invitationData.address.country}` : ''}`
+                        : 'Address not available'
+                    }
+                  </span>
                 </div>
               )}
             </div>
@@ -499,59 +519,18 @@ export default function TicketCard({ invitationData, scannedTicketCode, onClose 
               </div>
 
               <div className="grid gap-2">
-                <Label className="text-gray-800">Address</Label>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label htmlFor="edit-province" className="text-xs text-gray-600">Province</Label>
-                    <Input
-                      id="edit-province"
-                      placeholder="Province"
-                      value={invitationEditData.address.province}
-                      onChange={(e) => setInvitationEditData(prev => ({ 
-                        ...prev, 
-                        address: { ...prev.address, province: e.target.value }
-                      }))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-district" className="text-xs text-gray-600">District</Label>
-                    <Input
-                      id="edit-district"
-                      placeholder="District"
-                      value={invitationEditData.address.district}
-                      onChange={(e) => setInvitationEditData(prev => ({ 
-                        ...prev, 
-                        address: { ...prev.address, district: e.target.value }
-                      }))}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label htmlFor="edit-sector" className="text-xs text-gray-600">Sector</Label>
-                    <Input
-                      id="edit-sector"
-                      placeholder="Sector"
-                      value={invitationEditData.address.sector}
-                      onChange={(e) => setInvitationEditData(prev => ({ 
-                        ...prev, 
-                        address: { ...prev.address, sector: e.target.value }
-                      }))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="edit-country" className="text-xs text-gray-600">Country</Label>
-                    <Input
-                      id="edit-country"
-                      placeholder="Country"
-                      value={invitationEditData.address.country}
-                      onChange={(e) => setInvitationEditData(prev => ({ 
-                        ...prev, 
-                        address: { ...prev.address, country: e.target.value }
-                      }))}
-                    />
-                  </div>
-                </div>
+                <Label htmlFor="edit-address" className="text-gray-800">
+                  Address
+                </Label>
+                <Input
+                  id="edit-address"
+                  placeholder="e.g. Kigali, Gasabo, Kimironko, Rwanda"
+                  value={invitationEditData.address}
+                  onChange={(e) => setInvitationEditData(prev => ({ ...prev, address: e.target.value }))}
+                />
+                <p className="text-xs text-gray-500">
+                  Format: Province, District, Sector, Country (comma-separated)
+                </p>
               </div>
             </div>
 
