@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import ApiService from "@/api/apiConfig"
 import type { User } from "@/data/users"
-import OverviewSection from "./overview/page"
+import OverviewSection from "./overview/overview-section"
 
 export default function UserDashboard() {
   const { user: authUser, isLoggedIn } = useAuth()
@@ -15,7 +15,10 @@ export default function UserDashboard() {
   const [userError, setUserError] = useState<string | null>(null)
   const [organizations, setOrganizations] = useState<any[]>([])
   const [userEvents, setUserEvents] = useState<any[]>([])
+  const [eventsLoading, setEventsLoading] = useState(true)
+  const [eventsError, setEventsError] = useState<string | null>(null)
 
+  // Fetch user data
   useEffect(() => {
     if (!isLoggedIn) {
       router.push("/login")
@@ -28,8 +31,6 @@ export default function UserDashboard() {
           if (res.success && res.user) {
             setUser(res.user)
             setOrganizations(res.user.organizations || [])
-            // Example: get userEvents from user or another API
-            setUserEvents(res.user.events || [])
           } else {
             setUserError(res.message || "Failed to fetch user.")
           }
@@ -42,6 +43,32 @@ export default function UserDashboard() {
         })
     }
   }, [isLoggedIn, authUser, router])
+
+  // Fetch user events data
+  useEffect(() => {
+    if (!authUser?.userId) return
+
+    setEventsLoading(true)
+    setEventsError(null)
+    
+    ApiService.getAllEventByUserId(authUser.userId)
+      .then((res: { success: boolean; data?: any[]; message?: string }) => {
+        if (res.success && res.data) {
+          setUserEvents(res.data)
+        } else {
+          setEventsError(res.message || "Failed to fetch events.")
+          setUserEvents([])
+        }
+      })
+      .catch((err: any) => {
+        console.error("Error fetching user events:", err)
+        setEventsError(err?.message || "Failed to fetch events.")
+        setUserEvents([])
+      })
+      .finally(() => {
+        setEventsLoading(false)
+      })
+  }, [authUser?.userId])
 
   if (!isLoggedIn || !authUser) {
     return <div>Loading...</div>
@@ -65,7 +92,13 @@ export default function UserDashboard() {
 
   return (
     <div className="w-full">
-      <OverviewSection user={user} organizations={organizations} userEvents={userEvents} />
+      <OverviewSection 
+        user={user} 
+        organizations={organizations} 
+        userEvents={userEvents}
+        eventsLoading={eventsLoading}
+        eventsError={eventsError}
+      />
     </div>
   )
 }

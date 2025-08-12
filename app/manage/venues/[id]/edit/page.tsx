@@ -12,7 +12,7 @@ import Link from "next/link"
 import MapPicker from "../../create/MapPicker";
 import ApiService from "@/api/apiConfig";
 
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 
 
@@ -53,35 +53,31 @@ export default function EditVenuePage() {
   useEffect(() => {
     const fetchVenue = async () => {
       if (!id || typeof id !== 'string') {
-        toast({
-          title: "Error",
-          description: "Invalid venue ID.",
-          variant: "destructive"
-        });
+        toast.error("Invalid venue ID.");
         return;
       }
 
       setLoading(true);
       try {
         const response = await ApiService.getVenueById(id);
+        console.log("Venue API response:", response); // Debug log
         if (response.success && response.data) {
           const v = response.data;
-          setFormData({
+          const newFormData = {
             venueName: v.venueName || "",
             capacity: v.capacity?.toString() || "",
-            location: v.location || "",
+            location: v.venueLocation || v.location || "",
             description: v.description || "",
             latitude: v.latitude?.toString() || "",
             longitude: v.longitude?.toString() || "",
             googleMapsLink: v.googleMapsLink || "",
-          });
+          };
+          console.log("Setting form data:", newFormData); // Debug log
+          setFormData(newFormData);
         }
       } catch (err) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch venue data.",
-          variant: "destructive"
-        });
+        console.error("Error fetching venue:", err);
+        toast.error("Failed to fetch venue data.");
       } finally {
         setLoading(false);
       }
@@ -92,11 +88,13 @@ export default function EditVenuePage() {
   // Handler for form inputs
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    console.log(`Updating ${name} to:`, value); // Debug log
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   // Map picker handler
   const handleMapChange = ({ lat, lng, address }: { lat: number; lng: number; address?: string }) => {
+    console.log("Map change:", { lat, lng, address }); // Debug log
     setFormData(prev => ({
       ...prev,
       latitude: lat.toString(),
@@ -110,41 +108,44 @@ export default function EditVenuePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate required fields
+    if (!formData.venueName.trim() || !formData.location.trim() || !formData.capacity.trim()) {
+      toast.error("Please fill in all required fields (Venue Name, Location, and Capacity)");
+      return;
+    }
+
     setSaving(true);
     try {
-      const formDataToSend = new FormData();
-
-      // Append only required fields to FormData
-      formDataToSend.append("venueName", formData.venueName);
-      formDataToSend.append("venueLocation", formData.location);
-      formDataToSend.append("capacity", formData.capacity);
-      formDataToSend.append("description", formData.description || "");
-      formDataToSend.append("latitude", formData.latitude);
-      formDataToSend.append("longitude", formData.longitude);
-      formDataToSend.append("googleMapsLink", formData.googleMapsLink);
+      // Prepare venue data object matching the API requirements
+      const venueData = {
+        venueName: formData.venueName.trim(),
+        venueLocation: formData.location.trim(),
+        capacity: parseInt(formData.capacity),
+        description: formData.description.trim() || "",
+        latitude: parseFloat(formData.latitude) || 0,
+        longitude: parseFloat(formData.longitude) || 0,
+        googleMapsLink: formData.googleMapsLink.trim() || "",
+        venueDocuments: {} // Empty object as we're not handling documents in this form
+      };
 
       if (!id || typeof id !== 'string') {
         throw new Error("Invalid venue ID");
       }
 
-      const response = await ApiService.updateVenueDetailsById(id, formDataToSend);
+      console.log("Updating venue with data:", venueData);
+      const response = await ApiService.updateVenueGeneralField(id, venueData);
+      console.log("Update response:", response); // Debug log 
+      
       if (response.success) {
-        toast({
-          title: "Venue Updated Successfully! 🎉",
-          description: `${formData.venueName} has been updated.`,
-          variant: "default",
-          className: "bg-green-500 text-white",
-        });
+        toast.success(`Venue "${formData.venueName}" updated successfully!`);
         router.push(`/manage/venues/${id}`);
       } else {
         throw new Error(response.message || 'Failed to update venue');
       }
     } catch (err: any) {
-      toast({
-        title: "Error Updating Venue",
-        description: err.message || "There was a problem updating your venue. Please try again.",
-        variant: "destructive"
-      });
+      console.error("Error updating venue:", err);
+      const errorMessage = err.response?.data?.message || err.message || "There was a problem updating your venue. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -160,12 +161,13 @@ export default function EditVenuePage() {
             </div>
           </div>
         </main>
-        <Footer />
+      
       </div>
     )
   }
 
-  if (!formData.venueName) {
+  // Only show "Venue Not Found" if we're not loading and the venue data is completely missing
+  if (!loading && !formData.venueName && !formData.location && !formData.capacity) {
     return (
       <div className="min-h-screen flex flex-col">
         <main className="flex-1 bg-white">
@@ -178,7 +180,7 @@ export default function EditVenuePage() {
               <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
               <h1 className="text-2xl font-bold mb-2">Venue Not Found</h1>
               <p className="text-gray-600 mb-6">The venue you're trying to edit doesn't exist or has been removed.</p>
-              <Link href="/manage/venues/myvenues" className="bg-gray-900 text-white px-4 py-2 rounded-md hover:bg-gray-800">
+              <Link href="/manage/venues/myvenues" className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
                 Return to Venues
               </Link>
             </div>
@@ -221,21 +223,7 @@ export default function EditVenuePage() {
                       required
                     />
                   </div>
-                  <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-                      Venue Location *
-                    </label>
-                    <input
-                      type="text"
-                      id="location"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleInputChange}
-                      placeholder="Enter venue location"
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                    />
-                  </div>
+
                   <div>
                     <label htmlFor="capacity" className="block text-sm font-medium text-gray-700 mb-1">
                       Capacity *
@@ -274,21 +262,6 @@ export default function EditVenuePage() {
                <div>
                  <h2 className="text-xl font-semibold mb-6">Location Details</h2>
                  <div className="space-y-4">
-                   <div>
-                     <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
-                       Venue Location *
-                     </label>
-                     <input
-                       type="text"
-                       id="location"
-                       name="location"
-                       value={formData.location}
-                       onChange={handleInputChange}
-                       placeholder="Enter venue location"
-                       className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                       required
-                     />
-                   </div>
                    <div>
                      <label htmlFor="latitude" className="block text-sm font-medium text-gray-700 mb-1">
                        Latitude *
@@ -375,7 +348,7 @@ export default function EditVenuePage() {
           </form>
         </div>
       </main>
-      <Footer />
+   
     </div>
   );
 }

@@ -1356,10 +1356,23 @@ export default function VenueDetailsPage() {
             )}
 
             {/* Documents */}
-            {venue.venueDocuments && venue.venueDocuments.trim() !== '' && (
+            {venue.venueDocuments && Object.keys(venue.venueDocuments).length > 0 && (
             <div>
                 <h3 className="text-lg font-semibold mb-2">Documents</h3>
                 <p className="text-gray-800">Documents available for this venue.</p>
+                {/* Display document links if available */}
+                {Object.entries(venue.venueDocuments).map(([docType, docUrl]) => (
+                  <div key={docType} className="mt-2">
+                    <a 
+                      href={docUrl as string} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 underline"
+                    >
+                      {docType.charAt(0).toUpperCase() + docType.slice(1)} Document
+                    </a>
+                  </div>
+                ))}
               </div>
             )}
           </div>

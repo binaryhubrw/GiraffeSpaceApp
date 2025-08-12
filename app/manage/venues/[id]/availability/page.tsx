@@ -468,7 +468,11 @@ function getCellClass(day: typeof days[number]) {
 
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {generateMonthOffsets().map((offset) => renderMonth(offset))}
+                {generateMonthOffsets().map((offset) => (
+  <div key={`month-${offset}`}>
+    {renderMonth(offset)}
+  </div>
+))}
               </div>
 
               {/* Legend */}

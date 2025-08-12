@@ -138,7 +138,12 @@ export default function MapPicker({
           placeholder="Search location..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleSearch();
+            }
+          }}
         />
         <Button onClick={handleSearch}>
           <Search className="h-4 w-4" />

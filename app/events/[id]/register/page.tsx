@@ -40,16 +40,10 @@ interface EventData {
 }
 
 interface AttendeeData {
-  fullName?: string;
-  firstName?: string;
-  lastName?: string;
+  fullName: string;
   email: string;
-  receiverEmail: string;
-  phoneNumber: string;
   nationalId: string;
-  passportId: string;
   gender: string;
-  address: string;
 }
 
 interface LoggedInUser {
@@ -77,33 +71,16 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
   const [success, setSuccess] = useState(false)
 
   // Form state
-  const [registeringForSelf, setRegisteringForSelf] = useState(true)
   const [attendees, setAttendees] = useState<AttendeeData[]>([
     {
       fullName: "",
-      firstName: "",
-      lastName: "",
       email: "",
-      receiverEmail: "",
-      phoneNumber: "",
       nationalId: "",
-      passportId: "",
       gender: "",
-      address: "",
     },
   ])
   const [sharedReceiverEmail, setSharedReceiverEmail] = useState("")
   const [errors, setErrors] = useState<Record<string, string>>({})
-
-  // Update all attendees' receiver email when shared email changes
-  useEffect(() => {
-    if (sharedReceiverEmail) {
-      setAttendees(prev => prev.map(attendee => ({
-        ...attendee,
-        receiverEmail: sharedReceiverEmail
-      })))
-    }
-  }, [sharedReceiverEmail])
 
   // Fetch full user profile
   useEffect(() => {
@@ -140,40 +117,28 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
   }, [eventId])
 
   useEffect(() => {
-    if (registeringForSelf && fullUser) {
+    if (fullUser) {
       setAttendees([
         {
           fullName: `${fullUser.firstName || ""} ${fullUser.lastName || ""}`.trim(),
-          firstName: fullUser.firstName || "",
-          lastName: fullUser.lastName || "",
           email: fullUser.email || "",
-          receiverEmail: fullUser.email || "",
-          phoneNumber: fullUser.phoneNumber || "",
           nationalId: "",
-          passportId: "",
           gender: "",
-          address: "",
         },
       ])
       setSharedReceiverEmail(fullUser.email || "")
-    } else if (!registeringForSelf) {
+    } else {
       setAttendees([
         {
           fullName: "",
-          firstName: "",
-          lastName: "",
           email: "",
-          receiverEmail: "",
-          phoneNumber: "",
           nationalId: "",
-          passportId: "",
           gender: "",
-          address: "",
         },
       ])
       setSharedReceiverEmail("")
     }
-  }, [registeringForSelf, fullUser?.firstName, fullUser?.lastName, fullUser?.email, fullUser?.phoneNumber])
+  }, [fullUser?.firstName, fullUser?.lastName, fullUser?.email])
 
   const handleAttendeeChange = (index: number, field: keyof AttendeeData, value: string) => {
     const newAttendees = [...attendees]
@@ -181,15 +146,9 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
     
     // Type-safe assignment for AttendeeData fields
     if (field === "fullName") attendee.fullName = value;
-    else if (field === "firstName") attendee.firstName = value;
-    else if (field === "lastName") attendee.lastName = value;
     else if (field === "email") attendee.email = value;
-    else if (field === "receiverEmail") attendee.receiverEmail = value;
-    else if (field === "phoneNumber") attendee.phoneNumber = value;
     else if (field === "nationalId") attendee.nationalId = value;
-    else if (field === "passportId") attendee.passportId = value;
     else if (field === "gender") attendee.gender = value;
-    else if (field === "address") attendee.address = value;
     
     setAttendees(newAttendees)
 
@@ -205,15 +164,9 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
       ...attendees,
       {
         fullName: "",
-        firstName: "",
-        lastName: "",
         email: "",
-        receiverEmail: "",
-        phoneNumber: "",
         nationalId: "",
-        passportId: "",
         gender: "",
-        address: "",
       },
     ])
   }
@@ -246,22 +199,11 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
       } else if (!/\S+@\S+\.\S+/.test(attendee.email)) {
         newErrors[`attendee-${index}-email`] = "Please enter a valid email"
       }
-      if (!attendee.phoneNumber.trim()) {
-        newErrors[`attendee-${index}-phoneNumber`] = "Phone number is required"
-      }
       if (!attendee.nationalId.trim()) {
         newErrors[`attendee-${index}-nationalId`] = "National ID is required";
-      } else if (!/^\d{16}$/.test(attendee.nationalId.trim())) {
-        newErrors[`attendee-${index}-nationalId`] = "National ID must be exactly 16 numbers";
-      }
-      if (!attendee.passportId.trim()) {
-        newErrors[`attendee-${index}-passportId`] = "Passport ID is required";
       }
       if (!attendee.gender.trim()) {
         newErrors[`attendee-${index}-gender`] = "Gender is required";
-      }
-      if (!attendee.address.trim()) {
-        newErrors[`attendee-${index}-address`] = "Address is required";
       }
     })
 
@@ -279,9 +221,7 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
 
     try {
       const registrations = attendees.map((attendee) => ({
-        fullName: attendee.fullName?.trim()
-          ? attendee.fullName
-          : `${attendee.firstName || ""} ${attendee.lastName || ""}`.trim(),
+        fullName: attendee.fullName?.trim() || "",
         email: attendee.email,
         nationalId: attendee.nationalId,
         gender: attendee.gender,
@@ -293,13 +233,29 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
       };
 
       console.log("Sending registration data:", registrationData); // Debug log
-      await ApiService.registerOnFreeEvent(eventId, registrationData);
-      toast.success("Registration successful!");
+      
+      const response = await ApiService.registerOnFreeEvent(eventId, registrationData);
+      console.log("API Response:", response); // Print the full response
+      
+      // Use response message if available, otherwise use default
+      const successMessage = response?.message || "Registration successful!";
+      toast.success(successMessage);
       setSuccess(true);
     } catch (err) {
-      console.error("Registration error:", err);
-      toast.error("Failed to register for the event. Please try again.");
-      setError("Failed to register for the event. Please try again.");
+      
+      console.error('Registration error:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        response: (err as any)?.response,
+        status: (err as any)?.response?.status,
+        data: (err as any)?.response?.data
+      });
+      
+      // Use error message from response if available, otherwise use default
+      const errorMessage = (err as any)?.response?.data?.message || 
+                          (err as any)?.message || 
+                          "Failed to register for the event. Please try again.";
+      toast.error(errorMessage);
+      setError(errorMessage);
     } finally {
       setSubmitting(false)
     }
@@ -418,49 +374,7 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Registration Type Toggle */}
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div className="space-y-1">
-                      <Label className="text-base font-medium">Who are you registering?</Label>
-                      <p className="text-sm text-gray-600">
-                        {registeringForSelf ? "Registering for yourself" : "Registering for others"}
-                      </p>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span className={`text-sm ${!registeringForSelf ? "text-gray-500" : "font-medium"}`}>Myself</span>
-                      <Switch
-                        checked={!registeringForSelf}
-                        onCheckedChange={(checked) => setRegisteringForSelf(!checked)}
-                      />
-                      <span className={`text-sm ${registeringForSelf ? "text-gray-500" : "font-medium"}`}>Others</span>
-                    </div>
-                  </div>
-
-                  {/* Logged-in User Info (when registering for self) */}
-                  {registeringForSelf && (
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center gap-3 mb-3">
-                        <Avatar>
-                          <AvatarFallback>
-                            {fullUser?.firstName?.[0] || fullUser?.lastName?.[0] || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <h4 className="font-medium text-blue-900">
-                            {fullUser?.firstName} {fullUser?.lastName}
-                          </h4>
-                          <p className="text-sm text-blue-700">
-                            {fullUser?.email}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-blue-800">
-                        We'll use your account information for registration. You can still add additional details below.
-                      </p>
-                    </div>
-                  )}
-
-                                     {/* Shared Receiver Email */}
+                  {/* Shared Receiver Email */}
                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                      <div className="space-y-2">
                        <Label htmlFor="sharedReceiverEmail" className="text-base font-medium text-blue-900">
@@ -487,7 +401,7 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                    <div className="space-y-6">
                      <div className="flex items-center justify-between">
                        <h3 className="text-lg font-semibold">
-                         {registeringForSelf ? "Your Information" : "Attendee Information"}
+                         Attendee Information
                        </h3>
                        <Badge variant="outline">
                          {attendees.length} Attendee{attendees.length > 1 ? "s" : ""}
@@ -499,7 +413,7 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                         <CardHeader className="pb-3">
                           <div className="flex items-center justify-between">
                             <CardTitle className="text-base">
-                              {registeringForSelf ? "Your Details" : `Attendee ${index + 1}`}
+                              {`Attendee ${index + 1}`}
                             </CardTitle>
                             {attendees.length > 1 && (
                               <Button variant="outline" size="sm" onClick={() => removeAttendee(index)}>
@@ -510,62 +424,32 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                         </CardHeader>
                         <CardContent className="space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {registeringForSelf && index === 0 ? (
-                              <div>
-                                <Label htmlFor={`fullName-${index}`}>Full Name *</Label>
-                                <Input
-                                  id={`fullName-${index}`}
-                                  value={`${fullUser?.firstName || ""} ${fullUser?.lastName || ""}`}
-                                  disabled
-                                  className="mt-1"
-                                />
-                              </div>
-                            ) : (
-                              <div>
-                                <Label htmlFor={`fullName-${index}`}>Full Name *</Label>
-                                <Input
-                                  id={`fullName-${index}`}
-                                  value={attendee.fullName}
-                                  onChange={(e) => handleAttendeeChange(index, "fullName", e.target.value)}
-                                  placeholder="Enter full name"
-                                  className={`mt-1 ${errors[`attendee-${index}-fullName`] ? "border-red-500" : ""}`}
-                                />
-                                {errors[`attendee-${index}-fullName`] && (
-                                  <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-fullName`]}</p>
-                                )}
-                              </div>
-                            )}
-
-                            <div>
-                              <Label htmlFor={`email-${index}`}>Email Address *</Label>
-                              <Input
-                                id={`email-${index}`}
-                                type="email"
-                                value={attendee.email}
-                                onChange={(e) => handleAttendeeChange(index, "email", e.target.value)}
-                                placeholder="Enter email address"
-                                className={`mt-1 ${errors[`attendee-${index}-email`] ? "border-red-500" : ""}`}
-                                disabled={registeringForSelf && index === 0}
-                              />
-                              {errors[`attendee-${index}-email`] && (
-                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-email`]}</p>
-                              )}
-                            </div>
-                          </div>
-
-                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                              <div>
-                               <Label htmlFor={`phoneNumber-${index}`}>Phone Number *</Label>
+                               <Label htmlFor={`fullName-${index}`}>Full Name *</Label>
                                <Input
-                                 id={`phoneNumber-${index}`}
-                                 value={attendee.phoneNumber}
-                                 onChange={(e) => handleAttendeeChange(index, "phoneNumber", e.target.value)}
-                                 placeholder="Enter phone number"
-                                 className={`mt-1 ${errors[`attendee-${index}-phoneNumber`] ? "border-red-500" : ""}`}
-                                 disabled={registeringForSelf && index === 0}
+                                 id={`fullName-${index}`}
+                                 value={attendee.fullName}
+                                 onChange={(e) => handleAttendeeChange(index, "fullName", e.target.value)}
+                                 placeholder="Enter full name"
+                                 className={`mt-1 ${errors[`attendee-${index}-fullName`] ? "border-red-500" : ""}`}
                                />
-                               {errors[`attendee-${index}-phoneNumber`] && (
-                                 <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-phoneNumber`]}</p>
+                               {errors[`attendee-${index}-fullName`] && (
+                                 <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-fullName`]}</p>
+                               )}
+                             </div>
+
+                             <div>
+                               <Label htmlFor={`email-${index}`}>Email *</Label>
+                               <Input
+                                 id={`email-${index}`}
+                                 type="email"
+                                 value={attendee.email}
+                                 onChange={(e) => handleAttendeeChange(index, "email", e.target.value)}
+                                 placeholder="Enter email address"
+                                 className={`mt-1 ${errors[`attendee-${index}-email`] ? "border-red-500" : ""}`}
+                               />
+                               {errors[`attendee-${index}-email`] && (
+                                 <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-email`]}</p>
                                )}
                              </div>
                            </div>
@@ -586,22 +470,6 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                             </div>
 
                             <div>
-                              <Label htmlFor={`passportId-${index}`}>Passport ID *</Label>
-                              <Input
-                                id={`passportId-${index}`}
-                                value={attendee.passportId}
-                                onChange={(e) => handleAttendeeChange(index, "passportId", e.target.value)}
-                                placeholder="Enter passport ID"
-                                className={`mt-1 ${errors[`attendee-${index}-passportId`] ? "border-red-500" : ""}`}
-                              />
-                              {errors[`attendee-${index}-passportId`] && (
-                                <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-passportId`]}</p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
                               <Label htmlFor={`gender-${index}`}>Gender *</Label>
                               <select
                                 id={`gender-${index}`}
@@ -618,21 +486,6 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                                 <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-gender`]}</p>
                               )}
                             </div>
-                          </div>
-
-                          <div>
-                            <Label htmlFor={`address-${index}`}>Address *</Label>
-                            <Textarea
-                              id={`address-${index}`}
-                              value={attendee.address}
-                              onChange={(e) => handleAttendeeChange(index, "address", e.target.value)}
-                              placeholder="Enter complete address (street, province, district, sector, country)"
-                              className={`mt-1 ${errors[`attendee-${index}-address`] ? "border-red-500" : ""}`}
-                              rows={3}
-                            />
-                            {errors[`attendee-${index}-address`] && (
-                              <p className="text-sm text-red-500 mt-1">{errors[`attendee-${index}-address`]}</p>
-                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -722,7 +575,7 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                     <div>
                       <div className="text-sm text-muted-foreground">Registration Type</div>
                       <div className="font-semibold">
-                        {registeringForSelf ? "Self Registration" : "Group Registration"}
+                        Group Registration
                       </div>
                     </div>
 
@@ -743,11 +596,14 @@ export default function EventRegistrationForm({ eventId: propEventId }: { eventI
                 </CardHeader>
                 <CardContent className="text-sm text-muted-foreground space-y-2">
                   <p>
-                    <strong>Self Registration:</strong> Use your account information and add any additional details.
+                    <strong>Group Registration:</strong> Register multiple people by filling out their individual
+                    information. You can add as many attendees as needed.
                   </p>
                   <p>
-                    <strong>Group Registration:</strong> Register multiple people by filling out their individual
-                    information.
+                    <strong>Receiver Email:</strong> All confirmation emails and updates will be sent to the receiver email address you provide.
+                  </p>
+                  <p>
+                    <strong>Required Fields:</strong> Each attendee needs their full name, email, national ID, and gender.
                   </p>
                   <p>
                     <strong>Questions?</strong> Contact the event organizer for assistance.

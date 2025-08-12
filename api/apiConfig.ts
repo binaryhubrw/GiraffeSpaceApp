@@ -781,13 +781,13 @@ class ApiService {
 
 
   /** Update venue by ID */
-  static async updateVenueDetailsById(venueId: string, data: any): Promise<any> {
+  static async updateVenueGeneralField(venueId: string, venueData: any): Promise<any> {
     try {
       const response = await axios.patch(
         `${this.BASE_URL}/venue/${venueId}`,
-        {},
+        venueData, // Send venueData directly, not wrapped in {venueData}
         {
-          headers: this.getHeader(),
+          headers: this.getHeader(venueData),
           withCredentials: true,
         }
       );

@@ -92,7 +92,7 @@ export default function ScanPage() {
   const verifyInspectorAccess = async () => {
     const inspectorCode = localStorage.getItem("inspectorCode")
     const inspectorAccess = localStorage.getItem("inspectorAccess")
-
+    
     if (!inspectorCode || inspectorAccess !== "true") {
       toast.error("Inspector access required. Please verify your access first.")
       router.push("/events/check-attendance/insipector")
@@ -102,7 +102,7 @@ export default function ScanPage() {
     try {
       setIsVerifyingAccess(true)
       const response = await ApiService.checkInspectorAccess(inspectorCode)
-
+      
       if (!response.success) {
         toast.error("Inspector access expired. Please verify your access again.")
         // Clear stored data
@@ -185,7 +185,7 @@ export default function ScanPage() {
       // Check if we can enumerate devices (this requires permission)
       const devices = await navigator.mediaDevices.enumerateDevices()
       const videoDevices = devices.filter((device) => device.kind === "videoinput")
-
+      
       if (videoDevices.length > 0) {
         // We have permission, but don't start camera automatically
         // Let user choose when to start scanning
@@ -204,7 +204,7 @@ export default function ScanPage() {
   const requestCameraPermission = async (): Promise<MediaStream | null> => {
     try {
       console.log("Requesting camera permission...")
-
+      
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("Camera access is not supported in this browser")
@@ -213,11 +213,11 @@ export default function ScanPage() {
       const cameraConfigs = [
         // Try back camera with ideal resolution first
         {
-          video: {
+        video: {
             facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
         },
         // Fallback to back camera with lower resolution
         {
@@ -267,7 +267,7 @@ export default function ScanPage() {
             console.log(`Camera access successful with config ${i + 1}`)
             break
           }
-        } catch (error: any) {
+    } catch (error: any) {
           console.log(`Camera config ${i + 1} failed:`, error.message)
           lastError = error
 
@@ -407,8 +407,8 @@ export default function ScanPage() {
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
           inversionAttempts: "dontInvert",
         })
-
-        if (code) {
+          
+          if (code) {
           console.log('QR Code detected:', code.data)
           stopCamera()
           handleResolve(code.data)
@@ -543,7 +543,7 @@ export default function ScanPage() {
       if (invitationData) return // ignore further scans when we have a result
       const trimmed = String(text).trim()
       setDetectedCode(trimmed)
-
+      
       // Check if it's a 6 or 7 digit invitation code
       if (trimmed.length === 6 || trimmed.length === 7) {
         // Get stored sixDigitCode from inspector access
@@ -563,6 +563,8 @@ export default function ScanPage() {
       } else if (isBarcode(trimmed)) {
         // Handle barcode data
         await checkBarcodeInvitation(trimmed)
+        // Clear the manual input field after barcode scanning
+        setManualCode("")
       } else {
         toast.error("Invalid code format. Please scan a valid invitation code, QR code, or barcode.")
       }
@@ -603,7 +605,7 @@ export default function ScanPage() {
       return
     }
     setDetectedCode(trimmed)
-
+    
     // Check if it's a 6 or 7 digit invitation code
     if (trimmed.length === 6 || trimmed.length === 7) {
       // Get stored sixDigitCode from inspector access
@@ -614,7 +616,7 @@ export default function ScanPage() {
         router.push("/events/check-attendance/insipector")
         return
       }
-
+      
       await checkInvitationCode()
     } else if (isBase64QRCode(trimmed)) {
       // Handle QR code data (base64 encoded)
@@ -640,9 +642,9 @@ export default function ScanPage() {
     // Get stored sixDigitCode from inspector access
     const storedSixDigitCode = localStorage.getItem("inspectorCode")
     if (!storedSixDigitCode) {
-      setManualError("Inspector access required. Please verify your access first.")
-      toast.error("Inspector access required. Please verify your access first.")
-      router.push("/events/check-attendance/insipector")
+              setManualError("Inspector access required. Please verify your access first.")
+        toast.error("Inspector access required. Please verify your access first.")
+        router.push("/events/check-attendance/insipector")
       return
     }
 
@@ -650,7 +652,7 @@ export default function ScanPage() {
     try {
       // Determine code type based on length
       let codeType = "SEVEN_DIGIT_CODE"
-
+      
       if (trimmed.length === 7) {
         codeType = "SEVEN_DIGIT_CODE"
       } else if (trimmed.length === 6) {
@@ -668,7 +670,7 @@ export default function ScanPage() {
 
       console.log("Checking invitation with:", requestBody)
       const response = await ApiService.checkInvitationDetailWithInvitation(requestBody)
-
+      
       if (response.success) {
         setInvitationData(response.data)
         toast.success(response.message || "Invitation details fetched successfully!")
@@ -709,7 +711,7 @@ export default function ScanPage() {
 
       console.log("Checking QR code invitation with:", requestBody)
       const response = await ApiService.checkInvitationDetailWithInvitation(requestBody)
-
+      
       if (response.success) {
         setInvitationData(response.data)
         toast.success(response.message || "QR code invitation details fetched successfully!")
@@ -754,7 +756,9 @@ export default function ScanPage() {
       if (response.success) {
         setInvitationData(response.data)
         toast.success(response.message || "Barcode invitation details fetched successfully!")
-      } else {
+        // Clear the manual input field after successful barcode processing
+        setManualCode("")
+        } else {
         setManualError(response.message || "Failed to fetch barcode invitation details.")
         toast.error(response.message || "Failed to fetch barcode invitation details.")
       }
@@ -807,7 +811,7 @@ export default function ScanPage() {
     try {
       const success = await startCamera()
       if (success) {
-        toast.success("Camera access granted!")
+      toast.success("Camera access granted!")
       }
     } catch (error: any) {
       console.error("Camera retry failed:", error)
@@ -835,7 +839,7 @@ export default function ScanPage() {
   return (
     <div className="min-h-screen bg-white text-black">
       <Header activePage="scan" />
-
+      
       <main className="p-4 md:p-8">
         <div className="mx-auto max-w-5xl space-y-6">
           {/* Breadcrumb Navigation */}
@@ -874,105 +878,105 @@ export default function ScanPage() {
             </Link>
           </header>
 
-          <Card className="border-gray-200">
-            <CardHeader>
-              <CardTitle>Choose a method</CardTitle>
-              <CardDescription className="text-gray-600">
-                Scan a QR code, read a barcode, or enter the invitation code manually.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="qr" className="data-[state=active]:bg-blue-50">
-                    <QrCode className="h-4 w-4 mr-2" aria-hidden="true" />
-                    QR code
-                  </TabsTrigger>
-                  <TabsTrigger value="barcode" className="data-[state=active]:bg-blue-50">
-                    <Barcode className="h-4 w-4 mr-2" aria-hidden="true" />
-                    Barcode
-                  </TabsTrigger>
-                  <TabsTrigger value="invite" className="data-[state=active]:bg-blue-50">
-                    Invitation
-                  </TabsTrigger>
-                </TabsList>
+        <Card className="border-gray-200">
+          <CardHeader>
+            <CardTitle>Choose a method</CardTitle>
+            <CardDescription className="text-gray-600">
+              Scan a QR code, read a barcode, or enter the invitation code manually.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="qr" className="data-[state=active]:bg-blue-50">
+                  <QrCode className="h-4 w-4 mr-2" aria-hidden="true" />
+                  QR code
+                </TabsTrigger>
+                <TabsTrigger value="barcode" className="data-[state=active]:bg-blue-50">
+                  <Barcode className="h-4 w-4 mr-2" aria-hidden="true" />
+                  Barcode
+                </TabsTrigger>
+                <TabsTrigger value="invite" className="data-[state=active]:bg-blue-50">
+                  Invitation
+                </TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="qr" className="space-y-4 pt-4">
-                  {!invitationData && (
-                    <>
-                      {/* Permission Dialog */}
-                      {showPermissionDialog && (
-                        <div className="text-center py-8">
-                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Camera className="h-8 w-8 text-blue-600" />
-                          </div>
+                                           <TabsContent value="qr" className="space-y-4 pt-4">
+                {!invitationData && (
+                   <>
+                     {/* Permission Dialog */}
+                     {showPermissionDialog && (
+                       <div className="text-center py-8">
+                         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                           <Camera className="h-8 w-8 text-blue-600" />
+                         </div>
                           <h3 className="font-semibold text-foreground mb-2">Enable Camera Access</h3>
-                          <p className="text-muted-foreground mb-4 text-sm">
+                         <p className="text-muted-foreground mb-4 text-sm">
                             This app needs camera access to scan QR codes. When prompted, please click "Allow" to enable
                             camera access.
-                          </p>
+                         </p>
+                         
+                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-left">
+                           <h4 className="font-medium text-blue-900 mb-2 text-sm">How to enable camera access:</h4>
+                           <ul className="text-xs text-blue-800 space-y-1">
+                             <li>• Click the camera icon in your browser's address bar</li>
+                             <li>• Select "Allow" for camera access</li>
+                             <li>• The camera will start automatically</li>
+                           </ul>
+                         </div>
 
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-left">
-                            <h4 className="font-medium text-blue-900 mb-2 text-sm">How to enable camera access:</h4>
-                            <ul className="text-xs text-blue-800 space-y-1">
-                              <li>• Click the camera icon in your browser's address bar</li>
-                              <li>• Select "Allow" for camera access</li>
-                              <li>• The camera will start automatically</li>
-                            </ul>
-                          </div>
-
-                          <div className="flex gap-2">
-                            <Button onClick={handlePermissionGranted} className="flex-1">
+                         <div className="flex gap-2">
+                           <Button onClick={handlePermissionGranted} className="flex-1">
                               Request Permission
-                            </Button>
+                           </Button>
                             <Button
                               onClick={handlePermissionDenied}
                               variant="outline"
                               className="flex-1 bg-transparent"
                             >
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+                             Cancel
+                           </Button>
+                         </div>
+                       </div>
+                     )}
 
-                      {/* Camera Access Denied */}
-                      {hasPermission === false && (
-                        <div className="text-center py-8">
-                          <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <AlertCircle className="h-8 w-8 text-destructive" />
-                          </div>
-                          <h3 className="font-semibold text-foreground mb-2">Camera Access Denied</h3>
-                          <p className="text-muted-foreground mb-4 text-sm">
+                     {/* Camera Access Denied */}
+                     {hasPermission === false && (
+                       <div className="text-center py-8">
+                         <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                           <AlertCircle className="h-8 w-8 text-destructive" />
+                         </div>
+                         <h3 className="font-semibold text-foreground mb-2">Camera Access Denied</h3>
+                         <p className="text-muted-foreground mb-4 text-sm">
                             Camera access was denied. To scan QR codes, please allow camera access in your browser
                             settings.
-                          </p>
+                         </p>
+                         
+                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-left">
+                           <h4 className="font-medium text-yellow-900 mb-2 text-sm">To enable camera access:</h4>
+                           <ul className="text-xs text-yellow-800 space-y-1">
+                             <li>• Click the camera icon in your browser's address bar</li>
+                             <li>• Select "Allow" for camera access</li>
+                             <li>• Refresh the page and try again</li>
+                           </ul>
+                         </div>
 
-                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-left">
-                            <h4 className="font-medium text-yellow-900 mb-2 text-sm">To enable camera access:</h4>
-                            <ul className="text-xs text-yellow-800 space-y-1">
-                              <li>• Click the camera icon in your browser's address bar</li>
-                              <li>• Select "Allow" for camera access</li>
-                              <li>• Refresh the page and try again</li>
-                            </ul>
-                          </div>
+                         <div className="flex gap-2">
+                           <Button onClick={() => setHasPermission(null)} className="flex-1">
+                             Try Again
+                           </Button>
+                           <Button onClick={() => setShowPermissionDialog(true)} variant="outline" className="flex-1">
+                             Request Permission
+                           </Button>
+                         </div>
+                       </div>
+                     )}
 
-                          <div className="flex gap-2">
-                            <Button onClick={() => setHasPermission(null)} className="flex-1">
-                              Try Again
-                            </Button>
-                            <Button onClick={() => setShowPermissionDialog(true)} variant="outline" className="flex-1">
-                              Request Permission
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Camera Scanner */}
-                      {!showPermissionDialog && hasPermission !== false && (
-                        <div className="relative aspect-video w-full overflow-hidden rounded-md border border-gray-200 bg-black/90">
-                          {isScanning ? (
-                            <>
+                     {/* Camera Scanner */}
+                     {!showPermissionDialog && hasPermission !== false && (
+                       <div className="relative aspect-video w-full overflow-hidden rounded-md border border-gray-200 bg-black/90">
+                         {isScanning ? (
+                           <>
                               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                               <canvas ref={canvasRef} className="hidden" />
                               <div className="absolute inset-0 border-2 border-blue-500 rounded-lg">
@@ -983,28 +987,28 @@ export default function ScanPage() {
 
                                 {/* Scanning line animation */}
                                 <div className="absolute inset-x-4 top-1/2 h-0.5 bg-blue-500 animate-pulse"></div>
-                              </div>
-                            </>
-                          ) : (
-                            <div className="flex items-center justify-center h-full">
-                              <div className="text-center">
-                                <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                             </div>
+                           </>
+                         ) : (
+                           <div className="flex items-center justify-center h-full">
+                             <div className="text-center">
+                               <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
                                 <p className="text-muted-foreground">Camera ready to start</p>
-                                <Button
+                               <Button 
                                   onClick={handleStartScanning}
-                                  variant="outline"
-                                  size="sm"
+                                 variant="outline" 
+                                 size="sm"
                                   className="mt-2 bg-transparent"
-                                >
+                               >
                                   <Camera className="h-4 w-4 mr-2" />
                                   Start Camera
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                          <div className="absolute inset-x-0 bottom-0 bg-black/40 text-white text-xs p-2 flex items-center gap-2">
-                            <Camera className="h-3.5 w-3.5" aria-hidden="true" /> Point the camera at a QR code
-                          </div>
+                               </Button>
+                             </div>
+                           </div>
+                         )}
+                         <div className="absolute inset-x-0 bottom-0 bg-black/40 text-white text-xs p-2 flex items-center gap-2">
+                           <Camera className="h-3.5 w-3.5" aria-hidden="true" /> Point the camera at a QR code
+                         </div>
 
                           <div className="mt-4">
                             <Button onClick={stopCamera} variant="outline" className="w-full bg-transparent">
@@ -1012,52 +1016,52 @@ export default function ScanPage() {
                               Cancel Scanning
                             </Button>
                           </div>
-                        </div>
-                      )}
+                       </div>
+                     )}
 
-                      {cameraError && (
-                        <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-900">
-                          <AlertTitle>Camera error</AlertTitle>
-                          <AlertDescription className="space-y-2">
-                            <p>{cameraError}</p>
-                            <Button
-                              onClick={retryCameraAccess}
-                              size="sm"
-                              variant="outline"
+                     {cameraError && (
+                       <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-900">
+                         <AlertTitle>Camera error</AlertTitle>
+                         <AlertDescription className="space-y-2">
+                           <p>{cameraError}</p>
+                           <Button 
+                             onClick={retryCameraAccess} 
+                             size="sm" 
+                             variant="outline" 
                               className="mt-2 border-red-300 text-red-700 hover:bg-red-100 bg-transparent"
-                            >
-                              Retry Camera Access
-                            </Button>
-                          </AlertDescription>
-                        </Alert>
-                      )}
+                           >
+                             Retry Camera Access
+                           </Button>
+                         </AlertDescription>
+                       </Alert>
+                     )}
 
-                      <p className="text-xs text-gray-500">Demo codes: QR-12345-ABCDE, QR-54321-EDCBA</p>
-                    </>
-                  )}
+                     <p className="text-xs text-gray-500">Demo codes: QR-12345-ABCDE, QR-54321-EDCBA</p>
+                   </>
+                 )}
 
-                  {invitationData && (
-                    <>
-                      <TicketCard
-                        invitationData={invitationData}
-                        scannedTicketCode={detectedCode || manualCode.trim()}
-                        onClose={resetScan}
-                      />
-                      <div className="pt-3">
-                        <Button
-                          onClick={resetScan}
-                          variant="outline"
-                          className="border-gray-300 text-gray-800 hover:bg-gray-100 bg-transparent"
-                        >
-                          Scan Another
-                        </Button>
-                      </div>
-                    </>
-                  )}
+                {invitationData && (
+                  <>
+                    <TicketCard 
+                      invitationData={invitationData} 
+                      scannedTicketCode={detectedCode || manualCode.trim()} 
+                      onClose={resetScan} 
+                    />
+                    <div className="pt-3">
+                      <Button
+                        onClick={resetScan}
+                        variant="outline"
+                        className="border-gray-300 text-gray-800 hover:bg-gray-100 bg-transparent"
+                      >
+                        Scan Another
+                      </Button>
+                    </div>
+                  </>
+                )}
                 </TabsContent>
 
-                                 <TabsContent value="barcode" className="space-y-4 pt-4">
-                   {!invitationData && (
+                                           <TabsContent value="barcode" className="space-y-4 pt-4">
+                {!invitationData && (
                      <>
                        {/* Barcode Scanner Options */}
                        <div className="grid gap-4">
@@ -1121,80 +1125,80 @@ export default function ScanPage() {
 
                        {/* Camera Scanner Section */}
                        {barcodeMethod === "camera" && (
-                         <>
-                           {/* Permission Dialog */}
-                           {showPermissionDialog && (
-                             <div className="text-center py-8">
-                               <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                 <Camera className="h-8 w-8 text-blue-600" />
-                               </div>
+                   <>
+                     {/* Permission Dialog */}
+                     {showPermissionDialog && (
+                       <div className="text-center py-8">
+                         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                           <Camera className="h-8 w-8 text-blue-600" />
+                         </div>
                                <h3 className="font-semibold text-foreground mb-2">Enable Camera Access</h3>
-                               <p className="text-muted-foreground mb-4 text-sm">
+                         <p className="text-muted-foreground mb-4 text-sm">
                                  This app needs camera access to scan barcodes. When prompted, please click "Allow" to enable
                                  camera access.
-                               </p>
+                         </p>
+                         
+                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-left">
+                           <h4 className="font-medium text-blue-900 mb-2 text-sm">How to enable camera access:</h4>
+                           <ul className="text-xs text-blue-800 space-y-1">
+                             <li>• Click the camera icon in your browser's address bar</li>
+                             <li>• Select "Allow" for camera access</li>
+                             <li>• The camera will start automatically</li>
+                           </ul>
+                         </div>
 
-                               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-left">
-                                 <h4 className="font-medium text-blue-900 mb-2 text-sm">How to enable camera access:</h4>
-                                 <ul className="text-xs text-blue-800 space-y-1">
-                                   <li>• Click the camera icon in your browser's address bar</li>
-                                   <li>• Select "Allow" for camera access</li>
-                                   <li>• The camera will start automatically</li>
-                                 </ul>
-                               </div>
-
-                               <div className="flex gap-2">
-                                 <Button onClick={handlePermissionGranted} className="flex-1">
+                         <div className="flex gap-2">
+                           <Button onClick={handlePermissionGranted} className="flex-1">
                                    Request Permission
-                                 </Button>
+                           </Button>
                                  <Button
                                    onClick={handlePermissionDenied}
                                    variant="outline"
                                    className="flex-1 bg-transparent"
                                  >
-                                   Cancel
-                                 </Button>
-                               </div>
-                             </div>
-                           )}
+                             Cancel
+                           </Button>
+                         </div>
+                       </div>
+                     )}
 
-                           {/* Camera Access Denied */}
-                           {hasPermission === false && (
-                             <div className="text-center py-8">
-                               <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                                 <AlertCircle className="h-8 w-8 text-destructive" />
-                               </div>
-                               <h3 className="font-semibold text-foreground mb-2">Camera Access Denied</h3>
-                               <p className="text-muted-foreground mb-4 text-sm">
+                     {/* Camera Access Denied */}
+                     {hasPermission === false && (
+                       <div className="text-center py-8">
+                         <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                           <AlertCircle className="h-8 w-8 text-destructive" />
+                         </div>
+                         <h3 className="font-semibold text-foreground mb-2">Camera Access Denied</h3>
+                         <p className="text-muted-foreground mb-4 text-sm">
                                  Camera access was denied. To scan barcodes, please allow camera access in your browser
                                  settings.
-                               </p>
+                         </p>
+                         
+                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-left">
+                           <h4 className="font-medium text-yellow-900 mb-2 text-sm">To enable camera access:</h4>
+                           <ul className="text-xs text-yellow-800 space-y-1">
+                             <li>• Click the camera icon in your browser's address bar</li>
+                             <li>• Select "Allow" for camera access</li>
+                             <li>• Refresh the page and try again</li>
+                           </ul>
+                         </div>
 
-                               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-left">
-                                 <h4 className="font-medium text-yellow-900 mb-2 text-sm">To enable camera access:</h4>
-                                 <ul className="text-xs text-yellow-800 space-y-1">
-                                   <li>• Click the camera icon in your browser's address bar</li>
-                                   <li>• Select "Allow" for camera access</li>
-                                   <li>• Refresh the page and try again</li>
-                                 </ul>
-                               </div>
+                         <div className="flex gap-2">
+                           <Button onClick={() => setHasPermission(null)} className="flex-1">
+                             Try Again
+                           </Button>
+                           <Button onClick={() => setShowPermissionDialog(true)} variant="outline" className="flex-1">
+                             Request Permission
+                           </Button>
+                         </div>
+                       </div>
+                     )}
 
-                               <div className="flex gap-2">
-                                 <Button onClick={() => setHasPermission(null)} className="flex-1">
-                                   Try Again
-                                 </Button>
-                                 <Button onClick={() => setShowPermissionDialog(true)} variant="outline" className="flex-1">
-                                   Request Permission
-                                 </Button>
-                               </div>
-                             </div>
-                           )}
-
-                           {/* Camera Scanner */}
-                           {!showPermissionDialog && hasPermission !== false && (
-                             <div className="relative aspect-video w-full overflow-hidden rounded-md border border-gray-200 bg-black/90">
-                               {isScanning ? (
-                                 <>
+                     {/* Camera Scanner */}
+                     {!showPermissionDialog && hasPermission !== false && (
+                       <div className="relative aspect-video w-full overflow-hidden rounded-md border border-gray-200 bg-black/90">
+                         {isScanning ? (
+                           <>
                                    <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                                    <canvas ref={canvasRef} className="hidden" />
                                    <div className="absolute inset-0 border-2 border-blue-500 rounded-lg">
@@ -1205,28 +1209,28 @@ export default function ScanPage() {
 
                                      {/* Scanning line animation */}
                                      <div className="absolute inset-x-4 top-1/2 h-0.5 bg-blue-500 animate-pulse"></div>
-                                   </div>
-                                 </>
-                               ) : (
-                                 <div className="flex items-center justify-center h-full">
-                                   <div className="text-center">
-                                     <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                             </div>
+                           </>
+                         ) : (
+                           <div className="flex items-center justify-center h-full">
+                             <div className="text-center">
+                               <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
                                      <p className="text-muted-foreground">Camera ready to start</p>
-                                     <Button
+                               <Button 
                                        onClick={handleStartScanning}
-                                       variant="outline"
-                                       size="sm"
+                                 variant="outline" 
+                                 size="sm"
                                        className="mt-2 bg-transparent"
-                                     >
+                               >
                                        <Camera className="h-4 w-4 mr-2" />
                                        Start Camera
-                                     </Button>
-                                   </div>
-                                 </div>
-                               )}
-                               <div className="absolute inset-x-0 bottom-0 bg-black/40 text-white text-xs p-2 flex items-center gap-2">
-                                 <Camera className="h-3.5 w-3.5" aria-hidden="true" /> Align the barcode within the frame
-                               </div>
+                               </Button>
+                             </div>
+                           </div>
+                         )}
+                         <div className="absolute inset-x-0 bottom-0 bg-black/40 text-white text-xs p-2 flex items-center gap-2">
+                           <Camera className="h-3.5 w-3.5" aria-hidden="true" /> Align the barcode within the frame
+                         </div>
 
                                <div className="mt-4">
                                  <Button onClick={stopCamera} variant="outline" className="w-full bg-transparent">
@@ -1234,8 +1238,8 @@ export default function ScanPage() {
                                    Cancel Scanning
                                  </Button>
                                </div>
-                             </div>
-                           )}
+                       </div>
+                     )}
                          </>
                        )}
 
@@ -1298,117 +1302,117 @@ export default function ScanPage() {
                          </div>
                        )}
 
-                       <p className="text-xs text-gray-500">Demo barcode: BAR-9876543210123 or BAR-1234567890001</p>
-                     </>
-                   )}
+                     <p className="text-xs text-gray-500">Demo barcode: BAR-9876543210123 or BAR-1234567890001</p>
+                   </>
+                 )}
 
-                  {invitationData && (
-                    <>
-                      <TicketCard
-                        invitationData={invitationData}
-                        scannedTicketCode={detectedCode || manualCode.trim()}
-                        onClose={resetScan}
-                      />
-                      <div className="pt-3">
-                        <Button
-                          onClick={resetScan}
-                          variant="outline"
-                          className="border-gray-300 text-gray-800 hover:bg-gray-100 bg-transparent"
+                {invitationData && (
+                  <>
+                    <TicketCard 
+                      invitationData={invitationData} 
+                      scannedTicketCode={detectedCode || manualCode.trim()} 
+                      onClose={resetScan} 
+                    />
+                    <div className="pt-3">
+                      <Button
+                        onClick={resetScan}
+                        variant="outline"
+                        className="border-gray-300 text-gray-800 hover:bg-gray-100 bg-transparent"
+                      >
+                        Scan Another
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </TabsContent>
+
+              <TabsContent value="invite" className="space-y-4 pt-4">
+                {!invitationData && (
+                  <>
+                    <div className="grid gap-2">
+                      <Label htmlFor="invite-code" className="text-gray-800">
+                        Invitation Code
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="invite-code"
+                          placeholder="Enter 6 or 7 digit invitation code"
+                          value={manualCode}
+                          onChange={(e) => setManualCode(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              checkInvitationCode()
+                            }
+                          }}
+                        />
+                        <Button 
+                          onClick={checkInvitationCode} 
+                          className="bg-blue-600 hover:bg-blue-700 text-white"
+                          disabled={isCheckingInvitation}
                         >
-                          Scan Another
+                          {isCheckingInvitation ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                              Checking...
+                            </>
+                          ) : (
+                            "Check"
+                          )}
                         </Button>
                       </div>
-                    </>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="invite" className="space-y-4 pt-4">
-                  {!invitationData && (
-                    <>
-                      <div className="grid gap-2">
-                        <Label htmlFor="invite-code" className="text-gray-800">
-                          Invitation Code
-                        </Label>
-                        <div className="flex gap-2">
-                          <Input
-                            id="invite-code"
-                            placeholder="Enter 6 or 7 digit invitation code"
-                            value={manualCode}
-                            onChange={(e) => setManualCode(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault()
-                                checkInvitationCode()
-                              }
-                            }}
-                          />
-                          <Button
-                            onClick={checkInvitationCode}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            disabled={isCheckingInvitation}
-                          >
-                            {isCheckingInvitation ? (
-                              <>
-                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                Checking...
-                              </>
-                            ) : (
-                              "Check"
-                            )}
-                          </Button>
-                        </div>
-                        <p className="text-xs text-gray-500">Enter a 6 or 7 digit invitation code to check details</p>
-                        {manualError && (
-                          <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-900">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Error</AlertTitle>
-                            <AlertDescription>{manualError}</AlertDescription>
-                          </Alert>
-                        )}
-                      </div>
-                      {detectedCode && (
-                        <div role="status" aria-live="polite" className="text-xs text-gray-600">
-                          Last entered: <span className="font-mono text-black">{detectedCode}</span>
-                        </div>
+                      <p className="text-xs text-gray-500">Enter a 6 or 7 digit invitation code to check details</p>
+                      {manualError && (
+                        <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-900">
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>Error</AlertTitle>
+                          <AlertDescription>{manualError}</AlertDescription>
+                        </Alert>
                       )}
-                    </>
-                  )}
-
-                  {invitationData && (
-                    <>
-                      <TicketCard
-                        invitationData={invitationData}
-                        scannedTicketCode={detectedCode || manualCode.trim()}
-                        onClose={resetScan}
-                      />
-                      <div className="pt-3">
-                        <Button
-                          onClick={resetScan}
-                          variant="outline"
-                          className="border-gray-300 text-gray-800 hover:bg-gray-100 bg-transparent"
-                        >
-                          Check Another
-                        </Button>
+                    </div>
+                    {detectedCode && (
+                      <div role="status" aria-live="polite" className="text-xs text-gray-600">
+                        Last entered: <span className="font-mono text-black">{detectedCode}</span>
                       </div>
-                    </>
-                  )}
-                </TabsContent>
-              </Tabs>
+                    )}
+                  </>
+                )}
 
-              {!invitationData && (
-                <>
-                  <Separator className="my-6" />
-                  <div className="text-xs text-gray-600">
-                    Tips: ensure lighting is adequate, hold steady, and avoid glare. Sensitive keywords like "VIP" are
-                    highlighted for visibility.
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                {invitationData && (
+                  <>
+                    <TicketCard 
+                      invitationData={invitationData} 
+                      scannedTicketCode={detectedCode || manualCode.trim()} 
+                      onClose={resetScan} 
+                    />
+                    <div className="pt-3">
+                      <Button
+                        onClick={resetScan}
+                        variant="outline"
+                        className="border-gray-300 text-gray-800 hover:bg-gray-100 bg-transparent"
+                      >
+                        Check Another
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </TabsContent>
+            </Tabs>
+
+            {!invitationData && (
+              <>
+                <Separator className="my-6" />
+                <div className="text-xs text-gray-600">
+                  Tips: ensure lighting is adequate, hold steady, and avoid glare. Sensitive keywords like "VIP" are
+                  highlighted for visibility.
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
       </main>
-
+      
       <Footer />
     </div>
   )
