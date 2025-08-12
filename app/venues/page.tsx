@@ -183,7 +183,7 @@ export default function VenuesPage() {
                 isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
               }`}
             >
-              Browse and book venues for your events here.
+             Browse and book venues for your events — all on one easy-to-use platform.
             </p>
           </div>
         </div>
@@ -265,8 +265,9 @@ export default function VenuesPage() {
           ) : filteredVenues.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 shadow-md gap-8">
               {filteredVenues.map((venue, index) => (
-                <div
+                <Link
                   key={venue.venueId}
+                  href={`/venues/${venue.venueId}`}
                   className={`bg-white rounded-lg overflow-hidden shadow transform transition-all duration-700 ease-out hover:shadow-lg hover:-translate-y-1 ${
                     isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
                   }`}
@@ -322,14 +323,11 @@ export default function VenuesPage() {
                         </span>
                       )}
                     </div>
-                    <Link
-                      href={`/venues/${venue.venueId}`}
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors duration-200"
-                    >
+                    <div className="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors duration-200">
                       View Details
-                    </Link>
+                    </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (

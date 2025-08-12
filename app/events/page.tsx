@@ -127,7 +127,7 @@ export default function EventsPage() {
                 isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
               }`}
             >
-              Browse and register for upcoming events at the University of Rwanda.
+              Discover and secure your spot at exciting upcoming events — effortlessly.
             </p>
           </div>
         </div>
