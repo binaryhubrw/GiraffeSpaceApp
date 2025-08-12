@@ -408,14 +408,30 @@ export default function PayVenueBooking() {
       } else {
         const errorMessage =
           response.message || "Payment failed. Please try again.";
-        toast.error(errorMessage);
+        
+        // Check if this is a deposit amount validation message
+        if (errorMessage.toLowerCase().includes('deposit amount') || 
+            errorMessage.toLowerCase().includes('required deposit') ||
+            errorMessage.toLowerCase().includes('30% of total amount')) {
+          toast.warning(errorMessage);
+        } else {
+          toast.error(errorMessage);
+        }
         setError(errorMessage);
       }
     } catch (err: any) {
       console.error("Payment error:", err);
       const errorMessage =
         err?.response?.data?.message || "Payment failed. Please try again.";
-      toast.error(errorMessage);
+      
+      // Check if this is a deposit amount validation message
+      if (errorMessage.toLowerCase().includes('deposit amount') || 
+          errorMessage.toLowerCase().includes('required deposit') ||
+          errorMessage.toLowerCase().includes('30% of total amount')) {
+        toast.warning(errorMessage);
+      } else {
+        toast.error(errorMessage);
+      }
       setError(errorMessage);
     } finally {
       setProcessing(false);

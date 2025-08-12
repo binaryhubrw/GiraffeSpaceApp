@@ -59,7 +59,8 @@ export function EventCard({
   }
 
   return (
-    <div className="bg-white border-2 border-blue-200 rounded-lg overflow-hidden shadow transform transition-all duration-700 ease-out hover:shadow-lg hover:-translate-y-1">
+    <Link href={`/events/${id}`} className="block">
+      <div className="bg-white border-2 border-blue-200 rounded-lg overflow-hidden shadow transform transition-all duration-700 ease-out hover:shadow-lg hover:-translate-y-1 cursor-pointer">
       <div className={`h-48 relative ${gradient ? `bg-gradient-to-r ${gradientFrom} ${gradientTo}` : ""}`}>
         {imageSrc && !gradient && (
           <Image src={imageSrc || "/placeholder.svg"} alt={imageAlt} fill className="object-cover" />
@@ -100,27 +101,33 @@ export function EventCard({
         </div>
 
         <div className="flex gap-3 mt-4">
-          <Link 
-            href={`/events/${id}`} 
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              window.location.href = `/events/${id}`;
+            }}
             className="flex-1 text-center text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-300 rounded-md py-2 px-3 transition-colors"
           >
             View Details
-          </Link>
-          <Link
-            href={
-              !isLoggedIn
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const href = !isLoggedIn
                 ? "/login"
                 : isEntryPaid
                   ? `/events/${id}/buy-tickets`
-                  : `/events/${id}/register`
-            }
+                  : `/events/${id}/register`;
+              window.location.href = href;
+            }}
             className="flex-1 text-center text-sm font-medium text-white bg-blue-600 hover:bg-blue-800 border border-blue-200 hover:border-blue-300 rounded-md py-2 px-3 transition-colors flex items-center justify-center"
           >
             <Ticket className="h-4 w-4 mr-2" />
             {isEntryPaid ? "Buy Ticket" : "Free Entrance"}
-          </Link>
+          </button>
         </div>
       </div>
-    </div>
+      </div>
+    </Link>
   )
 }

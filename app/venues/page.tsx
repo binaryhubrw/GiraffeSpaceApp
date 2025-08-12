@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { MapPin, Users, ChevronDown, Search, Calendar } from "lucide-react"
+import { MapPin, Users, ChevronDown, Search, Calendar, X } from "lucide-react"
 import { Header } from "@/components/header"
 import Footer from "@/components/footer"
 import { Button } from "@/components/button"
@@ -52,6 +52,7 @@ export default function VenuesPage() {
   const [isCapacityOpen, setIsCapacityOpen] = useState(false)
   const [selectedCapacity, setSelectedCapacity] = useState<string>("Any capacity")
   const [searchTerm, setSearchTerm] = useState("")
+  const [selectedLocation, setSelectedLocation] = useState<string>("")
   const [organizationSearchTerm, setOrganizationSearchTerm] = useState<string>("") // New state for organization search
   const [isLoaded, setIsLoaded] = useState(false)
   const [venues, setVenues] = useState<VenueData[]>([])
@@ -64,6 +65,21 @@ export default function VenuesPage() {
     }, 100)
     return () => clearTimeout(timer)
   }, [])
+
+  // Close capacity dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (isCapacityOpen && !target.closest('.capacity-dropdown')) {
+        setIsCapacityOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isCapacityOpen])
 
   useEffect(() => {
     const fetchVenues = async () => {
@@ -144,6 +160,11 @@ export default function VenuesPage() {
       organizationSearchTerm === "" || 
       (venue.organization?.organizationName?.toLowerCase().includes(organizationSearchTerm.toLowerCase()));
 
+    // Location filtering
+    const matchesLocation = 
+      selectedLocation === "" || 
+      venue.venueLocation.toLowerCase().includes(selectedLocation.toLowerCase());
+
     const matchesCapacity = (() => {
       if (selectedCapacity === "Any capacity") return true
 
@@ -161,7 +182,7 @@ export default function VenuesPage() {
       return true;
     })();
 
-    return matchesSearch && matchesOrganization && matchesCapacity && venue.status === "APPROVED"
+    return matchesSearch && matchesOrganization && matchesLocation && matchesCapacity && venue.status === "APPROVED"
   })
 
   return (
@@ -190,7 +211,7 @@ export default function VenuesPage() {
         </div>
 
         {/* Search and Filters with Animation */}
-        <div className="container mx-auto px-16 max-w-7xl py-8">
+        <div className="container mx-auto px-16 max-w-7xl py-8 relative z-10">
           <div
             className={`flex flex-col md:flex-row gap-4 items-center transform transition-all duration-1000 ease-out delay-400 ${
               isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
@@ -206,9 +227,29 @@ export default function VenuesPage() {
                 className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               />
             </div>
+ 
+            {/* Location Filter */}
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <input
+                type="text"
+                placeholder="Filter by location..."
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 min-w-[200px]"
+              />
+              {selectedLocation && (
+                <button
+                  onClick={() => setSelectedLocation("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
 
             {/* Capacity Dropdown */}
-            <div className="relative z-40">
+            <div className="relative z-[9999] capacity-dropdown">
               <div
                 className="relative w-full"
                 onClick={() => setIsCapacityOpen(!isCapacityOpen)}
@@ -225,12 +266,12 @@ export default function VenuesPage() {
               </div>
 
               {isCapacityOpen && (
-                <div className="absolute z-50 mt-1 w-full bg-white border rounded-md shadow-lg animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute z-[9999] mt-1 w-full bg-white border-2 border-blue-200 rounded-md shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
                   <ul className="py-1">
                     {capacityOptions.map((option) => (
                       <li
                         key={option}
-                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm transition-colors duration-150"
+                        className="px-4 py-3 hover:bg-blue-50 cursor-pointer text-sm transition-colors duration-150 border-b border-gray-100 last:border-b-0"
                         onClick={() => handleCapacitySelect(option)}
                       >
                         {option}
@@ -240,13 +281,29 @@ export default function VenuesPage() {
                 </div>
               )}
             </div>
+ 
+            {/* Clear Filters Button */}
+            {(searchTerm || selectedLocation || selectedCapacity !== "Any capacity") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm("")
+                  setSelectedLocation("")
+                  setSelectedCapacity("Any capacity")
+                }}
+                className="text-gray-600 hover:text-gray-800 border-gray-300 hover:border-gray-400"
+              >
+                Clear Filters
+              </Button>
+            )}
 
-           
+            
           </div>
         </div>
 
         {/* Venues Grid with Staggered Animation */}
-        <div className="container mx-auto px-16 max-w-7xl pb-16 relative z-10">
+        <div className="container mx-auto px-16 max-w-7xl pb-16">
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -269,7 +326,7 @@ export default function VenuesPage() {
                 <Link
                   key={venue.venueId}
                   href={`/venues/${venue.venueId}`}
-                  className={`bg-white border-2 border-blue-200 rounded-lg overflow-hidden shadow transform transition-all duration-700 ease-out hover:shadow-lg hover:-translate-y-1 ${
+                  className={`block bg-white border-2 border-blue-200 rounded-lg overflow-hidden shadow transform transition-all duration-700 ease-out hover:shadow-lg hover:-translate-y-1 cursor-pointer ${
                     isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
                   }`}
                   style={{

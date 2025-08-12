@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar, ChevronDown, Search } from "lucide-react"
+import { Calendar, ChevronDown, Search, X } from "lucide-react"
 import { Header } from "@/components/header"
 import Footer from "@/components/footer"
 import { EventCard } from "@/components/event-card"
@@ -12,8 +12,8 @@ import Link from "next/link"
 export default function EventsPage() {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>("All categories")
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<string>("")
+  const [selectedLocation, setSelectedLocation] = useState<string>("")
   const [searchTerm, setSearchTerm] = useState("")
   const [isLoaded, setIsLoaded] = useState(false)
   const [events, setEvents] = useState<any[]>([])
@@ -49,13 +49,13 @@ export default function EventsPage() {
 
   const categoryOptions = [
     "All categories",
-    "Conference",
-    "Festival",
-    "Academic",
-    "Networking",
-    "Sports",
-    "Workshop",
-    "Seminar",
+    "CONFERENCE",
+    "MEETING",
+    "WEDDING",
+    "WORKSHOP",
+    "SEMINAR",
+    "PARTY",
+    "EXHIBITION"
   ]
 
   const handleCategorySelect = (category: string) => {
@@ -105,7 +105,12 @@ export default function EventsPage() {
     const eventDate = event.bookingDates && event.bookingDates[0] ? event.bookingDates[0].date : ""
     const matchesDate = !selectedDate || eventDate === selectedDate
 
-    return matchesSearch && matchesCategory && matchesDate
+    // Location filtering
+    const venue = event.eventVenues && event.eventVenues[0] && event.eventVenues[0].venue
+    const location = venue ? venue.venueName + (venue.venueLocation ? ", " + venue.venueLocation : "") : ""
+    const matchesLocation = !selectedLocation || location.toLowerCase().includes(selectedLocation.toLowerCase())
+
+    return matchesSearch && matchesCategory && matchesDate && matchesLocation
   })
 
   return (
@@ -150,6 +155,27 @@ export default function EventsPage() {
                 className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
               />
             </div>
+                         {/* Location Filter */}
+              <div className="relative z-30">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Filter by location or Venue Name ..."
+                    value={selectedLocation}
+                    onChange={(e) => setSelectedLocation(e.target.value)}
+                    className="pl-4 pr-8 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 min-w-[350px]"
+                  />
+                  {selectedLocation && (
+                    <button
+                      onClick={() => setSelectedLocation("")}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      title="Clear location"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
 
             <div className="flex gap-4 w-full md:w-auto">
               {/* Category Dropdown */}
@@ -183,34 +209,27 @@ export default function EventsPage() {
 
               {/* Date Picker */}
               <div className="relative z-30">
-                <button
-                  className="flex items-center justify-between gap-2 border rounded-md px-4 py-2 text-gray-700 bg-white min-w-[160px] hover:bg-gray-50 transition-colors duration-200"
-                  onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-                >
-                  <Calendar className="h-4 w-4 mr-1" />
-                  <span>{formatDate(selectedDate)}</span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform duration-200 ${isDatePickerOpen ? "rotate-180" : ""}`}
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="date"
+                    className="pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 min-w-[160px]"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    placeholder="Select date"
                   />
-                </button>
-
-                {isDatePickerOpen && (
-                  <div className="absolute z-50 mt-1 bg-white border rounded-md shadow-lg p-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <input
-                      type="date"
-                      className="border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-                      value={selectedDate}
-                      onChange={(e) => {
-                        setSelectedDate(e.target.value)
-                        setIsDatePickerOpen(false)
-                      }}
-                    />
-                  </div>
-                )}
+                  {selectedDate && (
+                    <button
+                      onClick={() => setSelectedDate("")}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      title="Clear date"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
 
-              
-               
             </div>
           </div>
         </div>
@@ -225,11 +244,14 @@ export default function EventsPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredEvents.map((event, index) => {
                 // Map eventType to a color (customize as needed)
-                let typeColor = "blue"
-                if (event.eventType === "WORKSHOP") typeColor = "purple"
+                let typeColor = "blue" // default color
+                if (event.eventType === "CONFERENCE") typeColor = "red"
                 else if (event.eventType === "MEETING") typeColor = "green"
-                else if (event.eventType === "FESTIVAL") typeColor = "yellow"
-                else if (event.eventType === "CONFERENCE") typeColor = "red"
+                else if (event.eventType === "WEDDING") typeColor = "pink"
+                else if (event.eventType === "WORKSHOP") typeColor = "purple"
+                else if (event.eventType === "SEMINAR") typeColor = "indigo"
+                else if (event.eventType === "PARTY") typeColor = "yellow"
+                else if (event.eventType === "EXHIBITION") typeColor = "orange"
 
                                  // Use first venue if available
                  const venue = event.eventVenues && event.eventVenues[0] && event.eventVenues[0].venue

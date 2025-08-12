@@ -145,7 +145,7 @@ export default function Home() {
                     variant="primary"
                     className="text-center"
                   >
-                    Browse Venue
+                    Browse Venues
                   </Button>
                   <Button
                     href="/events"
@@ -187,9 +187,10 @@ export default function Home() {
             ) : availableVenues.length > 0 ? (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {availableVenues.map((venue) => (
-                  <div
+                  <a
                     key={venue.venueId}
-                    className="bg-white rounded-lg shadow-md overflow-hidden"
+                    href={`/venues/${venue.venueId}`}
+                    className="block bg-white border-2 border-blue-200 rounded-lg shadow-md overflow-hidden hover:shadow-lg transform transition-all duration-300 hover:-translate-y-1 cursor-pointer"
                   >
                     <div className="relative h-48">
                       <img
@@ -229,10 +230,7 @@ export default function Home() {
                           {venue.description || "No description available"}
                         </p>
                         <div className="pt-2">
-                          <a
-                            href={`/venues/${venue.venueId}`}
-                            className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500"
-                          >
+                          <span className="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500">
                             View Details
                             <svg
                               className="ml-1 w-4 h-4"
@@ -247,11 +245,11 @@ export default function Home() {
                                 d="M9 5l7 7-7 7"
                               />
                             </svg>
-                          </a>
+                          </span>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </a>
                 ))}
               </div>
             ) : (
