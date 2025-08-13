@@ -73,15 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         // Show a toast notification about the automatic logout
         if (tokenExpired24h === 'true') {
-          toast({
-            variant: "error",
-            description: "Your session has expired after 24 hours. Please login again."
-          })
+          toast.error("Your session has expired after 24 hours. Please login again.")
         } else {
-          toast({
-            variant: "error",
-            description: "Your session has expired. Please login again."
-          })
+          toast.error("Your session has expired. Please login again.")
         }
       }
     }
@@ -100,10 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Check if token is expired
             if (decoded.exp && Date.now() >= decoded.exp * 1000) {
               logout()
-              toast({
-                variant: "error",
-                description: "Your session has expired. Please login again."
-              })
+              toast.error("Your session has expired. Please login again.")
               return
             }
             
@@ -113,20 +104,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const twentyFourHoursInMs = 24 * 60 * 60 * 1000
               if (Date.now() >= tokenIssuedAt + twentyFourHoursInMs) {
                 logout()
-                toast({
-                  variant: "error",
-                  description: "Your session has expired after 24 hours. Please login again."
-                })
+                toast.error("Your session has expired after 24 hours. Please login again.")
                 return
               }
             }
           } catch (error) {
             // If token is malformed, logout
             logout()
-            toast({
-              variant: "error",
-              description: "There was an issue with your session. Please login again."
-            })
+            toast.error("There was an issue with your session. Please login again.")
           }
         }
       }
