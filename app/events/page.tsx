@@ -160,10 +160,10 @@ export default function EventsPage() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Filter by location or Venue Name ..."
+                    placeholder="Filter by location..."
                     value={selectedLocation}
                     onChange={(e) => setSelectedLocation(e.target.value)}
-                    className="pl-4 pr-8 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 min-w-[350px]"
+                    className="pl-4 pr-8 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 min-w-[160px]"
                   />
                   {selectedLocation && (
                     <button

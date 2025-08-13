@@ -303,7 +303,7 @@ export default function VenuesPage() {
         </div>
 
         {/* Venues Grid with Staggered Animation */}
-        <div className="container mx-auto px-16 max-w-7xl pb-16">
+        <div className="container mx-auto px-16 max-w-7xl pb-16 relative z-[-1]">
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
