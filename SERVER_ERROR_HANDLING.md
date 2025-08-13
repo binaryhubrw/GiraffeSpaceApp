@@ -1,6 +1,6 @@
 # Server Error Handling System
 
-This system provides comprehensive error handling for server connectivity issues, specifically for the GiraffeSpace API server at `https://giraffespacev2.onrender.com/api/v1`.
+This system provides comprehensive error handling for server connectivity issues, specifically for the GiraffeSpace API server at `https://giraffespace-api.urbinaryhub.rw/api/v1`.
 
 ## Features
 
@@ -128,13 +128,13 @@ try {
 ### Server URL
 The system is configured to monitor:
 ```
-https://giraffespacev2.onrender.com/api/v1
+https://giraffespace-api.urbinaryhub.rw/api/v1
 ```
 
 ### Health Check Endpoint
 The system checks:
 ```
-https://giraffespacev2.onrender.com/api/v1/health
+https://giraffespace-api.urbinaryhub.rw/api/v1/health
 ```
 
 ### Timing Settings
