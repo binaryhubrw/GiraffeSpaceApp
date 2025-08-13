@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { MapPin, Users, ChevronDown, Search, Calendar, X } from "lucide-react"
 import { Header } from "@/components/header"
 import Footer from "@/components/footer"
@@ -45,6 +46,7 @@ interface VenueData {
 }
 
 export default function VenuesPage() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const organizationId = searchParams.get('organizationId')
   const { isLoggedIn } = useAuth()
@@ -96,6 +98,7 @@ export default function VenuesPage() {
           
           const response = await ApiService.getVenueByOrganizationId(organizationId)
           if (response.success) {
+            console.log('Organization venues:', response.data);
             setVenues(response.data || [])
           } else {
             setError('Failed to fetch organization venues')
@@ -104,6 +107,7 @@ export default function VenuesPage() {
           const response = await fetch(`${API_BASE_URL}/venue/public-venues/list`)
           data = await response.json()
           if (data.success) {
+            console.log('Public venues:', data.data);
             setVenues(data.data || [])
           } else {
             setError('Failed to fetch venues')
@@ -136,6 +140,11 @@ export default function VenuesPage() {
   const handleCapacitySelect = (capacity: string) => {
     setSelectedCapacity(capacity)
     setIsCapacityOpen(false)
+  }
+
+  const handleVenueClick = (venueId: string) => {
+    console.log('Navigating to venue:', venueId);
+    router.push(`/venues/${venueId}`);
   }
 
   // const formatDate = (dateString: string) => {
@@ -211,7 +220,7 @@ export default function VenuesPage() {
         </div>
 
         {/* Search and Filters with Animation */}
-        <div className="container mx-auto px-16 max-w-7xl py-8 relative z-10">
+        <div className="container mx-auto px-16 max-w-7xl py-8">
           <div
             className={`flex flex-col md:flex-row gap-4 items-center transform transition-all duration-1000 ease-out delay-400 ${
               isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
@@ -249,7 +258,7 @@ export default function VenuesPage() {
             </div>
 
             {/* Capacity Dropdown */}
-            <div className="relative z-[9999] capacity-dropdown">
+            <div className="relative capacity-dropdown">
               <div
                 className="relative w-full"
                 onClick={() => setIsCapacityOpen(!isCapacityOpen)}
@@ -266,7 +275,7 @@ export default function VenuesPage() {
               </div>
 
               {isCapacityOpen && (
-                <div className="absolute z-[9999] mt-1 w-full bg-white border-2 border-blue-200 rounded-md shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute mt-1 w-full bg-white border-2 border-blue-200 rounded-md shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
                   <ul className="py-1">
                     {capacityOptions.map((option) => (
                       <li
@@ -303,7 +312,7 @@ export default function VenuesPage() {
         </div>
 
         {/* Venues Grid with Staggered Animation */}
-        <div className="container mx-auto px-16 max-w-7xl pb-16 relative z-[-1]">
+        <div className="container mx-auto px-16 max-w-7xl pb-16">
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -323,14 +332,22 @@ export default function VenuesPage() {
           ) : filteredVenues.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3  gap-8">
               {filteredVenues.map((venue, index) => (
-                <Link
+                <div
                   key={venue.venueId}
-                  href={`/venues/${venue.venueId}`}
-                  className={`block bg-white border-2 border-blue-200 rounded-lg overflow-hidden shadow transform transition-all duration-700 ease-out hover:shadow-lg hover:-translate-y-1 cursor-pointer ${
+                  className={`block bg-white border-2 border-blue-200 rounded-lg overflow-hidden shadow transform transition-all duration-700 ease-out hover:shadow-lg hover:-translate-y-1 cursor-pointer relative z-10 ${
                     isLoaded ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
                   }`}
                   style={{
                     transitionDelay: `${600 + index * 100}ms`,
+                  }}
+                  onClick={() => {
+                    console.log('Venue card clicked:', venue.venueId);
+                    console.log('Venue data:', venue);
+                    if (venue.venueId) {
+                      handleVenueClick(venue.venueId);
+                    } else {
+                      console.error('No venue ID found');
+                    }
                   }}
                 >
                   <div className="h-48 relative overflow-hidden b">
@@ -385,7 +402,7 @@ export default function VenuesPage() {
                       View Details
                     </div>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           ) : (

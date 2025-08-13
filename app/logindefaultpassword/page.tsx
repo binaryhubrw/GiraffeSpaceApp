@@ -38,7 +38,7 @@ export default function LoginDefaultPasswordPage() {
 
       if (result.success) {
         // Redirect to email confirmation page
-        router.push("/login")
+        router.push("/chane-default-password")
       } else {
         setError(result.error || "Login failed. Please check your email and default password.")
       }

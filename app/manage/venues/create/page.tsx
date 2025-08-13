@@ -11,7 +11,7 @@ import { ArrowLeft, Upload, ChevronLeft, ChevronRight, Check } from "lucide-reac
 import Link from "next/link"
 import ApiService from "@/api/apiConfig";
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import MapPicker from './MapPicker';
 
 interface BookingCondition {
@@ -162,16 +162,19 @@ export default function CreateVenuePage() {
   const handleMainPhotoChange = (files: FileList | null) => {
     if (files && files[0]) {
       setFormData(prev => ({ ...prev, mainPhoto: files[0] }));
+      toast.success("Main photo uploaded successfully!");
     }
   };
   const handlePhotoGalleryFilesChange = (files: FileList | null) => {
     if (files) {
       setFormData(prev => ({ ...prev, photoGallery: Array.from(files) }));
+      toast.success(`${files.length} photo(s) uploaded to gallery!`);
     }
   };
   const handleVirtualTourFilesChange = (files: FileList | null) => {
     if (files) {
       setFormData(prev => ({ ...prev, virtualTour: Array.from(files) }));
+      toast.success(`${files.length} virtual tour file(s) uploaded!`);
     }
   };
 
@@ -250,6 +253,12 @@ export default function CreateVenuePage() {
         venueAmount: checked ? "" : prev.venueVariable.venueAmount
       } 
     }))
+    
+    if (checked) {
+      toast.info("Venue set as free - no payment required");
+    } else {
+      toast.info("Venue set as paid - please enter the venue amount");
+    }
   }
 
   const handleVenueAmenityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -285,26 +294,45 @@ export default function CreateVenuePage() {
         { resourceName: '', quantity: '', amenitiesDescription: '', costPerUnit: '' }
       ]
     }));
+    toast.success("Amenity added successfully!");
   };
   const handleRemoveVenueAmenity = (idx: number) => {
     setFormData((prev) => ({ ...prev, venueAmenities: prev.venueAmenities.filter((_, i) => i !== idx) }));
+    toast.info("Amenity removed successfully!");
   };
 
   // Step navigation
   const nextStep = () => {
     if (currentStep < STEPS.length) {
-      setCurrentStep(currentStep + 1);
+      // Validate current step before proceeding
+      if (isStepValid(currentStep)) {
+        setCurrentStep(currentStep + 1);
+        toast.success(`Moving to ${STEPS[currentStep].title}`);
+      } else {
+        toast.warning("Please complete the current step before proceeding.");
+      }
     }
   };
 
   const prevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
+      toast.info(`Back to ${STEPS[currentStep - 2].title}`);
     }
   };
 
   const goToStep = (step: number) => {
-    setCurrentStep(step);
+    // Only allow going to completed steps or the next step
+    if (step <= currentStep || step === currentStep + 1) {
+      setCurrentStep(step);
+      if (step < currentStep) {
+        toast.info(`Back to ${STEPS[step - 1].title}`);
+      } else if (step > currentStep) {
+        toast.success(`Moving to ${STEPS[step - 1].title}`);
+      }
+    } else {
+      toast.warning("Please complete the current step before proceeding.");
+    }
   };
 
   // Validation for each step
@@ -326,58 +354,62 @@ export default function CreateVenuePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Check if user has permission to create venues
+    if (!user?.userId) {
+      toast.error("You must be logged in to create a venue.");
+      return;
+    }
+
+    // Check if user has an organization (required for venue creation)
+    if (!formData.organizationId) {
+      toast.error("You must select an organization to create a venue.");
+      return;
+    }
+
+    // Check if all required fields are filled
+    const requiredFields = [
+      { field: formData.venueName.trim(), name: "Venue Name" },
+      { field: formData.organizationId, name: "Organization" },
+      { field: formData.capacity, name: "Capacity" },
+      { field: formData.bookingType, name: "Booking Type" },
+      { field: formData.latitude && formData.longitude && formData.location, name: "Venue Location" }
+    ];
+
+    const missingFields = requiredFields.filter(field => !field.field);
+    
+    if (missingFields.length > 0) {
+      toast.warning(`Please complete the following fields: ${missingFields.map(f => f.name).join(', ')}`);
+      return;
+    }
+
     // Comprehensive validation with toast notifications
     if (!formData.venueName.trim()) {
-      toast({
-        title: "Venue Name Required",
-        description: "Please enter a venue name.",
-        variant: "destructive"
-      });
+      toast.error("Please enter a venue name.");
       return;
     }
 
     if (!formData.organizationId) {
-      toast({
-        title: "Organization Required",
-        description: "Please select an organization for this venue.",
-        variant: "destructive"
-      });
+      toast.error("Please select an organization for this venue.");
       return;
     }
 
     if (!formData.capacity || parseInt(formData.capacity) <= 0) {
-      toast({
-        title: "Valid Capacity Required",
-        description: "Please enter a valid capacity (greater than 0).",
-        variant: "destructive"
-      });
+      toast.error("Please enter a valid capacity (greater than 0).");
       return;
     }
 
     if (!formData.bookingType) {
-      toast({
-        title: "Booking Type Required",
-        description: "Please select a booking type (Daily or Hourly).",
-        variant: "destructive"
-      });
+      toast.error("Please select a booking type (Daily or Hourly).");
       return;
     }
 
     if (!formData.venueVariable.isFree && (!formData.venueVariable.venueAmount || parseFloat(formData.venueVariable.venueAmount) <= 0)) {
-      toast({
-        title: "Venue Amount Required",
-        description: "Please enter a valid venue amount for paid venues.",
-        variant: "destructive"
-      });
+      toast.error("Please enter a valid venue amount for paid venues.");
       return;
     }
 
     if (!formData.latitude || !formData.longitude || !formData.location) {
-      toast({
-        title: "Venue Location Required",
-        description: "Please select a venue location on the map.",
-        variant: "destructive"
-      });
+      toast.error("Please select a venue location on the map.");
       return;
     }
 
@@ -385,11 +417,7 @@ export default function CreateVenuePage() {
     for (const condition of formData.bookingConditions) {
       const transitionTimeNum = Number(condition.transitionTime);
       if (![0, 1].includes(transitionTimeNum)) {
-        toast({
-          title: "Invalid Transition Time",
-          description: "Transition Time must be 0 or 1 for all booking conditions.",
-          variant: "destructive"
-        });
+        toast.error("Transition Time must be 0 or 1 for all booking conditions.");
         return;
       }
     }
@@ -397,11 +425,7 @@ export default function CreateVenuePage() {
     setSaving(true)
     
     // Show loading toast
-    toast({
-      title: "Creating Venue...",
-      description: "Please wait while we create your venue.",
-      variant: "default",
-    });
+    toast.info("Creating Venue... Please wait while we create your venue.");
     
     try {
       const formDataToSend = new FormData();
@@ -466,22 +490,37 @@ export default function CreateVenuePage() {
       const response = await ApiService.createVenue(formDataToSend);
       
       if (response.success) {
-        toast({
-          title: "Venue Created Successfully! 🎉",
-          description: `${formData.venueName} has been added to your venues.`,
-          variant: "default",
-          className: "bg-green-500 text-white",
-        });
+        toast.success(`${formData.venueName} has been added to your venues successfully! 🎉`);
         router.push("/manage/venues/myvenues");
       } else {
         throw new Error(response.message || 'Failed to create venue');
       }
     } catch (err: any) {
-      toast({
-        title: "Error Creating Venue",
-        description: err.message || "There was a problem creating your venue. Please try again.",
-        variant: "destructive"
-      });
+      // Extract the specific error message from AxiosError response
+      let errorMessage = "There was a problem creating your venue. Please try again.";
+      
+      if (err?.response?.data?.message) {
+        // Use the specific error message from the API response
+        errorMessage = err.response.data.message;
+      } else if (err?.response?.status === 403) {
+        // Handle 403 Forbidden errors specifically
+        errorMessage = "You don't have permission to create venues. Please contact an administrator.";
+      } else if (err?.response?.status === 401) {
+        // Handle 401 Unauthorized errors
+        errorMessage = "You are not authorized to perform this action. Please log in again.";
+      } else if (err?.response?.status >= 500) {
+        // Handle server errors
+        errorMessage = "Server error occurred. Please try again later.";
+      } else if (err?.code === 'ERR_NETWORK') {
+        // Handle network errors
+        errorMessage = "Network error. Please check your internet connection and try again.";
+      } else if (err?.message) {
+        // Fallback to the error message if no specific API message
+        errorMessage = err.message;
+      }
+      
+      console.error("Venue creation error:", err);
+      toast.error(errorMessage);
     } finally {
       setSaving(false);
     }
@@ -514,9 +553,14 @@ export default function CreateVenuePage() {
                 <div className="text-gray-500 text-sm">Loading organizations...</div>
               ) : orgError ? (
                 <div className="text-red-500 text-sm">{orgError}</div>
-              ) : organizations.length === 0 ? (
-                <div className="text-red-500 text-sm">No organizations found. Please create an organization first.</div>
-              ) : (
+                             ) : organizations.length === 0 ? (
+                 <div className="text-red-500 text-sm">
+                   No organizations found. You need to create an organization first to create venues. 
+                   <Link href="/user-dashboard/organization" className="text-blue-600 hover:underline ml-1">
+                     Create organization here
+                   </Link>
+                 </div>
+               ) : (
                 <div className="space-y-2">
                   {organizations.length === 1 ? (
                     // If only one organization, show it as read-only
@@ -625,12 +669,7 @@ export default function CreateVenuePage() {
                           if (inputValue === '' || inputValue === '0' || inputValue === '1') {
                             handleBookingConditionTransitionTimeChange(e, idx);
                           } else {
-                            toast({
-                              title: "Invalid Input",
-                              description: "Transition Time must be 0 or 1.",
-                              variant: "destructive",
-                              duration: 1000
-                            });
+                            toast.error("Transition Time must be 0 or 1.");
                           }
                         }}
                         className="w-full px-3 py-2 border rounded text-sm"
@@ -671,12 +710,7 @@ export default function CreateVenuePage() {
                               target: { value: minutesValue } 
                             } as React.ChangeEvent<HTMLInputElement>, idx);
                           } else {
-                            toast({
-                              title: "Invalid Input",
-                              description: "Payment Timeout must be a whole number of hours, at least 1.",
-                              variant: "destructive",
-                              duration: 2000
-                            });
+                            toast.error("Payment Timeout must be a whole number of hours, at least 1.");
                           }
                         }}
                         className="w-full px-3 py-2 border rounded text-sm"

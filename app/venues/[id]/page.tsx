@@ -971,7 +971,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="w-4 h-4 rounded-full bg-grayy-100"></span>
-                          <span className="text-gray-500">Booked but not pais</span>
+                          <span className="text-gray-500">Reserved</span>
                         </div>
                         {venue?.bookingType === "HOURLY" && (
                           <div className="flex items-center gap-1">
