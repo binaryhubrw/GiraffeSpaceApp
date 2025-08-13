@@ -55,7 +55,7 @@ interface VenueFormData {
 
 const STEPS = [
   { id: 1, title: "Basic Info", description: "Venue name and organization" },
-  { id: 2, title: "Booking Details", description: "Capacity, pricing, and conditions" },
+  { id: 2, title: "Venue Booking Details", description: "Capacity, pricing, and conditions" },
   { id: 3, title: "Media & Amenities", description: "Photos, videos, and amenities" },
   { id: 4, title: "Location", description: "Venue location on map" }
 ];
@@ -91,7 +91,7 @@ export default function CreateVenuePage() {
       isFree: false,
     },
     venueAmenities: [],
-    bookingType: "",
+    bookingType: "DAILY",
   })
   const { organizations, loading: orgLoading, error: orgError } = useUserOrganizations();
   // 1. Remove resources from formData and all related logic/UI
@@ -381,6 +381,19 @@ export default function CreateVenuePage() {
       return;
     }
 
+    // Validate transitionTime for each booking condition
+    for (const condition of formData.bookingConditions) {
+      const transitionTimeNum = Number(condition.transitionTime);
+      if (![0, 1].includes(transitionTimeNum)) {
+        toast({
+          title: "Invalid Transition Time",
+          description: "Transition Time must be 0 or 1 for all booking conditions.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     setSaving(true)
     
     // Show loading toast
@@ -528,11 +541,6 @@ export default function CreateVenuePage() {
                       ))}
                     </select>
                   )}
-                  {organizations.length === 1 && (
-                    <p className="text-xs text-gray-500">
-                      Organization automatically selected: {organizations[0].organizationName}
-                    </p>
-                  )}
                 </div>
               )}
             </div>
@@ -571,7 +579,7 @@ export default function CreateVenuePage() {
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
-                  <option value="">Select booking type</option>
+                  {/* <option value="">Select booking type</option> */}
                   <option value="DAILY">Daily</option>
                   <option value="HOURLY">Hourly</option>
                 </select>
@@ -610,14 +618,26 @@ export default function CreateVenuePage() {
                       <label className="block text-xs font-medium text-gray-600 mb-1">Transition Time (hours/days)</label>
                       <input
                         type="number"
-                        placeholder="e.g. 2"
+                        placeholder="e.g. 0 or 1"
                         value={cond.transitionTime}
-                        onChange={e => handleBookingConditionTransitionTimeChange(e, idx)}
+                        onChange={e => {
+                          const inputValue = e.target.value;
+                          if (inputValue === '' || inputValue === '0' || inputValue === '1') {
+                            handleBookingConditionTransitionTimeChange(e, idx);
+                          } else {
+                            toast({
+                              title: "Invalid Input",
+                              description: "Transition Time must be 0 or 1.",
+                              variant: "destructive",
+                              duration: 1000
+                            });
+                          }
+                        }}
                         className="w-full px-3 py-2 border rounded text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Deposit Required (%)</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Minimum Deposit Required (%)</label>
                       <input
                         type="number"
                         placeholder="e.g. 20"
@@ -637,12 +657,28 @@ export default function CreateVenuePage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Payment Timeout (minutes)</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Payment Timeout (hours)</label>
                       <input
                         type="number"
-                        placeholder="e.g. 130"
-                        value={cond.bookingPaymentTimeoutMinutes}
-                        onChange={e => handleBookingConditionPaymentTimeoutChange(e, idx)}
+                        placeholder="e.g. 24"
+                        value={Number(cond.bookingPaymentTimeoutMinutes) / 60 || ''} // Display hours, convert minutes to hours
+                        onChange={e => {
+                          const hoursInput = e.target.value;
+                          const minutesValue = hoursInput === '' ? '' : String(Number(hoursInput) * 60);
+                          
+                          if (hoursInput === '' || (Number(hoursInput) >= 1 && Number(hoursInput) % 1 === 0)) { // Allow empty or integer hours >= 1
+                            handleBookingConditionPaymentTimeoutChange({
+                              target: { value: minutesValue } 
+                            } as React.ChangeEvent<HTMLInputElement>, idx);
+                          } else {
+                            toast({
+                              title: "Invalid Input",
+                              description: "Payment Timeout must be a whole number of hours, at least 1.",
+                              variant: "destructive",
+                              duration: 2000
+                            });
+                          }
+                        }}
                         className="w-full px-3 py-2 border rounded text-sm"
                       />
                     </div>
@@ -716,7 +752,7 @@ export default function CreateVenuePage() {
                     <input type="text" placeholder="Resource Name (e.g. Projector)" name="resourceName" value={amenity.resourceName} onChange={e => handleVenueAmenityChange(e)} className="px-3 py-2 border rounded text-sm" />
                     <input type="number" placeholder="Quantity (e.g. 2)" name="quantity" value={amenity.quantity} onChange={e => handleVenueAmenityQuantityChange(e)} className="px-3 py-2 border rounded text-sm" />
                     <input type="text" placeholder="Amenities Description (e.g. HD projectors available)" name="amenitiesDescription" value={amenity.amenitiesDescription} onChange={e => handleVenueAmenityDescriptionChange(e)} className="px-3 py-2 border rounded text-sm" />
-                    <input type="number" placeholder="Cost Per Unit (e.g. 100)" name="costPerUnit" value={amenity.costPerUnit} onChange={e => handleVenueAmenityCostPerUnitChange(e)} className="px-3 py-2 border rounded text-sm" />
+                    <input type="number" placeholder="Repair Cost per Unit (e.g. 100)" name="costPerUnit" value={amenity.costPerUnit} onChange={e => handleVenueAmenityCostPerUnitChange(e)} className="px-3 py-2 border rounded text-sm" />
                     <button type="button" onClick={() => handleRemoveVenueAmenity(index)} className="text-red-500 text-xs">Remove Amenity</button>
                   </div>
                 ))}

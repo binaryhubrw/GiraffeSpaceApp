@@ -807,7 +807,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     <div className="flex items-center justify-between mb-6">
                       <div>
                         <h3 className="text-2xl font-bold tracking-tight">Calendar View</h3>
-                        <p className="text-muted-foreground">View and manage bookings</p>
+                        <p className="text-muted-foreground">Available Dates for Venue Booking</p>
                       </div>
                       <div className="flex gap-2">
                         <Button variant="outline" size="icon" onClick={handlePrevMonth}>
@@ -971,7 +971,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="w-4 h-4 rounded-full bg-grayy-100"></span>
-                          <span className="text-gray-500">Holding</span>
+                          <span className="text-gray-500">Booked but not pais</span>
                         </div>
                         {venue?.bookingType === "HOURLY" && (
                           <div className="flex items-center gap-1">
@@ -979,6 +979,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                             <span>Partially Booked (Hourly)</span>
                           </div>
                         )}
+          
                         <div className="flex items-center gap-1">
                           <span className="w-4 h-4 rounded-full bg-white border border-gray-300"></span>
                           <span>Available</span>
@@ -1009,7 +1010,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                   <div>
                     <p className="text-sm text-gray-500 mb-3 font-medium">Selected Dates</p>
                     <div>
-                      <p className="text-sm text-gray-500 mb-2">Booking Dates & Times</p>
+                      <p className="text-sm text-gray-500 mb-2">Venue Booking Dates & Times</p>
                       {selectedDates.length > 0 ? (
                         <div className="space-y-4">
                           {selectedDates.map((date) => (
@@ -1064,11 +1065,11 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
                     </div>
                   </div>
                   <Button onClick={handleBookingClick} className="w-full" disabled={!mounted || !selectedDates.length}>
-                    {isLoggedIn ? "Book Now" : "Book Now - Continue to Login"}
+                    {isLoggedIn ? "Book Venue Now" : "Book Now - Continue to Login"}
                   </Button>
                   <p className="text-xs text-gray-500 text-center leading-relaxed">
                     By clicking above button, you'll be redirected to{" "}
-                    {isLoggedIn ? "the booking form" : "login or make an account if you don't have an account"}.
+                    {isLoggedIn ? "the booking venue form" : "login or make an account if you don't have an account"}.
                   </p>
                 </CardContent>
               </Card>
@@ -1188,7 +1189,7 @@ export default function VenuePage({ params }: { params: Promise<{ id: string }> 
              )
            }
         >
-          {isLoggedIn ? "Book Now" : "Book Now"}
+          {isLoggedIn ? "Book Venue Now" : "Book Venue Now"}
         </Button>
       </div>
       {/* Add padding-bottom to account for fixed button */}

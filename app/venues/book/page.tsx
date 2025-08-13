@@ -432,7 +432,7 @@ export default function CreateEventForm() {
           <div className="space-y-8">
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold text-gray-900">Review & Send</h2>
-              <p className="text-gray-600">Review your event details and create your booking</p>
+              <p className="text-gray-600">Review your event details and create your venue booking</p>
             </div>
 
             {/* Venue and Date Confirmation Section */}
@@ -609,7 +609,7 @@ export default function CreateEventForm() {
                 </Link>
               <Button onClick={() => handleSubmit(false)} className="flex-1 h-12" disabled={isSubmitting}>
                 <Send className="h-4 w-4 mr-2" />
-                {isSubmitting ? "Creating Booking..." : "Create Booking"}
+                {isSubmitting ? "Creating Venue Booking..." : "Create Venue Booking"}
               </Button>
             </div>
           </div>

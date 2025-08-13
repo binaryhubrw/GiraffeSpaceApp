@@ -445,7 +445,7 @@ export default function PayVenueBooking() {
         <main className="flex-1 bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center">
           <div className="text-center space-y-4">
             <Loader2 className="h-8 w-8 animate-spin mx-auto text-purple-600" />
-            <p className="text-gray-600">Loading booking details...</p>
+            <p className="text-gray-600">Loading venue booking details...</p>
           </div>
         </main>
         <Footer />
@@ -461,7 +461,7 @@ export default function PayVenueBooking() {
           <div className="text-center space-y-4">
             <AlertCircle className="h-12 w-12 mx-auto text-red-500" />
             <h2 className="text-xl font-semibold text-gray-900">
-              Booking Not Found
+              Venue Booking Not Found
             </h2>
             <p className="text-gray-600">{error}</p>
             <Button onClick={() => window.history.back()} variant="outline">
@@ -547,10 +547,10 @@ export default function PayVenueBooking() {
           <div className="space-y-6">
             <div className="text-center space-y-2">
               <h2 className="text-2xl font-bold text-gray-900">
-                 Booking Details
+                Venue Booking Details
               </h2>
               <p className="text-gray-600">
-                Please carefully review your booking before proceeding to payment.
+                Please carefully review your venue booking before proceeding to payment.
               </p>
             </div>
 
@@ -597,13 +597,13 @@ export default function PayVenueBooking() {
                         <p className="font-medium">{bookingData?.eventTitle}</p>
                       </div>
                       <div>
-                        <span className="text-gray-500">Booking Reason:</span>
+                        <span className="text-gray-500">Venue Booking Reason:</span>
                         <p className="font-medium">
                           {bookingData?.bookingReason}
                         </p>
                       </div>
                       <div>
-                        <span className="text-gray-500">Booking Dates:</span>
+                        <span className="text-gray-500">Venue Booking Dates:</span>
                         <div className="space-y-1">
                           {bookingData?.bookingDates.map((d, index) => (
                             <p key={index} className="font-medium">
@@ -725,7 +725,7 @@ export default function PayVenueBooking() {
                         • Additional charges may apply for damages or extra
                         services
                       </p>
-                      <p>• Payment must be completed to confirm the booking</p>
+                      <p>• Payment must be completed to confirm the venue booking</p>
                     </div>
                   </div>
                 </div>
@@ -980,7 +980,7 @@ export default function PayVenueBooking() {
                       {bookingData?.venue.depositRequired && (
                         <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                           <p className="text-sm text-blue-800">
-                            <strong>Note:</strong> To confirm your booking, a minimum deposit of {" "}
+                            <strong>Note:</strong> To confirm your venue booking, a minimum deposit of {" "}
                             {bookingData.venue.depositRequired.amount} Rwf (
                             {bookingData.venue.depositRequired.percentage}%) is required. You may pay the full amount or any amount above the deposit now.
 
@@ -1170,7 +1170,7 @@ export default function PayVenueBooking() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Building className="h-5 w-5" />
-                    Booking Summary
+                    Venue Booking Summary
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1183,7 +1183,7 @@ export default function PayVenueBooking() {
                         <div className="flex items-center gap-2 text-red-700">
                           <Clock className="h-4 w-4" />
                           <span className="font-semibold text-sm">
-                            Booking Timeout Alert
+                            Venue Booking Timeout Alert
                           </span>
                         </div>
                         <p className="text-xs text-red-600 mt-1">
@@ -1453,7 +1453,7 @@ export default function PayVenueBooking() {
                               bookingData?.bookingStatus || ""
                             ) && (
                               <div className="flex justify-between text-sm">
-                                <span>Booking Timeout:</span>
+                                <span>Venue Booking Timeout:</span>
                                 <span className="font-semibold text-red-600">
                                   {
                                     bookingData.venue.paymentCompletionRequired
@@ -1471,7 +1471,7 @@ export default function PayVenueBooking() {
                               least one payment within{" "}
                               {bookingData.venue.paymentCompletionRequired
                                 .bookingTimeout || 130}{" "}
-                              minutes, otherwise your booking will be
+                              minutes, otherwise your venue booking will be
                               automatically canceled.
                             </div>
                           )}
